@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius, shadow } from '../config/theme';
 
@@ -7,20 +8,35 @@ interface Props {
   navigation: any;
 }
 
-const LIBI_BIRTH = new Date('2026-01-30'); // ליבי נולדה ינואר 2026 (5 חודשים)
-
-function getAge() {
-  const now = new Date();
-  const months =
-    (now.getFullYear() - LIBI_BIRTH.getFullYear()) * 12 +
-    (now.getMonth() - LIBI_BIRTH.getMonth());
-  const days = Math.floor((now.getTime() - LIBI_BIRTH.getTime()) / (1000 * 60 * 60 * 24));
-  return { months, days };
-}
+const OPTIONS = [
+  {
+    route: 'Events',
+    title: 'לוח שנה',
+    subtitle: 'האירועים המשותפים שלכם',
+    bg: colors.pink,
+    iconColor: colors.pinkAccent,
+    icon: (color: string) => <Ionicons name="calendar-outline" size={26} color={color} />,
+  },
+  {
+    route: 'Shopping',
+    title: 'רשימת קניות',
+    subtitle: 'קניות משותפות בזמן אמת',
+    bg: colors.blue,
+    iconColor: colors.blueAccent,
+    icon: (color: string) => <Ionicons name="cart-outline" size={26} color={color} />,
+  },
+  {
+    route: 'Baby',
+    title: 'מעקב תינוק',
+    subtitle: 'האכלות, שינה וחיתולים',
+    bg: colors.creamDark,
+    iconColor: colors.textLight,
+    icon: (color: string) => <MaterialCommunityIcons name="baby-face-outline" size={26} color={color} />,
+  },
+];
 
 export default function HomeScreen({ navigation }: Props) {
   const { user, logout } = useAuth();
-  const { months, days } = getAge();
   const displayName = user?.email?.split('@')[0] ?? 'שלום';
 
   return (
@@ -32,42 +48,23 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.libiCard}>
-        <Text style={styles.libiEmoji}>👶</Text>
-        <View>
-          <Text style={styles.libiName}>ליבי שלנו</Text>
-          <Text style={styles.libiAge}>
-            {months} חודשים ו-{days % 30} ימים
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>מה תרצה לפתוח?</Text>
-
-      <View style={styles.grid}>
-        <TouchableOpacity
-          style={[styles.tile, { backgroundColor: colors.pink }]}
-          onPress={() => navigation.navigate('Events')}
-        >
-          <Text style={styles.tileEmoji}>📅</Text>
-          <Text style={styles.tileLabel}>לוח שנה</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tile, { backgroundColor: colors.blue }]}
-          onPress={() => navigation.navigate('Shopping')}
-        >
-          <Text style={styles.tileEmoji}>🛒</Text>
-          <Text style={styles.tileLabel}>קניות</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tile, styles.tileFull, { backgroundColor: colors.creamDark }]}
-          onPress={() => navigation.navigate('Baby')}
-        >
-          <Text style={styles.tileEmoji}>🍼</Text>
-          <Text style={styles.tileLabel}>מעקב ליבי</Text>
-        </TouchableOpacity>
+      <View style={styles.list}>
+        {OPTIONS.map((opt) => (
+          <TouchableOpacity
+            key={opt.route}
+            style={styles.row}
+            onPress={() => navigation.navigate(opt.route)}
+          >
+            <Text style={styles.chevron}>‹</Text>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>{opt.title}</Text>
+              <Text style={styles.rowSubtitle}>{opt.subtitle}</Text>
+            </View>
+            <View style={[styles.iconCircle, { backgroundColor: opt.bg }]}>
+              {opt.icon(opt.iconColor)}
+            </View>
+          </TouchableOpacity>
+        ))}
       </View>
     </ScrollView>
   );
@@ -84,37 +81,22 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 22, fontWeight: '700', color: colors.text },
   logoutText: { color: colors.textMuted, fontSize: 14 },
-  libiCard: {
+  list: { gap: spacing.md },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
+    padding: spacing.md,
     gap: spacing.md,
     ...shadow.soft,
   },
-  libiEmoji: { fontSize: 48 },
-  libiName: { fontSize: 20, fontWeight: '700', color: colors.text },
-  libiAge: { fontSize: 14, color: colors.textLight, marginTop: 2 },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textLight,
-    marginBottom: spacing.md,
+  chevron: { fontSize: 22, color: colors.textMuted, fontWeight: '300' },
+  rowText: { flex: 1 },
+  rowTitle: { fontSize: 16, fontWeight: '700', color: colors.text, textAlign: 'right' },
+  rowSubtitle: { fontSize: 12, color: colors.textLight, marginTop: 2, textAlign: 'right' },
+  iconCircle: {
+    width: 52, height: 52, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  tile: {
-    flex: 1,
-    minWidth: '45%',
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    aspectRatio: 1,
-    ...shadow.soft,
-  },
-  tileFull: { width: '100%', flex: undefined, aspectRatio: undefined, flexDirection: 'row', gap: spacing.md },
-  tileEmoji: { fontSize: 36, marginBottom: spacing.sm },
-  tileLabel: { fontSize: 16, fontWeight: '600', color: colors.text },
 });
