@@ -6,6 +6,13 @@ type CollectionName = 'events' | 'shoppingList' | 'babyLogs';
 const now = Date.now();
 const day = 86400000;
 
+// Helper: set a specific HH:MM for today
+function setTime(h: number, m: number): number {
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.getTime();
+}
+
 const seed: Record<CollectionName, any[]> = {
   events: [
     { id: 'e1', title: 'ביקור אצל סבא וסבתא', date: '2026-07-04', time: '16:00', note: '', createdBy: 'aviv', createdAt: now - day * 3 },
@@ -20,11 +27,14 @@ const seed: Record<CollectionName, any[]> = {
     { id: 's5', text: 'לחם', checked: true, addedBy: 'aviv', createdAt: now - 5000 },
   ] as ShoppingItem[],
   babyLogs: [
-    { id: 'b1', type: 'feeding', timestamp: now - 1000 * 60 * 30, feedingType: 'breast_left', durationMin: 12, loggedBy: 'noy' },
-    { id: 'b2', type: 'diaper', timestamp: now - 1000 * 60 * 90, diaperType: 'wet', loggedBy: 'aviv' },
-    { id: 'b3', type: 'sleep', timestamp: now - 1000 * 60 * 60 * 3, endTimestamp: now - 1000 * 60 * 60 * 1.5, loggedBy: 'noy' },
-    { id: 'b4', type: 'feeding', timestamp: now - 1000 * 60 * 60 * 4, feedingType: 'bottle', amountMl: 90, loggedBy: 'aviv' },
-    { id: 'b5', type: 'note', timestamp: now - 1000 * 60 * 60 * 6, details: 'חייכה בפעם הראשונה! 😍', loggedBy: 'noy' },
+    { id: 'b1', type: 'feeding', timestamp: setTime(7, 45), amountMl: 180, loggedBy: 'noy' },
+    { id: 'b2', type: 'sleep',   timestamp: setTime(9, 15), endTimestamp: setTime(10, 30), loggedBy: 'noy' },
+    { id: 'b3', type: 'vitamin', timestamp: setTime(9, 15), loggedBy: 'noy' },
+    { id: 'b4', type: 'feeding', timestamp: setTime(11, 0), amountMl: 150, loggedBy: 'aviv' },
+    { id: 'b5', type: 'diaper',  timestamp: setTime(12, 45), diaperType: 'dirty', loggedBy: 'aviv' },
+    { id: 'b6', type: 'sleep',   timestamp: setTime(13, 20), endTimestamp: setTime(15, 5), loggedBy: 'noy' },
+    { id: 'b7', type: 'feeding', timestamp: setTime(15, 40), amountMl: 160, loggedBy: 'aviv' },
+    { id: 'b8', type: 'iron',    timestamp: setTime(18, 40), loggedBy: 'noy' },
   ] as BabyLog[],
 };
 

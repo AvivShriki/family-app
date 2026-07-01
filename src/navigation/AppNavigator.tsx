@@ -7,7 +7,7 @@ import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import EventsScreen from '../screens/EventsScreen';
 import ShoppingScreen from '../screens/ShoppingScreen';
-import BabyScreen from '../screens/BabyScreen';
+import BabyNavigator from '../screens/baby/BabyNavigator';
 import { colors } from '../config/theme';
 
 const Stack = createNativeStackNavigator();
@@ -40,7 +40,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'לוח שנה 📅' }} />
             <Stack.Screen name="Shopping" component={ShoppingScreen} options={{ title: 'רשימת קניות 🛒' }} />
-            <Stack.Screen name="Baby" component={BabyScreen} options={{ title: 'מעקב ליבי 👶' }} />
+            <Stack.Screen name="Baby" component={BabyNavigator} options={{ title: 'מעקב ליבי 👶' }} />
           </>
         )}
       </Stack.Navigator>

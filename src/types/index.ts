@@ -18,15 +18,13 @@ export interface ShoppingItem {
 
 export interface BabyLog {
   id: string;
-  type: 'feeding' | 'sleep' | 'diaper' | 'note';
-  timestamp: number;
+  type: 'feeding' | 'sleep' | 'diaper' | 'note' | 'vitamin' | 'iron';
+  timestamp: number;       // start time (ms)
+  endTimestamp?: number;   // sleep end time (ms)
   details?: string;
   // feeding
-  feedingType?: 'breast_left' | 'breast_right' | 'bottle';
-  durationMin?: number;
   amountMl?: number;
-  // sleep
-  endTimestamp?: number;
+  // sleep — duration derived from endTimestamp - timestamp
   // diaper
   diaperType?: 'wet' | 'dirty' | 'both';
   loggedBy: string;
