@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius } from '../config/theme';
@@ -11,17 +11,19 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('שגיאה', 'אנא מלא אימייל וסיסמה');
+      setError('אנא מלא אימייל וסיסמה');
       return;
     }
+    setError('');
     setLoading(true);
     try {
       await login(email.trim(), password);
     } catch {
-      Alert.alert('שגיאה', 'אימייל או סיסמה שגויים');
+      setError('אימייל או סיסמה שגויים');
     } finally {
       setLoading(false);
     }
@@ -57,6 +59,7 @@ export default function LoginScreen() {
             secureTextEntry
             textAlign="right"
           />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading}>
             {loading ? (
               <ActivityIndicator color={colors.white} />
@@ -119,4 +122,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   btnText: { color: colors.white, fontWeight: '700', fontSize: 16 },
+  errorText: { color: colors.danger, fontSize: 13, textAlign: 'center', marginBottom: spacing.sm },
 });

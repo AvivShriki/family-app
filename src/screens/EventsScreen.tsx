@@ -1,34 +1,40 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Modal, Alert, ActivityIndicator,
+  TextInput, Modal, ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useCollection } from '../hooks/useCollection';
 import { FamilyEvent } from '../types';
 import { colors, spacing, radius, shadow } from '../config/theme';
+import DatePickerModal from '../components/DatePickerModal';
+import TimePickerModal from '../components/TimePickerModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function EventsScreen() {
   const { user } = useAuth();
   const { items: events, loading, add, remove } = useCollection<FamilyEvent>('events', 'date', 'asc');
   const [modalVisible, setModalVisible] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [note, setNote] = useState('');
+  const [formError, setFormError] = useState('');
 
   const addEvent = async () => {
-    if (!title || !date) { Alert.alert('שגיאה', 'כותרת ותאריך הם שדות חובה'); return; }
+    if (!title || !date) { setFormError('כותרת ותאריך הם שדות חובה'); return; }
     await add({ title, date, time, note, createdBy: user?.email ?? 'demo', createdAt: Date.now() } as any);
-    setTitle(''); setDate(''); setTime(''); setNote('');
+    setTitle(''); setDate(''); setTime(''); setNote(''); setFormError('');
     setModalVisible(false);
   };
 
-  const deleteEvent = (id: string) => {
-    Alert.alert('מחיקה', 'למחוק את האירוע?', [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'מחיקה', style: 'destructive', onPress: () => remove(id) },
-    ]);
+  const confirmDelete = () => {
+    if (deleteTargetId) remove(deleteTargetId);
+    setDeleteTargetId(null);
   };
 
   const formatDate = (d: string) => {
@@ -46,7 +52,7 @@ export default function EventsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={<Text style={styles.empty}>אין אירועים עדיין 📅</Text>}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onLongPress={() => deleteEvent(item.id)}>
+          <View style={styles.card}>
             <View style={styles.dateBadge}>
               <Text style={styles.dateBadgeText}>{new Date(item.date).getDate()}</Text>
               <Text style={styles.monthText}>{new Date(item.date).toLocaleDateString('he-IL', { month: 'short' })}</Text>
@@ -57,7 +63,10 @@ export default function EventsScreen() {
               {item.note ? <Text style={styles.cardNote}>{item.note}</Text> : null}
               <Text style={styles.cardMeta}>📅 {formatDate(item.date)}</Text>
             </View>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteBtn} onPress={() => setDeleteTargetId(item.id)}>
+              <Ionicons name="trash-outline" size={20} color={colors.danger} />
+            </TouchableOpacity>
+          </View>
         )}
       />
       <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
@@ -70,13 +79,25 @@ export default function EventsScreen() {
             <Text style={styles.modalTitle}>אירוע חדש</Text>
             <TextInput style={styles.input} placeholder="כותרת *" placeholderTextColor={colors.textMuted}
               value={title} onChangeText={setTitle} textAlign="right" />
-            <TextInput style={styles.input} placeholder="תאריך (YYYY-MM-DD) *" placeholderTextColor={colors.textMuted}
-              value={date} onChangeText={setDate} textAlign="right" />
-            <TextInput style={styles.input} placeholder="שעה (לא חובה)" placeholderTextColor={colors.textMuted}
-              value={time} onChangeText={setTime} textAlign="right" />
+
+            <TouchableOpacity style={styles.pickerField} onPress={() => setDatePickerVisible(true)}>
+              <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
+              <Text style={[styles.pickerFieldText, !date && styles.pickerFieldPlaceholder]}>
+                {date ? formatDate(date) : 'תאריך *'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.pickerField} onPress={() => setTimePickerVisible(true)}>
+              <Ionicons name="time-outline" size={18} color={colors.textMuted} />
+              <Text style={[styles.pickerFieldText, !time && styles.pickerFieldPlaceholder]}>
+                {time || 'שעה (לא חובה)'}
+              </Text>
+            </TouchableOpacity>
+
             <TextInput style={[styles.input, styles.inputMulti]} placeholder="הערה (לא חובה)"
               placeholderTextColor={colors.textMuted} value={note} onChangeText={setNote}
               multiline textAlign="right" />
+            {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.btnCancel} onPress={() => setModalVisible(false)}>
                 <Text style={styles.btnCancelText}>ביטול</Text>
@@ -88,6 +109,26 @@ export default function EventsScreen() {
           </View>
         </View>
       </Modal>
+
+      <DatePickerModal
+        visible={datePickerVisible}
+        value={date}
+        onSelect={setDate}
+        onClose={() => setDatePickerVisible(false)}
+      />
+      <TimePickerModal
+        visible={timePickerVisible}
+        value={time}
+        onSelect={setTime}
+        onClose={() => setTimePickerVisible(false)}
+      />
+      <ConfirmModal
+        visible={!!deleteTargetId}
+        title="מחיקת אירוע"
+        message="למחוק את האירוע?"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </View>
   );
 }
@@ -97,7 +138,7 @@ const styles = StyleSheet.create({
   list: { padding: spacing.lg, paddingBottom: 100 },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xxl, fontSize: 16 },
   card: {
-    flexDirection: 'row', backgroundColor: colors.white, borderRadius: radius.lg,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.lg,
     padding: spacing.md, marginBottom: spacing.md, gap: spacing.md, ...shadow.soft,
   },
   dateBadge: {
@@ -110,6 +151,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 2 },
   cardMeta: { fontSize: 12, color: colors.textLight, marginTop: 2 },
   cardNote: { fontSize: 13, color: colors.textLight, marginTop: 2 },
+  deleteBtn: { padding: spacing.sm },
   fab: {
     position: 'absolute', bottom: 28, right: 24, backgroundColor: colors.pinkAccent,
     width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', ...shadow.soft,
@@ -126,6 +168,14 @@ const styles = StyleSheet.create({
     fontSize: 15, color: colors.text, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
   },
   inputMulti: { height: 80, textAlignVertical: 'top' },
+  errorText: { color: colors.danger, fontSize: 13, textAlign: 'center', marginBottom: spacing.sm },
+  pickerField: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.cream, borderRadius: radius.md, padding: spacing.md,
+    marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
+  },
+  pickerFieldText: { fontSize: 15, color: colors.text },
+  pickerFieldPlaceholder: { color: colors.textMuted },
   modalActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
   btnCancel: { flex: 1, padding: spacing.md, borderRadius: radius.full, backgroundColor: colors.creamDark, alignItems: 'center' },
   btnCancelText: { color: colors.textLight, fontWeight: '600' },

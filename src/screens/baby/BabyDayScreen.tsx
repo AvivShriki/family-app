@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useCollection } from '../../hooks/useCollection';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 import AddLogModal from './AddLogModal';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const LIBI_BIRTH = new Date('2026-01-30');
 
@@ -55,6 +56,7 @@ export default function BabyDayScreen() {
   const { items: allLogs, remove } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // When navigated from calendar with a specific date
   useEffect(() => {
@@ -89,11 +91,9 @@ export default function BabyDayScreen() {
 
   const isToday = isSameDay(selectedDate.getTime(), new Date());
 
-  const deleteLog = (id: string) => {
-    Alert.alert('מחיקה', 'למחוק רשומה זו?', [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'מחיקה', style: 'destructive', onPress: () => remove(id) },
-    ]);
+  const confirmDeleteLog = () => {
+    if (deleteTargetId) remove(deleteTargetId);
+    setDeleteTargetId(null);
   };
 
   const dateLabel = selectedDate.toLocaleDateString('he-IL', {
@@ -138,7 +138,7 @@ export default function BabyDayScreen() {
               key={log.id}
               log={log}
               isLast={i === todayLogs.length - 1}
-              onLongPress={() => deleteLog(log.id)}
+              onLongPress={() => setDeleteTargetId(log.id)}
             />
           ))
         )}
@@ -155,6 +155,13 @@ export default function BabyDayScreen() {
         visible={addModalVisible}
         onClose={() => setAddModalVisible(false)}
         selectedDate={selectedDate}
+      />
+      <ConfirmModal
+        visible={!!deleteTargetId}
+        title="מחיקת רשומה"
+        message="למחוק רשומה זו?"
+        onConfirm={confirmDeleteLog}
+        onCancel={() => setDeleteTargetId(null)}
       />
     </View>
   );
