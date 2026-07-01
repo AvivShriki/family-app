@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
 } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { useCollection } from '../../hooks/useCollection';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
@@ -51,6 +51,7 @@ const DIAPER_LABEL: Record<string, string> = {
 
 export default function BabyDayScreen() {
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const { items: allLogs, remove } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -61,6 +62,14 @@ export default function BabyDayScreen() {
       setSelectedDate(new Date(route.params.dateStr));
     }
   }, [route.params?.dateStr]);
+
+  // When navigated from the tab bar's "+" quick-add button
+  useEffect(() => {
+    if (route.params?.openAdd) {
+      setAddModalVisible(true);
+      navigation.setParams({ openAdd: false });
+    }
+  }, [route.params?.openAdd]);
 
   const todayLogs = useMemo(
     () => allLogs.filter((l) => isSameDay(l.timestamp, selectedDate)),
