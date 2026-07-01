@@ -18,17 +18,19 @@ export default function EventsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [endTimePickerVisible, setEndTimePickerVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [note, setNote] = useState('');
   const [formError, setFormError] = useState('');
 
   const addEvent = async () => {
     if (!title || !date) { setFormError('כותרת ותאריך הם שדות חובה'); return; }
-    await add({ title, date, time, note, createdBy: user?.email ?? 'demo', createdAt: Date.now() } as any);
-    setTitle(''); setDate(''); setTime(''); setNote(''); setFormError('');
+    await add({ title, date, time, endTime, note, createdBy: user?.email ?? 'demo', createdAt: Date.now() } as any);
+    setTitle(''); setDate(''); setTime(''); setEndTime(''); setNote(''); setFormError('');
     setModalVisible(false);
   };
 
@@ -59,7 +61,9 @@ export default function EventsScreen() {
             </View>
             <View style={styles.cardBody}>
               <Text style={styles.cardTitle}>{item.title}</Text>
-              {item.time ? <Text style={styles.cardMeta}>🕐 {item.time}</Text> : null}
+              {item.time ? (
+                <Text style={styles.cardMeta}>🕐 {item.time}{item.endTime ? `–${item.endTime}` : ''}</Text>
+              ) : null}
               {item.note ? <Text style={styles.cardNote}>{item.note}</Text> : null}
               <Text style={styles.cardMeta}>📅 {formatDate(item.date)}</Text>
             </View>
@@ -87,12 +91,23 @@ export default function EventsScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.pickerField} onPress={() => setTimePickerVisible(true)}>
-              <Ionicons name="time-outline" size={18} color={colors.textMuted} />
-              <Text style={[styles.pickerFieldText, !time && styles.pickerFieldPlaceholder]}>
-                {time || 'שעה (לא חובה)'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.timeRow}>
+              <TouchableOpacity style={[styles.pickerField, styles.timeField]} onPress={() => setTimePickerVisible(true)}>
+                <Ionicons name="time-outline" size={18} color={colors.textMuted} />
+                <Text style={[styles.pickerFieldText, !time && styles.pickerFieldPlaceholder]}>
+                  {time || 'משעה (לא חובה)'}
+                </Text>
+              </TouchableOpacity>
+
+              {time ? (
+                <TouchableOpacity style={[styles.pickerField, styles.timeField]} onPress={() => setEndTimePickerVisible(true)}>
+                  <Ionicons name="time-outline" size={18} color={colors.textMuted} />
+                  <Text style={[styles.pickerFieldText, !endTime && styles.pickerFieldPlaceholder]}>
+                    {endTime || 'עד שעה'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
 
             <TextInput style={[styles.input, styles.inputMulti]} placeholder="הערה (לא חובה)"
               placeholderTextColor={colors.textMuted} value={note} onChangeText={setNote}
@@ -121,6 +136,12 @@ export default function EventsScreen() {
         value={time}
         onSelect={setTime}
         onClose={() => setTimePickerVisible(false)}
+      />
+      <TimePickerModal
+        visible={endTimePickerVisible}
+        value={endTime}
+        onSelect={setEndTime}
+        onClose={() => setEndTimePickerVisible(false)}
       />
       <ConfirmModal
         visible={!!deleteTargetId}
@@ -169,6 +190,8 @@ const styles = StyleSheet.create({
   },
   inputMulti: { height: 80, textAlignVertical: 'top' },
   errorText: { color: colors.danger, fontSize: 13, textAlign: 'center', marginBottom: spacing.sm },
+  timeRow: { flexDirection: 'row', gap: spacing.sm },
+  timeField: { flex: 1 },
   pickerField: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.cream, borderRadius: radius.md, padding: spacing.md,

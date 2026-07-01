@@ -3,6 +3,7 @@ export interface FamilyEvent {
   title: string;
   date: string; // ISO string
   time?: string;
+  endTime?: string; // for a time range, e.g. 15:00–17:00
   note?: string;
   createdBy: string;
   createdAt: number;
