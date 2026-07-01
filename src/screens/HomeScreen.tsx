@@ -1,43 +1,86 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useCollection } from '../hooks/useCollection';
+import { FamilyEvent, ShoppingItem, BabyLog } from '../types';
 import { colors, spacing, radius, shadow } from '../config/theme';
 
 interface Props {
   navigation: any;
 }
 
-const OPTIONS = [
-  {
-    route: 'Events',
-    title: 'לוח שנה',
-    subtitle: 'האירועים המשותפים שלכם',
-    bg: colors.pink,
-    iconColor: colors.pinkAccent,
-    icon: (color: string) => <Ionicons name="calendar-outline" size={26} color={color} />,
-  },
-  {
-    route: 'Shopping',
-    title: 'רשימת קניות',
-    subtitle: 'קניות משותפות בזמן אמת',
-    bg: colors.blue,
-    iconColor: colors.blueAccent,
-    icon: (color: string) => <Ionicons name="cart-outline" size={26} color={color} />,
-  },
-  {
-    route: 'Baby',
-    title: 'מעקב תינוק',
-    subtitle: 'האכלות, שינה וחיתולים',
-    bg: colors.creamDark,
-    iconColor: colors.textLight,
-    icon: (color: string) => <MaterialCommunityIcons name="baby-face-outline" size={26} color={color} />,
-  },
-];
+const BABY_LOG_LABELS: Record<BabyLog['type'], string> = {
+  feeding: 'האכלה',
+  sleep: 'שינה',
+  diaper: 'חיתול',
+  vitamin: 'ויטמין D',
+  iron: 'ברזל',
+  note: 'הערה',
+};
+
+function timeAgo(ts: number): string {
+  const diffMin = Math.round((Date.now() - ts) / 60000);
+  if (diffMin < 1) return 'ממש עכשיו';
+  if (diffMin < 60) return `לפני ${diffMin} דק'`;
+  const diffHours = Math.round(diffMin / 60);
+  if (diffHours < 24) return `לפני ${diffHours} שע'`;
+  return 'לפני יותר מיום';
+}
 
 export default function HomeScreen({ navigation }: Props) {
   const { user, logout } = useAuth();
   const displayName = user?.email?.split('@')[0] ?? 'שלום';
+
+  const { items: events } = useCollection<FamilyEvent>('events', 'date', 'asc');
+  const { items: shoppingItems } = useCollection<ShoppingItem>('shoppingList', 'createdAt', 'desc');
+  const { items: babyLogs } = useCollection<BabyLog>('babyLogs', 'timestamp', 'desc');
+
+  const calendarSubtitle = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const nextEvent = events.find((e) => e.date >= todayStr);
+    if (!nextEvent) return 'אין אירועים קרובים';
+    const dateLabel = new Date(nextEvent.date).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+    return `הקרוב: ${nextEvent.title} · ${dateLabel}`;
+  }, [events]);
+
+  const shoppingSubtitle = useMemo(() => {
+    const openCount = shoppingItems.filter((i) => !i.checked).length;
+    return openCount > 0 ? `${openCount} פריטים לקנייה` : 'הרשימה ריקה';
+  }, [shoppingItems]);
+
+  const babySubtitle = useMemo(() => {
+    const lastLog = babyLogs.find((l) => l.timestamp <= Date.now());
+    if (!lastLog) return 'אין רישומים עדיין';
+    return `${BABY_LOG_LABELS[lastLog.type] ?? lastLog.type} · ${timeAgo(lastLog.timestamp)}`;
+  }, [babyLogs]);
+
+  const options = [
+    {
+      route: 'Events',
+      title: 'לוח שנה',
+      subtitle: calendarSubtitle,
+      bg: colors.pink,
+      iconColor: colors.pinkAccent,
+      icon: (color: string) => <Ionicons name="calendar-outline" size={26} color={color} />,
+    },
+    {
+      route: 'Shopping',
+      title: 'רשימת קניות',
+      subtitle: shoppingSubtitle,
+      bg: colors.blue,
+      iconColor: colors.blueAccent,
+      icon: (color: string) => <Ionicons name="cart-outline" size={26} color={color} />,
+    },
+    {
+      route: 'Baby',
+      title: 'מעקב תינוק',
+      subtitle: babySubtitle,
+      bg: colors.creamDark,
+      iconColor: colors.textLight,
+      icon: (color: string) => <MaterialCommunityIcons name="baby-face-outline" size={26} color={color} />,
+    },
+  ];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -49,7 +92,7 @@ export default function HomeScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.list}>
-        {OPTIONS.map((opt) => (
+        {options.map((opt) => (
           <TouchableOpacity
             key={opt.route}
             style={styles.row}

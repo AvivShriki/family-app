@@ -1,5 +1,16 @@
 {
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_screenshot",
+      "Bash(curl -s *)",
+      "mcp__Claude_Preview__preview_console_logs",
+      "Bash(git fetch *)",
+      "mcp__Claude_Preview__preview_logs",
+      "mcp__Claude_Preview__preview_snapshot",
+      "mcp__figma__COMPOSIO_SEARCH_TOOLS"
+    ]
   }
 }
