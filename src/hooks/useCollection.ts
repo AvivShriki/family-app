@@ -7,7 +7,7 @@ import { db } from '../config/firebase';
 import { mockSubscribe, mockAdd, mockDelete, mockUpdate } from '../mocks/store';
 
 // Set to true to run locally without a real Firebase project
-export const DEMO_MODE = true;
+export const DEMO_MODE = false;
 
 type ColName = 'events' | 'shoppingList' | 'babyLogs';
 
@@ -18,6 +18,7 @@ export function useCollection<T extends { id: string }>(
 ) {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (DEMO_MODE) {
@@ -34,10 +35,20 @@ export function useCollection<T extends { id: string }>(
     }
 
     const q = query(collection(db, colName), orderBy(orderByField, direction));
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() } as T)));
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() } as T)));
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        // Without this, a rules/permissions failure leaves the screen loading forever
+        console.error(`Firestore error on "${colName}":`, err);
+        setError(err.message);
+        setLoading(false);
+      },
+    );
     return unsub;
   }, []);
 
@@ -56,5 +67,5 @@ export function useCollection<T extends { id: string }>(
     await updateDoc(doc(db, colName, id), data as any);
   };
 
-  return { items, loading, add, remove, update };
+  return { items, loading, error, add, remove, update };
 }

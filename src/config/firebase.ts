@@ -2,14 +2,13 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-// ⚠️  החלף את הערכים האלו בפרטי Firebase שלך מ-console.firebase.google.com
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyDfV5c8sVv62kIIyk7fyzPZjNuZMpGkFW8",
+  authDomain: "family-app-aviv-noy.firebaseapp.com",
+  projectId: "family-app-aviv-noy",
+  storageBucket: "family-app-aviv-noy.firebasestorage.app",
+  messagingSenderId: "1088328192594",
+  appId: "1:1088328192594:web:c56a04edc9b6070a05858b",
 };
 
 const app = initializeApp(firebaseConfig);
