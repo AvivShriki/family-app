@@ -62,10 +62,11 @@ export function mockSubscribe(col: CollectionName, cb: Listener): () => void {
   };
 }
 
-export function mockAdd(col: CollectionName, data: any) {
+export function mockAdd(col: CollectionName, data: any): string {
   const id = Math.random().toString(36).slice(2);
   store[col] = [{ id, ...data }, ...store[col]];
   notify(col);
+  return id;
 }
 
 export function mockDelete(col: CollectionName, id: string) {

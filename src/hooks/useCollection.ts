@@ -52,9 +52,10 @@ export function useCollection<T extends { id: string }>(
     return unsub;
   }, []);
 
-  const add = async (data: Omit<T, 'id'>) => {
-    if (DEMO_MODE) { mockAdd(colName, data); return; }
-    await addDoc(collection(db, colName), data);
+  const add = async (data: Omit<T, 'id'>): Promise<string> => {
+    if (DEMO_MODE) return mockAdd(colName, data);
+    const ref = await addDoc(collection(db, colName), data);
+    return ref.id;
   };
 
   const remove = async (id: string) => {

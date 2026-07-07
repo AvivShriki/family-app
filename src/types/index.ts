@@ -13,6 +13,7 @@ export interface ShoppingItem {
   id: string;
   text: string;
   checked: boolean;
+  imageUrl?: string; // small product photo from Open Food Facts
   addedBy: string;
   createdAt: number;
 }

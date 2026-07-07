@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useCollection } from '../hooks/useCollection';
 import { ShoppingItem } from '../types';
 import { colors, spacing, radius, shadow } from '../config/theme';
+import { fetchProductImage, categoryEmoji } from '../utils/productImage';
 
 export default function ShoppingScreen() {
   const { user } = useAuth();
@@ -14,9 +15,13 @@ export default function ShoppingScreen() {
   const [text, setText] = useState('');
 
   const addItem = async () => {
-    if (!text.trim()) return;
-    await add({ text: text.trim(), checked: false, addedBy: user?.email ?? 'demo', createdAt: Date.now() } as any);
+    const name = text.trim();
+    if (!name) return;
+    // Add immediately so the UI feels instant; attach the photo when the lookup finishes
+    const id = await add({ text: name, checked: false, addedBy: user?.email ?? 'demo', createdAt: Date.now() } as any);
     setText('');
+    const imageUrl = await fetchProductImage(name);
+    if (imageUrl && id) update(id, { imageUrl } as any);
   };
 
   const toggleItem = (item: ShoppingItem) => update(item.id, { checked: !item.checked } as any);
@@ -54,6 +59,13 @@ export default function ShoppingScreen() {
               {item.checked && <Text style={styles.checkmark}>✓</Text>}
             </View>
             <Text style={[styles.itemText, item.checked && styles.itemTextChecked]}>{item.text}</Text>
+            <View style={styles.itemIcon}>
+              {item.imageUrl ? (
+                <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
+              ) : (
+                <Text style={styles.itemEmoji}>{categoryEmoji(item.text)}</Text>
+              )}
+            </View>
           </TouchableOpacity>
         )}
       />
@@ -98,6 +110,12 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: colors.blueAccent, borderColor: colors.blueAccent },
   checkmark: { color: colors.white, fontWeight: '700', fontSize: 14 },
   itemText: { fontSize: 16, color: colors.text, flex: 1, textAlign: 'right' },
+  itemIcon: {
+    width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.cream,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  itemImage: { width: 40, height: 40, borderRadius: radius.sm },
+  itemEmoji: { fontSize: 20 },
   itemTextChecked: { textDecorationLine: 'line-through', color: colors.textMuted },
   inputBar: {
     flexDirection: 'row', padding: spacing.md, backgroundColor: colors.white,
