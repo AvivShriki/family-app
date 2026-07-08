@@ -1,18 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useCollection } from '../../hooks/useCollection';
+import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
-
-const LIBI_BIRTH = new Date('2026-01-30');
-
-function getAge(ref: Date) {
-  const months =
-    (ref.getFullYear() - LIBI_BIRTH.getFullYear()) * 12 +
-    (ref.getMonth() - LIBI_BIRTH.getMonth());
-  const days = Math.floor((ref.getTime() - LIBI_BIRTH.getTime()) / 86400000);
-  return `בת ${months} חודשים ו-${days % 30} ימים`;
-}
 
 // Dot color per log type
 const DOT_COLOR: Record<string, string> = {
@@ -36,6 +27,7 @@ interface Props {
 
 export default function BabyCalendarScreen({ onSelectDay }: Props) {
   const { items: allLogs } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
+  const { profile } = useBabyProfile();
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -144,8 +136,8 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
       <View style={styles.babyCard}>
         <Text style={styles.babyEmoji}>👶</Text>
         <View>
-          <Text style={styles.babyName}>ליבי שלנו 🌸</Text>
-          <Text style={styles.babyAge}>{getAge(today)}</Text>
+          <Text style={styles.babyName}>{profile.name} שלנו 🌸</Text>
+          <Text style={styles.babyAge}>{getAgeText(profile.birthDate, today)}</Text>
           <Text style={styles.babyDate}>
             {today.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}
           </Text>

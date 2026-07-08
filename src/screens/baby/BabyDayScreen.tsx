@@ -4,20 +4,11 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useCollection } from '../../hooks/useCollection';
+import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 import AddLogModal from './AddLogModal';
 import ConfirmModal from '../../components/ConfirmModal';
-
-const LIBI_BIRTH = new Date('2026-01-30');
-
-function getAge(ref = new Date()) {
-  const months =
-    (ref.getFullYear() - LIBI_BIRTH.getFullYear()) * 12 +
-    (ref.getMonth() - LIBI_BIRTH.getMonth());
-  const days = Math.floor((ref.getTime() - LIBI_BIRTH.getTime()) / 86400000);
-  return `בת ${months} חודשים ו-${days % 30} ימים`;
-}
 
 function fmtTime(ts: number) {
   return new Date(ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
@@ -54,6 +45,7 @@ export default function BabyDayScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { items: allLogs, remove } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
+  const { profile } = useBabyProfile();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -119,8 +111,8 @@ export default function BabyDayScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Baby card */}
         <View style={styles.babyCard}>
-          <Text style={styles.babyName}>ליבי 🌸</Text>
-          <Text style={styles.babyAge}>{getAge(selectedDate)}</Text>
+          <Text style={styles.babyName}>{profile.name} 🌸</Text>
+          <Text style={styles.babyAge}>{getAgeText(profile.birthDate, selectedDate)}</Text>
         </View>
 
         {/* Missions */}

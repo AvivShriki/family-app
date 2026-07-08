@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useBabyProfile } from '../../hooks/useBabyProfile';
 import { colors, spacing } from '../../config/theme';
 
 export default function BabyHeader() {
+  const { profile } = useBabyProfile();
   return (
     <View style={styles.container}>
       <View style={styles.left}>
         <Text style={styles.bell}>🔔</Text>
         <View>
           <View style={styles.nameRow}>
-            <Text style={styles.name}>ליבי</Text>
+            <Text style={styles.name}>{profile.name}</Text>
             <Text style={styles.chevron}>⌄</Text>
           </View>
           <Text style={styles.subtitle}>יומן תינוקת שלי 💗</Text>

@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useBabyProfile } from '../hooks/useBabyProfile';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import EventsScreen from '../screens/EventsScreen';
@@ -21,6 +22,7 @@ const headerStyle = {
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
+  const { profile } = useBabyProfile();
 
   if (loading) {
     return (
@@ -40,7 +42,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'לוח שנה 📅' }} />
             <Stack.Screen name="Shopping" component={ShoppingScreen} options={{ title: 'רשימת קניות 🛒' }} />
-            <Stack.Screen name="Baby" component={BabyNavigator} options={{ title: 'מעקב ליבי 👶' }} />
+            <Stack.Screen name="Baby" component={BabyNavigator} options={{ title: `מעקב ${profile.name} 👶` }} />
           </>
         )}
       </Stack.Navigator>
