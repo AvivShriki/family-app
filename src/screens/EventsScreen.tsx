@@ -23,7 +23,12 @@ function toDateStr(y: number, m: number, d: number) {
 }
 
 // Month grid shown above the list; days that have an event get a dot.
-function MonthCalendar({ eventDays }: { eventDays: Set<string> }) {
+// Tapping a day selects it (tap again to clear).
+function MonthCalendar({ eventDays, selectedDay, onSelectDay }: {
+  eventDays: Set<string>;
+  selectedDay: string | null;
+  onSelectDay: (dateStr: string) => void;
+}) {
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -58,16 +63,22 @@ function MonthCalendar({ eventDays }: { eventDays: Set<string> }) {
       <View style={styles.grid}>
         {cells.map((day, i) => {
           if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
-          const hasEvent = eventDays.has(toDateStr(year, month, day));
+          const dateStr = toDateStr(year, month, day);
+          const hasEvent = eventDays.has(dateStr);
+          const selected = selectedDay === dateStr;
           return (
-            <View key={day} style={[styles.cell, isToday(day) && styles.todayCell]}>
+            <TouchableOpacity
+              key={day}
+              style={[styles.cell, isToday(day) && styles.todayCell, selected && styles.selectedCell]}
+              onPress={() => onSelectDay(dateStr)}
+            >
               <Text style={[styles.dayNum, isToday(day) && styles.todayNum]}>{day}</Text>
               {hasEvent ? (
                 <View style={[styles.eventDot, isToday(day) && styles.eventDotToday]} />
               ) : (
                 <View style={styles.dotPlaceholder} />
               )}
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -83,6 +94,7 @@ export default function EventsScreen() {
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [endTimePickerVisible, setEndTimePickerVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -109,16 +121,45 @@ export default function EventsScreen() {
 
   const eventDays = useMemo(() => new Set(events.map((e) => e.date)), [events]);
 
+  // Tap toggles selection; when a day is selected the list shows only its events
+  const onSelectDay = (d: string) => setSelectedDay((prev) => (prev === d ? null : d));
+  const shownEvents = useMemo(
+    () => (selectedDay ? events.filter((e) => e.date === selectedDay) : events),
+    [events, selectedDay],
+  );
+
+  const openAddModal = () => {
+    setDate(selectedDay ?? '');
+    setFormError('');
+    setModalVisible(true);
+  };
+
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.pinkAccent} />;
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={events}
+        data={shownEvents}
         keyExtractor={(e) => e.id}
         contentContainerStyle={styles.list}
-        ListHeaderComponent={<MonthCalendar eventDays={eventDays} />}
-        ListEmptyComponent={<Text style={styles.empty}>אין אירועים עדיין 📅</Text>}
+        ListHeaderComponent={
+          <>
+            <MonthCalendar eventDays={eventDays} selectedDay={selectedDay} onSelectDay={onSelectDay} />
+            {selectedDay ? (
+              <View style={styles.dayBar}>
+                <TouchableOpacity onPress={() => setSelectedDay(null)}>
+                  <Text style={styles.dayBarClear}>הצג הכול</Text>
+                </TouchableOpacity>
+                <Text style={styles.dayBarText}>{formatDate(selectedDay)}</Text>
+              </View>
+            ) : null}
+          </>
+        }
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {selectedDay ? 'אין אירועים ביום זה — אפשר להוסיף עם ה-+ 👇' : 'אין אירועים עדיין 📅'}
+          </Text>
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.dateBadge}>
@@ -139,7 +180,7 @@ export default function EventsScreen() {
           </View>
         )}
       />
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity style={styles.fab} onPress={openAddModal}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
@@ -242,12 +283,20 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   todayCell: { backgroundColor: colors.pinkAccent, borderRadius: radius.md },
+  selectedCell: { borderWidth: 2, borderColor: colors.pinkAccent, borderRadius: radius.md },
   dayNum: { fontSize: 14, color: colors.text },
   todayNum: { color: colors.white, fontWeight: '700' },
   eventDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.pinkAccent, marginTop: 2 },
   eventDotToday: { backgroundColor: colors.white },
   dotPlaceholder: { width: 6, height: 6, marginTop: 2 },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xxl, fontSize: 16 },
+  dayBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.pink, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginBottom: spacing.md,
+  },
+  dayBarText: { fontSize: 14, fontWeight: '700', color: colors.text },
+  dayBarClear: { fontSize: 13, fontWeight: '600', color: colors.pinkAccent },
   card: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.lg,
     padding: spacing.md, marginBottom: spacing.md, gap: spacing.md, ...shadow.soft,
