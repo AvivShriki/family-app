@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, Modal, ActivityIndicator,
@@ -11,6 +11,69 @@ import { colors, spacing, radius, shadow } from '../config/theme';
 import DatePickerModal from '../components/DatePickerModal';
 import TimePickerModal from '../components/TimePickerModal';
 import ConfirmModal from '../components/ConfirmModal';
+
+const HE_DAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+const HE_MONTHS = [
+  'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+  'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר',
+];
+
+function toDateStr(y: number, m: number, d: number) {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+// Month grid shown above the list; days that have an event get a dot.
+function MonthCalendar({ eventDays }: { eventDays: Set<string> }) {
+  const today = new Date();
+  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const isToday = (d: number) =>
+    d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+
+  return (
+    <View style={styles.calendarCard}>
+      <View style={styles.monthBar}>
+        <TouchableOpacity onPress={() => setViewDate(new Date(year, month + 1, 1))} style={styles.arrowBtn}>
+          <Text style={styles.arrow}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.monthTitle}>{HE_MONTHS[month]} {year}</Text>
+        <TouchableOpacity onPress={() => setViewDate(new Date(year, month - 1, 1))} style={styles.arrowBtn}>
+          <Text style={styles.arrow}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.dowRow}>
+        {HE_DAYS.map((d) => <Text key={d} style={styles.dowText}>{d}</Text>)}
+      </View>
+
+      <View style={styles.grid}>
+        {cells.map((day, i) => {
+          if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
+          const hasEvent = eventDays.has(toDateStr(year, month, day));
+          return (
+            <View key={day} style={[styles.cell, isToday(day) && styles.todayCell]}>
+              <Text style={[styles.dayNum, isToday(day) && styles.todayNum]}>{day}</Text>
+              {hasEvent ? (
+                <View style={[styles.eventDot, isToday(day) && styles.eventDotToday]} />
+              ) : (
+                <View style={styles.dotPlaceholder} />
+              )}
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 
 export default function EventsScreen() {
   const { user } = useAuth();
@@ -44,6 +107,8 @@ export default function EventsScreen() {
     catch { return d; }
   };
 
+  const eventDays = useMemo(() => new Set(events.map((e) => e.date)), [events]);
+
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.pinkAccent} />;
 
   return (
@@ -52,6 +117,7 @@ export default function EventsScreen() {
         data={events}
         keyExtractor={(e) => e.id}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={<MonthCalendar eventDays={eventDays} />}
         ListEmptyComponent={<Text style={styles.empty}>אין אירועים עדיין 📅</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -157,6 +223,30 @@ export default function EventsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   list: { padding: spacing.lg, paddingBottom: 100 },
+  calendarCard: {
+    backgroundColor: colors.white, borderRadius: radius.lg,
+    padding: spacing.md, marginBottom: spacing.lg, ...shadow.soft,
+  },
+  monthBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  arrowBtn: { padding: spacing.sm },
+  arrow: { fontSize: 24, color: colors.pinkAccent, fontWeight: '300' },
+  monthTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  dowRow: { flexDirection: 'row', marginBottom: spacing.xs },
+  dowText: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  cell: {
+    width: `${100 / 7}%`, aspectRatio: 1.1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  todayCell: { backgroundColor: colors.pinkAccent, borderRadius: radius.md },
+  dayNum: { fontSize: 14, color: colors.text },
+  todayNum: { color: colors.white, fontWeight: '700' },
+  eventDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.pinkAccent, marginTop: 2 },
+  eventDotToday: { backgroundColor: colors.white },
+  dotPlaceholder: { width: 6, height: 6, marginTop: 2 },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xxl, fontSize: 16 },
   card: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.lg,
