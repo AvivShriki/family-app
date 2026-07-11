@@ -62,6 +62,8 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const [amountMl, setAmountMl] = useState('');
   const [diaperType, setDiaperType] = useState<string>('dirty');
   const [note, setNote] = useState('');
+  const [vitaminGiven, setVitaminGiven] = useState(false);
+  const [ironGiven, setIronGiven] = useState(false);
 
   const reset = () => {
     setStep('pick');
@@ -70,6 +72,8 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     setAmountMl('');
     setDiaperType('dirty');
     setNote('');
+    setVitaminGiven(false);
+    setIronGiven(false);
   };
 
   // Prefill the form when opening in edit mode; reset when opening for a new entry
@@ -107,8 +111,18 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     if (selectedType === 'diaper') entry.diaperType = diaperType as any;
     if (note) entry.details = note;
 
-    if (editLog) await update(editLog.id, entry);
-    else await add(entry as any);
+    if (editLog) {
+      await update(editLog.id, entry);
+    } else {
+      await add(entry as any);
+      // Vitamin D and iron are given during feedings — log them alongside instead of a separate entry
+      if (selectedType === 'feeding' && vitaminGiven) {
+        await add({ type: 'vitamin', timestamp: ts, loggedBy: entry.loggedBy } as any);
+      }
+      if (selectedType === 'feeding' && ironGiven) {
+        await add({ type: 'iron', timestamp: ts, loggedBy: entry.loggedBy } as any);
+      }
+    }
     handleClose();
   };
 
@@ -181,6 +195,16 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                   </Field>
                 )}
 
+                {/* Vitamin D / iron given at this feeding */}
+                {selectedType === 'feeding' && !editLog && (
+                  <Field label="ניתנו גם בארוחה זו">
+                    <View style={styles.checkRow}>
+                      <CheckChip emoji="☀️" label="ויטמין D" checked={vitaminGiven} onPress={() => setVitaminGiven((v) => !v)} />
+                      <CheckChip emoji="💧" label="ברזל" checked={ironGiven} onPress={() => setIronGiven((v) => !v)} />
+                    </View>
+                  </Field>
+                )}
+
                 {/* Diaper type */}
                 {selectedType === 'diaper' && (
                   <Field label="סוג">
@@ -231,6 +255,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <Text style={styles.fieldLabel}>{label}</Text>
       {children}
     </View>
+  );
+}
+
+function CheckChip({ emoji, label, checked, onPress }: {
+  emoji: string; label: string; checked: boolean; onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={[styles.checkChip, checked && styles.checkChipActive]} onPress={onPress}>
+      <View style={[styles.checkbox, checked && styles.checkboxActive]}>
+        {checked && <Text style={styles.checkmark}>✓</Text>}
+      </View>
+      <Text style={styles.checkEmoji}>{emoji}</Text>
+      <Text style={[styles.checkLabel, checked && styles.checkLabelActive]}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -299,6 +337,23 @@ const styles = StyleSheet.create({
   optionActive: { backgroundColor: colors.pinkAccent, borderColor: colors.pinkAccent },
   optionText: { fontSize: 14, color: colors.textLight, fontWeight: '500' },
   optionTextActive: { color: colors.white, fontWeight: '700' },
+
+  checkRow: { flexDirection: 'row', gap: spacing.sm },
+  checkChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    padding: spacing.sm, borderRadius: radius.md,
+    backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border,
+  },
+  checkChipActive: { backgroundColor: '#FFF8E1', borderColor: colors.pinkAccent },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
+    borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxActive: { backgroundColor: colors.pinkAccent, borderColor: colors.pinkAccent },
+  checkmark: { color: colors.white, fontWeight: '700', fontSize: 12 },
+  checkEmoji: { fontSize: 15 },
+  checkLabel: { fontSize: 13, color: colors.textLight, fontWeight: '500' },
+  checkLabelActive: { color: colors.text, fontWeight: '700' },
 
   saveBtn: {
     backgroundColor: colors.pinkAccent, borderRadius: radius.full,
