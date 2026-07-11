@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import BabyCalendarScreen from './BabyCalendarScreen';
 import BabyDayScreen from './BabyDayScreen';
@@ -21,6 +22,8 @@ const RIGHT_TABS = [
 ];
 
 function BabyTabBar({ state, navigation, onAddPress }: any) {
+  const insets = useSafeAreaInsets();
+
   const renderTab = (t: { name: string; emoji: string; label: string }) => {
     const focused = state.routes[state.index].name === t.name;
     return (
@@ -36,7 +39,7 @@ function BabyTabBar({ state, navigation, onAddPress }: any) {
   };
 
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { paddingBottom: 8 + insets.bottom }]}>
       {LEFT_TABS.map(renderTab)}
       <TouchableOpacity style={styles.fab} onPress={onAddPress}>
         <Text style={styles.fabText}>+</Text>
@@ -88,7 +91,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingBottom: 8,
   },
   tabItem: {
     flex: 1, alignItems: 'center', paddingVertical: spacing.sm,

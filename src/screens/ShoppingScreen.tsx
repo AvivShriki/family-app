@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useCollection } from '../hooks/useCollection';
 import { ShoppingItem } from '../types';
@@ -11,6 +12,7 @@ import { fetchProductImage, categoryEmoji } from '../utils/productImage';
 
 export default function ShoppingScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const { items, loading, add, remove, update } = useCollection<ShoppingItem>('shoppingList', 'createdAt', 'desc');
   const [text, setText] = useState('');
 
@@ -69,7 +71,7 @@ export default function ShoppingScreen() {
           </TouchableOpacity>
         )}
       />
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { paddingBottom: spacing.md + insets.bottom }]}>
         <TouchableOpacity style={styles.addBtn} onPress={addItem}>
           <Text style={styles.addBtnText}>הוסף</Text>
         </TouchableOpacity>

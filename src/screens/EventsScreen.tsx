@@ -4,6 +4,7 @@ import {
   TextInput, Modal, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useCollection } from '../hooks/useCollection';
 import { FamilyEvent } from '../types';
@@ -88,6 +89,7 @@ function MonthCalendar({ eventDays, selectedDay, onSelectDay }: {
 
 export default function EventsScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const { items: events, loading, add, remove } = useCollection<FamilyEvent>('events', 'date', 'asc');
   const [modalVisible, setModalVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
@@ -180,7 +182,7 @@ export default function EventsScreen() {
           </View>
         )}
       />
-      <TouchableOpacity style={styles.fab} onPress={openAddModal}>
+      <TouchableOpacity style={[styles.fab, { bottom: 28 + insets.bottom }]} onPress={openAddModal}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
@@ -313,7 +315,7 @@ const styles = StyleSheet.create({
   cardNote: { fontSize: 13, color: colors.textLight, marginTop: 2 },
   deleteBtn: { padding: spacing.sm },
   fab: {
-    position: 'absolute', bottom: 28, right: 24, backgroundColor: colors.pinkAccent,
+    position: 'absolute', right: 24, backgroundColor: colors.pinkAccent,
     width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', ...shadow.soft,
   },
   fabText: { fontSize: 28, color: colors.white, lineHeight: 32 },
