@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
   TextInput, ScrollView, KeyboardAvoidingView, Platform,
@@ -12,6 +12,7 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   selectedDate: Date;
+  editLog?: BabyLog | null; // when set, the modal edits this entry instead of creating a new one
 }
 
 type LogType = BabyLog['type'];
@@ -43,9 +44,14 @@ function nowHHMM() {
   return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
 }
 
-export default function AddLogModal({ visible, onClose, selectedDate }: Props) {
+function hhmmFromTs(ts: number) {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+export default function AddLogModal({ visible, onClose, selectedDate, editLog }: Props) {
   const { user } = useAuth();
-  const { add } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
+  const { add, update } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
 
   const [step, setStep] = useState<'pick' | 'form'>('pick');
   const [selectedType, setSelectedType] = useState<LogType>('feeding');
@@ -66,6 +72,22 @@ export default function AddLogModal({ visible, onClose, selectedDate }: Props) {
     setNote('');
   };
 
+  // Prefill the form when opening in edit mode; reset when opening for a new entry
+  useEffect(() => {
+    if (!visible) return;
+    if (editLog) {
+      setSelectedType(editLog.type);
+      setStep('form');
+      setStartTime(hhmmFromTs(editLog.timestamp));
+      setEndTime(editLog.endTimestamp ? hhmmFromTs(editLog.endTimestamp) : '');
+      setAmountMl(editLog.amountMl ? String(editLog.amountMl) : '');
+      setDiaperType(editLog.diaperType ?? 'dirty');
+      setNote(editLog.details ?? '');
+    } else {
+      reset();
+    }
+  }, [visible, editLog]);
+
   const handleClose = () => { reset(); onClose(); };
 
   const pickType = (type: LogType) => {
@@ -85,7 +107,8 @@ export default function AddLogModal({ visible, onClose, selectedDate }: Props) {
     if (selectedType === 'diaper') entry.diaperType = diaperType as any;
     if (note) entry.details = note;
 
-    await add(entry as any);
+    if (editLog) await update(editLog.id, entry);
+    else await add(entry as any);
     handleClose();
   };
 
@@ -100,13 +123,13 @@ export default function AddLogModal({ visible, onClose, selectedDate }: Props) {
         <View style={styles.sheet}>
           {/* Header */}
           <View style={styles.header}>
-            {step === 'form' ? (
+            {step === 'form' && !editLog ? (
               <TouchableOpacity onPress={() => setStep('pick')} style={styles.backBtn}>
                 <Text style={styles.backText}>‹ חזרה</Text>
               </TouchableOpacity>
             ) : <View style={{ width: 60 }} />}
             <Text style={styles.title}>
-              {step === 'pick' ? 'הוסף אירוע' : `${typeMeta.emoji} ${typeMeta.label}`}
+              {step === 'pick' ? 'הוסף אירוע' : `${editLog ? 'עריכת ' : ''}${typeMeta.emoji} ${typeMeta.label}`}
             </Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
@@ -191,7 +214,7 @@ export default function AddLogModal({ visible, onClose, selectedDate }: Props) {
                 </Field>
 
                 <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                  <Text style={styles.saveBtnText}>שמירה</Text>
+                  <Text style={styles.saveBtnText}>{editLog ? 'עדכון' : 'שמירה'}</Text>
                 </TouchableOpacity>
               </View>
             )}

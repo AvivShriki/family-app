@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useCollection } from '../../hooks/useCollection';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import { BabyLog } from '../../types';
@@ -48,6 +49,7 @@ export default function BabyDayScreen() {
   const { profile } = useBabyProfile();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [editTarget, setEditTarget] = useState<BabyLog | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // When navigated from calendar with a specific date
@@ -130,6 +132,7 @@ export default function BabyDayScreen() {
               key={log.id}
               log={log}
               isLast={i === todayLogs.length - 1}
+              onEdit={() => setEditTarget(log)}
               onLongPress={() => setDeleteTargetId(log.id)}
             />
           ))
@@ -144,9 +147,10 @@ export default function BabyDayScreen() {
       </TouchableOpacity>
 
       <AddLogModal
-        visible={addModalVisible}
-        onClose={() => setAddModalVisible(false)}
+        visible={addModalVisible || !!editTarget}
+        onClose={() => { setAddModalVisible(false); setEditTarget(null); }}
         selectedDate={selectedDate}
+        editLog={editTarget}
       />
       <ConfirmModal
         visible={!!deleteTargetId}
@@ -169,8 +173,8 @@ function MissionChip({ done, emoji, label }: { done: boolean; emoji: string; lab
   );
 }
 
-function TimelineItem({ log, isLast, onLongPress }: {
-  log: BabyLog; isLast: boolean; onLongPress: () => void;
+function TimelineItem({ log, isLast, onEdit, onLongPress }: {
+  log: BabyLog; isLast: boolean; onEdit: () => void; onLongPress: () => void;
 }) {
   const meta = LOG_META[log.type] ?? LOG_META.note;
 
@@ -199,6 +203,9 @@ function TimelineItem({ log, isLast, onLongPress }: {
           <Text style={styles.logTitle}>{meta.label}</Text>
           {detail ? <Text style={styles.logDetail}>{detail}</Text> : null}
         </View>
+        <TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={8}>
+          <Ionicons name="create-outline" size={20} color={colors.textLight} />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -261,6 +268,7 @@ const styles = StyleSheet.create({
   logBody: { flex: 1 },
   logTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
   logDetail: { fontSize: 12, color: colors.textLight, marginTop: 2 },
+  editBtn: { padding: spacing.xs, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 
   addBtn: {
     position: 'absolute', bottom: 16, left: spacing.lg, right: spacing.lg,
