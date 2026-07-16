@@ -31,6 +31,8 @@ WORKTREE=$(mktemp -d)
 git worktree add -B gh-pages "$WORKTREE" origin/gh-pages
 find "$WORKTREE" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 cp -R dist/. "$WORKTREE"/
+# בלי הקובץ הזה Jekyll של GitHub Pages מתעלם מתיקיות שמתחילות בקו תחתון (_expo)
+touch "$WORKTREE/.nojekyll"
 git -C "$WORKTREE" add -A
 if git -C "$WORKTREE" diff --cached --quiet; then
   echo "==> אין שינויים לפריסה"
