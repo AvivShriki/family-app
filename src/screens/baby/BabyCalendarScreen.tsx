@@ -8,17 +8,27 @@ import { colors, spacing, radius, shadow } from '../../config/theme';
 // Dot color per log type
 const DOT_COLOR: Record<string, string> = {
   feeding: '#F4A7B9',
-  sleep:   '#90CAF9',
-  diaper:  '#FFD54F',
+  sleep: '#90CAF9',
+  diaper: '#FFD54F',
   vitamin: '#FFF176',
-  iron:    '#EF9A9A',
-  note:    '#A5D6A7',
+  iron: '#EF9A9A',
+  note: '#A5D6A7',
 };
 
 const HE_DAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 const HE_MONTHS = [
-  'ינואר','פברואר','מרץ','אפריל','מאי','יוני',
-  'יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר',
+  'ינואר',
+  'פברואר',
+  'מרץ',
+  'אפריל',
+  'מאי',
+  'יוני',
+  'יולי',
+  'אוגוסט',
+  'ספטמבר',
+  'אוקטובר',
+  'נובמבר',
+  'דצמבר',
 ];
 
 interface Props {
@@ -77,20 +87,31 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
         <TouchableOpacity onPress={() => goMonth(1)} style={styles.arrowBtn}>
           <Text style={styles.arrow}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.monthTitle}>{HE_MONTHS[month]} {year}</Text>
+        <Text style={styles.monthTitle}>
+          {HE_MONTHS[month]} {year}
+        </Text>
         <TouchableOpacity
           onPress={() => goMonth(-1)}
           disabled={year === today.getFullYear() && month === today.getMonth()}
           style={styles.arrowBtn}
         >
-          <Text style={[styles.arrow, year === today.getFullYear() && month === today.getMonth() && styles.arrowDisabled]}>›</Text>
+          <Text
+            style={[
+              styles.arrow,
+              year === today.getFullYear() && month === today.getMonth() && styles.arrowDisabled,
+            ]}
+          >
+            ›
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Day-of-week header */}
       <View style={styles.dowRow}>
         {HE_DAYS.map((d) => (
-          <Text key={d} style={styles.dowText}>{d}</Text>
+          <Text key={d} style={styles.dowText}>
+            {d}
+          </Text>
         ))}
       </View>
 
@@ -107,12 +128,17 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
               onPress={() => !future && onSelectDay(new Date(year, month, day))}
               disabled={future}
             >
-              <Text style={[styles.dayNum, isToday(day) && styles.todayNum, future && styles.futureNum]}>
+              <Text
+                style={[styles.dayNum, isToday(day) && styles.todayNum, future && styles.futureNum]}
+              >
                 {day}
               </Text>
               <View style={styles.dotsRow}>
                 {dots.map((type, di) => (
-                  <View key={di} style={[styles.dot, { backgroundColor: DOT_COLOR[type] ?? '#ccc' }]} />
+                  <View
+                    key={di}
+                    style={[styles.dot, { backgroundColor: DOT_COLOR[type] ?? '#ccc' }]}
+                  />
                 ))}
               </View>
             </TouchableOpacity>
@@ -126,7 +152,16 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
           <View key={type} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: color }]} />
             <Text style={styles.legendLabel}>
-              {{ feeding: 'ארוחות', sleep: 'שינה', diaper: 'חיתול', vitamin: 'ויטמין D', iron: 'ברזל', note: 'הערה' }[type]}
+              {
+                {
+                  feeding: 'ארוחות',
+                  sleep: 'שינה',
+                  diaper: 'חיתול',
+                  vitamin: 'ויטמין D',
+                  iron: 'ברזל',
+                  note: 'הערה',
+                }[type]
+              }
             </Text>
           </View>
         ))}
@@ -139,7 +174,12 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
           <Text style={styles.babyName}>{profile.name} שלנו 🌸</Text>
           <Text style={styles.babyAge}>{getAgeText(profile.birthDate, today)}</Text>
           <Text style={styles.babyDate}>
-            {today.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}
+            {today.toLocaleDateString('he-IL', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              weekday: 'long',
+            })}
           </Text>
         </View>
       </View>
@@ -152,7 +192,9 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.md, paddingBottom: 40 },
 
   monthBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
   arrowBtn: { padding: spacing.sm },
@@ -161,17 +203,23 @@ const styles = StyleSheet.create({
   monthTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
 
   dowRow: {
-    flexDirection: 'row', marginBottom: spacing.xs,
+    flexDirection: 'row',
+    marginBottom: spacing.xs,
   },
   dowText: {
-    flex: 1, textAlign: 'center', fontSize: 12,
-    fontWeight: '600', color: colors.textMuted,
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
   },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.md },
   cell: {
-    width: `${100 / 7}%`, aspectRatio: 0.85,
-    alignItems: 'center', justifyContent: 'flex-start',
+    width: `${100 / 7}%`,
+    aspectRatio: 0.85,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     paddingTop: 4,
   },
   todayCell: {
@@ -181,22 +229,37 @@ const styles = StyleSheet.create({
   dayNum: { fontSize: 14, fontWeight: '500', color: colors.text },
   todayNum: { color: colors.white, fontWeight: '700' },
   futureNum: { color: colors.border },
-  dotsRow: { flexDirection: 'row', gap: 2, marginTop: 2, flexWrap: 'wrap', justifyContent: 'center' },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 2,
+    marginTop: 2,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
   dot: { width: 5, height: 5, borderRadius: 3 },
 
   legend: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm,
-    backgroundColor: colors.white, borderRadius: radius.lg,
-    padding: spacing.md, marginBottom: spacing.lg, ...shadow.soft,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    ...shadow.soft,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendLabel: { fontSize: 11, color: colors.textLight },
 
   babyCard: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    backgroundColor: colors.pink, borderRadius: radius.lg,
-    padding: spacing.lg, ...shadow.soft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.pink,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadow.soft,
   },
   babyEmoji: { fontSize: 44 },
   babyName: { fontSize: 18, fontWeight: '700', color: colors.text },

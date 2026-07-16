@@ -6,9 +6,11 @@ import { colors, spacing, radius, shadow } from '../../config/theme';
 
 function isSameDay(ts: number, date: Date) {
   const d = new Date(ts);
-  return d.getFullYear() === date.getFullYear() &&
+  return (
+    d.getFullYear() === date.getFullYear() &&
     d.getMonth() === date.getMonth() &&
-    d.getDate() === date.getDate();
+    d.getDate() === date.getDate()
+  );
 }
 
 function fmtDuration(ms: number) {
@@ -62,7 +64,11 @@ export default function BabySummaryScreen() {
           <Text style={styles.arrow}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.dateText}>
-          {selectedDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })}
+          {selectedDate.toLocaleDateString('he-IL', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
         </Text>
         <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(-1)} disabled={isToday}>
           <Text style={[styles.arrow, isToday && styles.arrowDisabled]}>›</Text>
@@ -86,7 +92,7 @@ export default function BabySummaryScreen() {
           <Text style={styles.sectionTitle}>משימות יומיות</Text>
           <View style={styles.missionsRow}>
             <MissionTile done={vitaminDone} emoji="☀️" label="ויטמין D" />
-            <MissionTile done={ironDone}    emoji="💧" label="ברזל" />
+            <MissionTile done={ironDone} emoji="💧" label="ברזל" />
           </View>
         </View>
 
@@ -96,12 +102,20 @@ export default function BabySummaryScreen() {
             <Text style={styles.sectionTitle}>תנומות</Text>
             {sleeps.map((s) => {
               const dur = fmtDuration((s.endTimestamp ?? s.timestamp) - s.timestamp);
-              const start = new Date(s.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-              const end = new Date(s.endTimestamp!).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+              const start = new Date(s.timestamp).toLocaleTimeString('he-IL', {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+              const end = new Date(s.endTimestamp!).toLocaleTimeString('he-IL', {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
               return (
                 <View key={s.id} style={styles.sleepRow}>
                   <Text style={styles.sleepEmoji}>😴</Text>
-                  <Text style={styles.sleepText}>{start} – {end}</Text>
+                  <Text style={styles.sleepText}>
+                    {start} – {end}
+                  </Text>
                   <Text style={styles.sleepDur}>{dur}</Text>
                 </View>
               );
@@ -126,9 +140,14 @@ function MissionTile({ done, emoji, label }: { done: boolean; emoji: string; lab
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   dateBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: colors.white, paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   arrowBtn: { padding: spacing.sm },
   arrow: { fontSize: 28, color: colors.pinkAccent, fontWeight: '300' },
@@ -138,19 +157,33 @@ const styles = StyleSheet.create({
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
   statCard: {
-    width: '31%', borderRadius: radius.lg, padding: spacing.md,
-    alignItems: 'center', ...shadow.soft,
+    width: '31%',
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    ...shadow.soft,
   },
   statEmoji: { fontSize: 24, marginBottom: 4 },
   statValue: { fontSize: 20, fontWeight: '800', color: colors.text },
   statLabel: { fontSize: 11, color: colors.textLight, marginTop: 2 },
 
   section: { marginBottom: spacing.lg },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: spacing.sm, textAlign: 'right' },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.sm,
+    textAlign: 'right',
+  },
   missionsRow: { flexDirection: 'row', gap: spacing.sm },
   missionTile: {
-    flex: 1, backgroundColor: colors.white, borderRadius: radius.lg,
-    padding: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.border,
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   missionDone: { backgroundColor: '#F0FFF4', borderColor: colors.success },
   missionEmoji: { fontSize: 28, marginBottom: 4 },
@@ -159,9 +192,14 @@ const styles = StyleSheet.create({
   missionStatus: { fontSize: 11, color: colors.textMuted, marginTop: 4 },
 
   sleepRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.white, borderRadius: radius.md,
-    padding: spacing.md, marginBottom: spacing.sm, ...shadow.soft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...shadow.soft,
   },
   sleepEmoji: { fontSize: 20 },
   sleepText: { flex: 1, fontSize: 14, color: colors.text },

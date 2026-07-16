@@ -14,10 +14,10 @@ const Tab = createBottomTabNavigator();
 // Rendered left-to-right around the center "+" button
 const LEFT_TABS = [
   { name: 'BabySettings', emoji: '⚙️', label: 'הגדרות' },
-  { name: 'BabySummary',  emoji: '📊', label: 'סיכום' },
+  { name: 'BabySummary', emoji: '📊', label: 'סיכום' },
 ];
 const RIGHT_TABS = [
-  { name: 'BabyDay',      emoji: '📓', label: 'יומן' },
+  { name: 'BabyDay', emoji: '📓', label: 'יומן' },
   { name: 'BabyCalendar', emoji: '🏠', label: 'בית' },
 ];
 
@@ -69,7 +69,10 @@ export default function BabyNavigator() {
         <BabyTabBar
           {...props}
           onAddPress={() =>
-            props.navigation.navigate('BabyDay', { dateStr: new Date().toISOString(), openAdd: true })
+            props.navigation.navigate('BabyDay', {
+              dateStr: new Date().toISOString(),
+              openAdd: true,
+            })
           }
         />
       )}
@@ -77,8 +80,8 @@ export default function BabyNavigator() {
       initialRouteName="BabyCalendar"
     >
       <Tab.Screen name="BabyCalendar" component={CalendarWithNav} />
-      <Tab.Screen name="BabyDay"      component={BabyDayScreen} />
-      <Tab.Screen name="BabySummary"  component={BabySummaryScreen} />
+      <Tab.Screen name="BabyDay" component={BabyDayScreen} />
+      <Tab.Screen name="BabySummary" component={BabySummaryScreen} />
       <Tab.Screen name="BabySettings" component={BabySettingsScreen} />
     </Tab.Navigator>
   );
@@ -93,17 +96,25 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   tabItem: {
-    flex: 1, alignItems: 'center', paddingVertical: spacing.sm,
-    borderRadius: radius.md, margin: 4,
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    margin: 4,
   },
   tabItemActive: { backgroundColor: colors.pink },
   tabEmoji: { fontSize: 20 },
   tabLabel: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   tabLabelActive: { color: colors.text, fontWeight: '600' },
   fab: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: colors.pinkAccent, alignItems: 'center', justifyContent: 'center',
-    marginTop: -20, ...shadow.soft,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.pinkAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -20,
+    ...shadow.soft,
   },
   fabText: { fontSize: 26, color: colors.white, lineHeight: 28, fontWeight: '600' },
 });

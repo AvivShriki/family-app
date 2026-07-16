@@ -42,8 +42,12 @@ const styles = StyleSheet.create({
   chevron: { fontSize: 14, color: colors.textMuted },
   subtitle: { fontSize: 12, color: colors.textLight, marginTop: 1 },
   avatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.pink, alignItems: 'center', justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.pink,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarEmoji: { fontSize: 20 },
 });

@@ -25,7 +25,11 @@ export function getAgeText(birthDate: string, ref = new Date()) {
   // If the birth day-of-month hasn't been reached yet this month, that month isn't complete
   if (ref.getDate() < birth.getDate()) months -= 1;
 
-  const anniversary = monthAnniversary(ref.getFullYear(), ref.getMonth() - (ref.getDate() < birth.getDate() ? 1 : 0), birth.getDate());
+  const anniversary = monthAnniversary(
+    ref.getFullYear(),
+    ref.getMonth() - (ref.getDate() < birth.getDate() ? 1 : 0),
+    birth.getDate(),
+  );
   const days = Math.max(0, Math.round((ref.getTime() - anniversary.getTime()) / 86400000));
   return `בת ${months} חודשים ו-${days} ימים`;
 }
@@ -39,13 +43,15 @@ const profileDoc = () => doc(db, 'settings', 'babyProfile');
 export function useBabyProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<BabyProfile>(DEMO_MODE ? demoProfile : DEFAULT_PROFILE);
-  const [loading, setLoading] = useState(true);
+  // בדמו אין טעינה מרחוק — מתחילים לא-בטעינה במקום לעדכן state בתוך effect
+  const [loading, setLoading] = useState(!DEMO_MODE);
 
   useEffect(() => {
     if (DEMO_MODE) {
       demoListeners.add(setProfile);
-      setLoading(false);
-      return () => { demoListeners.delete(setProfile); };
+      return () => {
+        demoListeners.delete(setProfile);
+      };
     }
 
     // Firestore rules require auth — don't subscribe from the login screen
@@ -54,7 +60,8 @@ export function useBabyProfile() {
     const unsub = onSnapshot(
       profileDoc(),
       (snap) => {
-        if (snap.exists()) setProfile({ ...DEFAULT_PROFILE, ...(snap.data() as Partial<BabyProfile>) });
+        if (snap.exists())
+          setProfile({ ...DEFAULT_PROFILE, ...(snap.data() as Partial<BabyProfile>) });
         setLoading(false);
       },
       (err) => {

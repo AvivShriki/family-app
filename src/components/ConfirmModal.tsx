@@ -12,7 +12,12 @@ interface Props {
 }
 
 export default function ConfirmModal({
-  visible, title, message, confirmLabel = 'מחיקה', onConfirm, onCancel,
+  visible,
+  title,
+  message,
+  confirmLabel = 'מחיקה',
+  onConfirm,
+  onCancel,
 }: Props) {
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
@@ -35,16 +40,44 @@ export default function ConfirmModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: '#0005', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  card: {
-    width: '100%', maxWidth: 340, backgroundColor: colors.white, borderRadius: radius.lg,
-    padding: spacing.lg, ...shadow.soft,
+  overlay: {
+    flex: 1,
+    backgroundColor: '#0005',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
   },
-  title: { fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: spacing.xs },
+  card: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadow.soft,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
   message: { fontSize: 14, color: colors.textLight, textAlign: 'center', marginBottom: spacing.lg },
   actions: { flexDirection: 'row', gap: spacing.md },
-  btnCancel: { flex: 1, padding: spacing.md, borderRadius: radius.full, backgroundColor: colors.creamDark, alignItems: 'center' },
+  btnCancel: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: radius.full,
+    backgroundColor: colors.creamDark,
+    alignItems: 'center',
+  },
   btnCancelText: { color: colors.textLight, fontWeight: '600' },
-  btnConfirm: { flex: 1, padding: spacing.md, borderRadius: radius.full, backgroundColor: colors.danger, alignItems: 'center' },
+  btnConfirm: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: radius.full,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+  },
   btnConfirmText: { color: colors.white, fontWeight: '700' },
 });

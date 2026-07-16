@@ -21,8 +21,8 @@ export interface ShoppingItem {
 export interface BabyLog {
   id: string;
   type: 'feeding' | 'sleep' | 'diaper' | 'note' | 'vitamin' | 'iron';
-  timestamp: number;       // start time (ms)
-  endTimestamp?: number;   // sleep end time (ms)
+  timestamp: number; // start time (ms)
+  endTimestamp?: number; // sleep end time (ms)
   details?: string;
   // feeding
   amountMl?: number;

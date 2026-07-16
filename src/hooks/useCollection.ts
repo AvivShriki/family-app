@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
-  collection, onSnapshot, addDoc, deleteDoc,
-  updateDoc, doc, query, orderBy,
+  collection,
+  onSnapshot,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+  doc,
+  query,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { mockSubscribe, mockAdd, mockDelete, mockUpdate } from '../mocks/store';
@@ -25,8 +31,12 @@ export function useCollection<T extends { id: string }>(
       const unsub = mockSubscribe(colName, (docs) => {
         const sorted = [...docs].sort((a, b) =>
           direction === 'asc'
-            ? a[orderByField] > b[orderByField] ? 1 : -1
-            : a[orderByField] < b[orderByField] ? 1 : -1,
+            ? a[orderByField] > b[orderByField]
+              ? 1
+              : -1
+            : a[orderByField] < b[orderByField]
+              ? 1
+              : -1,
         );
         setItems(sorted as T[]);
         setLoading(false);
@@ -38,7 +48,7 @@ export function useCollection<T extends { id: string }>(
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() } as T)));
+        setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as T));
         setLoading(false);
         setError(null);
       },
@@ -50,7 +60,7 @@ export function useCollection<T extends { id: string }>(
       },
     );
     return unsub;
-  }, []);
+  }, [colName, orderByField, direction]);
 
   const add = async (data: Omit<T, 'id'>): Promise<string> => {
     if (DEMO_MODE) return mockAdd(colName, data);
@@ -59,12 +69,18 @@ export function useCollection<T extends { id: string }>(
   };
 
   const remove = async (id: string) => {
-    if (DEMO_MODE) { mockDelete(colName, id); return; }
+    if (DEMO_MODE) {
+      mockDelete(colName, id);
+      return;
+    }
     await deleteDoc(doc(db, colName, id));
   };
 
   const update = async (id: string, data: Partial<T>) => {
-    if (DEMO_MODE) { mockUpdate(colName, id, data); return; }
+    if (DEMO_MODE) {
+      mockUpdate(colName, id, data);
+      return;
+    }
     await updateDoc(doc(db, colName, id), data as any);
   };
 

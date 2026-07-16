@@ -29,19 +29,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    if (DEMO_MODE) { setUser(DEMO_USER); return; }
+    if (DEMO_MODE) {
+      setUser(DEMO_USER);
+      return;
+    }
     await signInWithEmailAndPassword(auth, email, password);
   };
 
   const logout = async () => {
-    if (DEMO_MODE) { setUser(null); return; }
+    if (DEMO_MODE) {
+      setUser(null);
+      return;
+    }
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>
   );
 }
 

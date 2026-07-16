@@ -40,9 +40,21 @@ export default function AppNavigator() {
         ) : (
           <>
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'לוח שנה 📅' }} />
-            <Stack.Screen name="Shopping" component={ShoppingScreen} options={{ title: 'רשימת קניות 🛒' }} />
-            <Stack.Screen name="Baby" component={BabyNavigator} options={{ title: `מעקב ${profile.name} 👶` }} />
+            <Stack.Screen
+              name="Events"
+              component={EventsScreen}
+              options={{ title: 'לוח שנה 📅' }}
+            />
+            <Stack.Screen
+              name="Shopping"
+              component={ShoppingScreen}
+              options={{ title: 'רשימת קניות 🛒' }}
+            />
+            <Stack.Screen
+              name="Baby"
+              component={BabyNavigator}
+              options={{ title: `מעקב ${profile.name} 👶` }}
+            />
           </>
         )}
       </Stack.Navigator>

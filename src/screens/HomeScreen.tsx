@@ -19,6 +19,12 @@ const BABY_LOG_LABELS: Record<BabyLog['type'], string> = {
   note: 'הערה',
 };
 
+// מחוץ לקומפוננטה: Date.now ישירות בגוף הרנדר נחשב קריאה לא-טהורה
+function latestLog(logs: BabyLog[]): BabyLog | undefined {
+  const now = Date.now();
+  return logs.find((l) => l.timestamp <= now);
+}
+
 function timeAgo(ts: number): string {
   const diffMin = Math.round((Date.now() - ts) / 60000);
   if (diffMin < 1) return 'ממש עכשיו';
@@ -40,7 +46,10 @@ export default function HomeScreen({ navigation }: Props) {
     const todayStr = new Date().toISOString().slice(0, 10);
     const nextEvent = events.find((e) => e.date >= todayStr);
     if (!nextEvent) return 'אין אירועים קרובים';
-    const dateLabel = new Date(nextEvent.date).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+    const dateLabel = new Date(nextEvent.date).toLocaleDateString('he-IL', {
+      day: 'numeric',
+      month: 'short',
+    });
     return `הקרוב: ${nextEvent.title} · ${dateLabel}`;
   }, [events]);
 
@@ -50,7 +59,7 @@ export default function HomeScreen({ navigation }: Props) {
   }, [shoppingItems]);
 
   const babySubtitle = useMemo(() => {
-    const lastLog = babyLogs.find((l) => l.timestamp <= Date.now());
+    const lastLog = latestLog(babyLogs);
     if (!lastLog) return 'אין רישומים עדיין';
     return `${BABY_LOG_LABELS[lastLog.type] ?? lastLog.type} · ${timeAgo(lastLog.timestamp)}`;
   }, [babyLogs]);
@@ -78,7 +87,9 @@ export default function HomeScreen({ navigation }: Props) {
       subtitle: babySubtitle,
       bg: colors.creamDark,
       iconColor: colors.textLight,
-      icon: (color: string) => <MaterialCommunityIcons name="baby-face-outline" size={26} color={color} />,
+      icon: (color: string) => (
+        <MaterialCommunityIcons name="baby-face-outline" size={26} color={color} />
+      ),
     },
   ];
 
@@ -139,7 +150,10 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 16, fontWeight: '700', color: colors.text, textAlign: 'right' },
   rowSubtitle: { fontSize: 12, color: colors.textLight, marginTop: 2, textAlign: 'right' },
   iconCircle: {
-    width: 52, height: 52, borderRadius: radius.md,
-    alignItems: 'center', justifyContent: 'center',
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

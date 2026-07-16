@@ -24,13 +24,23 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~56.0.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "prettier": "^3.9.5",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "lint": "expo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json}\"",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint",
+    "deploy:web": "./scripts/deploy-web.sh"
   },
   "private": true
 }

@@ -1,7 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCollection } from '../../hooks/useCollection';
@@ -24,22 +22,26 @@ function fmtDuration(start: number, end: number) {
 
 function isSameDay(ts: number, date: Date) {
   const d = new Date(ts);
-  return d.getFullYear() === date.getFullYear() &&
+  return (
+    d.getFullYear() === date.getFullYear() &&
     d.getMonth() === date.getMonth() &&
-    d.getDate() === date.getDate();
+    d.getDate() === date.getDate()
+  );
 }
 
 const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
-  feeding: { emoji: '🍼', label: 'ארוחה',     bg: '#FADADD' },
-  sleep:   { emoji: '😴', label: 'שינה',      bg: '#BDE0FE' },
-  diaper:  { emoji: '💩', label: 'חיתול',     bg: '#FFF3CD' },
-  note:    { emoji: '📝', label: 'הערה',      bg: '#E8F5E9' },
-  vitamin: { emoji: '☀️', label: 'ויטמין D',  bg: '#FFF8DC' },
-  iron:    { emoji: '💧', label: 'ברזל',      bg: '#FFE4E1' },
+  feeding: { emoji: '🍼', label: 'ארוחה', bg: '#FADADD' },
+  sleep: { emoji: '😴', label: 'שינה', bg: '#BDE0FE' },
+  diaper: { emoji: '💩', label: 'חיתול', bg: '#FFF3CD' },
+  note: { emoji: '📝', label: 'הערה', bg: '#E8F5E9' },
+  vitamin: { emoji: '☀️', label: 'ויטמין D', bg: '#FFF8DC' },
+  iron: { emoji: '💧', label: 'ברזל', bg: '#FFE4E1' },
 };
 
 const DIAPER_LABEL: Record<string, string> = {
-  wet: 'שתן', dirty: 'קקי', both: 'שתן + קקי',
+  wet: 'שתן',
+  dirty: 'קקי',
+  both: 'שתן + קקי',
 };
 
 export default function BabyDayScreen() {
@@ -47,25 +49,30 @@ export default function BabyDayScreen() {
   const navigation = useNavigation<any>();
   const { items: allLogs, remove } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
   const { profile } = useBabyProfile();
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [addModalVisible, setAddModalVisible] = useState(false);
+  // ניווט מהלוח עם תאריך: מאתחלים לפי הפרמטר, וכשמגיע פרמטר חדש מעדכנים
+  // תוך כדי רנדר (הדפוס המומלץ ב-React להתאמת state לשינוי prop, במקום effect)
+  const paramDateStr: string | undefined = route.params?.dateStr;
+  const [selectedDate, setSelectedDate] = useState(() =>
+    paramDateStr ? new Date(paramDateStr) : new Date(),
+  );
+  const [prevDateStr, setPrevDateStr] = useState(paramDateStr);
+  if (paramDateStr && paramDateStr !== prevDateStr) {
+    setPrevDateStr(paramDateStr);
+    setSelectedDate(new Date(paramDateStr));
+  }
+
+  // כפתור ה"+" בטאב-בר פותח את המודאל דרך פרמטר ניווט — הנראוּת נגזרת ממנו
+  // ישירות במקום להעתיק אותו ל-state בתוך effect
+  const [addVisibleLocal, setAddVisibleLocal] = useState(false);
+  const addModalVisible = addVisibleLocal || !!route.params?.openAdd;
   const [editTarget, setEditTarget] = useState<BabyLog | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  // When navigated from calendar with a specific date
-  useEffect(() => {
-    if (route.params?.dateStr) {
-      setSelectedDate(new Date(route.params.dateStr));
-    }
-  }, [route.params?.dateStr]);
-
-  // When navigated from the tab bar's "+" quick-add button
-  useEffect(() => {
-    if (route.params?.openAdd) {
-      setAddModalVisible(true);
-      navigation.setParams({ openAdd: false });
-    }
-  }, [route.params?.openAdd]);
+  const closeAddModal = () => {
+    setAddVisibleLocal(false);
+    setEditTarget(null);
+    if (route.params?.openAdd) navigation.setParams({ openAdd: false });
+  };
 
   const todayLogs = useMemo(
     () => allLogs.filter((l) => isSameDay(l.timestamp, selectedDate)),
@@ -90,10 +97,6 @@ export default function BabyDayScreen() {
     setDeleteTargetId(null);
   };
 
-  const dateLabel = selectedDate.toLocaleDateString('he-IL', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
-
   return (
     <View style={styles.container}>
       {/* Date header */}
@@ -102,8 +105,16 @@ export default function BabyDayScreen() {
           <Text style={styles.arrow}>‹</Text>
         </TouchableOpacity>
         <View style={styles.dateLabelWrap}>
-          <Text style={styles.dateText}>{selectedDate.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</Text>
-          <Text style={styles.weekdayText}>{selectedDate.toLocaleDateString('he-IL', { weekday: 'long' })}</Text>
+          <Text style={styles.dateText}>
+            {selectedDate.toLocaleDateString('he-IL', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })}
+          </Text>
+          <Text style={styles.weekdayText}>
+            {selectedDate.toLocaleDateString('he-IL', { weekday: 'long' })}
+          </Text>
         </View>
         <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(-1)} disabled={isToday}>
           <Text style={[styles.arrow, isToday && styles.arrowDisabled]}>›</Text>
@@ -119,7 +130,7 @@ export default function BabyDayScreen() {
 
         {/* Missions */}
         <View style={styles.missionsRow}>
-          <MissionChip done={missionsDone.iron}   emoji="💧" label="ברזל" />
+          <MissionChip done={missionsDone.iron} emoji="💧" label="ברזל" />
           <MissionChip done={missionsDone.vitamin} emoji="☀️" label="ויטמין D" />
         </View>
 
@@ -142,13 +153,14 @@ export default function BabyDayScreen() {
       </ScrollView>
 
       {/* Add button */}
-      <TouchableOpacity style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
+      <TouchableOpacity style={styles.addBtn} onPress={() => setAddVisibleLocal(true)}>
         <Text style={styles.addBtnText}>+ הוסף אירוע</Text>
       </TouchableOpacity>
 
       <AddLogModal
+        key={editTarget?.id ?? 'new'}
         visible={addModalVisible || !!editTarget}
-        onClose={() => { setAddModalVisible(false); setEditTarget(null); }}
+        onClose={closeAddModal}
         selectedDate={selectedDate}
         editLog={editTarget}
       />
@@ -173,8 +185,16 @@ function MissionChip({ done, emoji, label }: { done: boolean; emoji: string; lab
   );
 }
 
-function TimelineItem({ log, isLast, onEdit, onLongPress }: {
-  log: BabyLog; isLast: boolean; onEdit: () => void; onLongPress: () => void;
+function TimelineItem({
+  log,
+  isLast,
+  onEdit,
+  onLongPress,
+}: {
+  log: BabyLog;
+  isLast: boolean;
+  onEdit: () => void;
+  onLongPress: () => void;
 }) {
   const meta = LOG_META[log.type] ?? LOG_META.note;
 
@@ -215,9 +235,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
 
   dateBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: colors.white, paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   arrowBtn: { padding: spacing.sm },
   arrow: { fontSize: 28, color: colors.pinkAccent, fontWeight: '300' },
@@ -229,20 +254,31 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.md },
 
   babyCard: {
-    backgroundColor: colors.pink, borderRadius: radius.lg,
-    padding: spacing.md, alignItems: 'center', marginBottom: spacing.md,
+    backgroundColor: colors.pink,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
     ...shadow.soft,
   },
   babyName: { fontSize: 18, fontWeight: '700', color: colors.text },
   babyAge: { fontSize: 13, color: colors.textLight, marginTop: 2 },
 
   missionsRow: {
-    flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   mission: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
-    backgroundColor: colors.white, borderRadius: radius.md,
-    padding: spacing.sm, borderWidth: 1, borderColor: colors.border,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   missionDone: { backgroundColor: '#F0FFF4', borderColor: colors.success },
   missionEmoji: { fontSize: 16 },
@@ -258,22 +294,46 @@ const styles = StyleSheet.create({
   line: { flex: 1, width: 2, backgroundColor: colors.border, marginTop: 4 },
 
   logCard: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.white, borderRadius: radius.md,
-    padding: spacing.md, marginBottom: spacing.sm,
-    borderLeftWidth: 4, ...shadow.soft,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderLeftWidth: 4,
+    ...shadow.soft,
   },
-  logIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  logIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logEmoji: { fontSize: 20 },
   logBody: { flex: 1 },
   logTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
   logDetail: { fontSize: 12, color: colors.textLight, marginTop: 2 },
-  editBtn: { padding: spacing.xs, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  editBtn: {
+    padding: spacing.xs,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   addBtn: {
-    position: 'absolute', bottom: 16, left: spacing.lg, right: spacing.lg,
-    backgroundColor: colors.pinkAccent, borderRadius: radius.full,
-    padding: spacing.md, alignItems: 'center', ...shadow.soft,
+    position: 'absolute',
+    bottom: 16,
+    left: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: colors.pinkAccent,
+    borderRadius: radius.full,
+    padding: spacing.md,
+    alignItems: 'center',
+    ...shadow.soft,
   },
   addBtnText: { color: colors.white, fontWeight: '700', fontSize: 16 },
 });

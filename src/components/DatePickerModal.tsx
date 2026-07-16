@@ -11,8 +11,18 @@ interface Props {
 
 const HE_DAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 const HE_MONTHS = [
-  'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
-  'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר',
+  'ינואר',
+  'פברואר',
+  'מרץ',
+  'אפריל',
+  'מאי',
+  'יוני',
+  'יולי',
+  'אוגוסט',
+  'ספטמבר',
+  'אוקטובר',
+  'נובמבר',
+  'דצמבר',
 ];
 
 function toDateStr(y: number, m: number, d: number) {
@@ -50,14 +60,20 @@ export default function DatePickerModal({ visible, value, onSelect, onClose }: P
             <TouchableOpacity onPress={() => goMonth(1)} style={styles.arrowBtn}>
               <Text style={styles.arrow}>‹</Text>
             </TouchableOpacity>
-            <Text style={styles.monthTitle}>{HE_MONTHS[month]} {year}</Text>
+            <Text style={styles.monthTitle}>
+              {HE_MONTHS[month]} {year}
+            </Text>
             <TouchableOpacity onPress={() => goMonth(-1)} style={styles.arrowBtn}>
               <Text style={styles.arrow}>›</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.dowRow}>
-            {HE_DAYS.map((d) => <Text key={d} style={styles.dowText}>{d}</Text>)}
+            {HE_DAYS.map((d) => (
+              <Text key={d} style={styles.dowText}>
+                {d}
+              </Text>
+            ))}
           </View>
 
           <View style={styles.grid}>
@@ -67,9 +83,14 @@ export default function DatePickerModal({ visible, value, onSelect, onClose }: P
                 <TouchableOpacity
                   key={day}
                   style={[styles.cell, isSelected(day) && styles.cellSelected]}
-                  onPress={() => { onSelect(toDateStr(year, month, day)); onClose(); }}
+                  onPress={() => {
+                    onSelect(toDateStr(year, month, day));
+                    onClose();
+                  }}
                 >
-                  <Text style={[styles.dayNum, isSelected(day) && styles.dayNumSelected]}>{day}</Text>
+                  <Text style={[styles.dayNum, isSelected(day) && styles.dayNumSelected]}>
+                    {day}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -83,18 +104,37 @@ export default function DatePickerModal({ visible, value, onSelect, onClose }: P
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: '#0004', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: colors.white, borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: 40,
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.lg,
+    paddingBottom: 40,
   },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   title: { fontSize: 18, fontWeight: '700', color: colors.text },
   close: { fontSize: 18, color: colors.textMuted },
-  monthBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  monthBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
   arrowBtn: { padding: spacing.sm },
   arrow: { fontSize: 24, color: colors.pinkAccent, fontWeight: '300' },
   monthTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   dowRow: { flexDirection: 'row', marginBottom: spacing.xs },
-  dowText: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  dowText: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   cellSelected: { backgroundColor: colors.pinkAccent, borderRadius: radius.md },
