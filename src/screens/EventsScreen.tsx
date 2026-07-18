@@ -18,6 +18,8 @@ import { colors, spacing, radius, shadow } from '../config/theme';
 import DatePickerModal from '../components/DatePickerModal';
 import TimePickerModal from '../components/TimePickerModal';
 import ConfirmModal from '../components/ConfirmModal';
+import Button from '../components/Button';
+import EmptyState from '../components/EmptyState';
 
 const HE_DAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 const HE_MONTHS = [
@@ -150,15 +152,21 @@ export default function EventsScreen() {
       setFormError('כותרת ותאריך הם שדות חובה');
       return;
     }
-    await add({
-      title,
-      date,
-      time,
-      endTime,
-      note,
-      createdBy: user?.email ?? 'demo',
-      createdAt: Date.now(),
-    } as any);
+    try {
+      await add({
+        title,
+        date,
+        time,
+        endTime,
+        note,
+        createdBy: user?.email ?? 'demo',
+        createdAt: Date.now(),
+      } as any);
+    } catch {
+      // A dropped connection shouldn't fail silently — the review flagged this
+      setFormError('השמירה לא הצליחה — בדקו את החיבור ונסו שוב');
+      return;
+    }
     setTitle('');
     setDate('');
     setTime('');
@@ -226,9 +234,19 @@ export default function EventsScreen() {
           </>
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            {selectedDay ? 'אין אירועים ביום זה — אפשר להוסיף עם ה-+ 👇' : 'אין אירועים עדיין 📅'}
-          </Text>
+          selectedDay ? (
+            <EmptyState
+              icon="sunny-outline"
+              title="יום פנוי לגמרי"
+              hint="כפתור ה־+ יוסיף אירוע ליום הזה 🌸"
+            />
+          ) : (
+            <EmptyState
+              icon="calendar-outline"
+              title="הלוח שלכם עוד ריק"
+              hint="האירוע המשפחתי הראשון במרחק לחיצה על ה־+"
+            />
+          )
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -314,12 +332,8 @@ export default function EventsScreen() {
             />
             {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.btnCancel} onPress={() => setModalVisible(false)}>
-                <Text style={styles.btnCancelText}>ביטול</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btnSave} onPress={addEvent}>
-                <Text style={styles.btnSaveText}>שמירה</Text>
-              </TouchableOpacity>
+              <Button label="ביטול" variant="secondary" onPress={() => setModalVisible(false)} style={{ flex: 1 }} />
+              <Button label="שמירה" onPress={addEvent} style={{ flex: 1 }} />
             </View>
           </View>
         </View>
@@ -401,7 +415,6 @@ const styles = StyleSheet.create({
   },
   eventDotToday: { backgroundColor: colors.white },
   dotPlaceholder: { width: 6, height: 6, marginTop: 2 },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xxl, fontSize: 16 },
   dayBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -448,7 +461,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadow.soft,
+    ...shadow.raised,
   },
   fabText: { fontSize: 28, color: colors.white, lineHeight: 32 },
   modalOverlay: { flex: 1, backgroundColor: '#0004', justifyContent: 'flex-end' },
@@ -494,20 +507,4 @@ const styles = StyleSheet.create({
   pickerFieldText: { fontSize: 15, color: colors.text },
   pickerFieldPlaceholder: { color: colors.textMuted },
   modalActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
-  btnCancel: {
-    flex: 1,
-    padding: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.creamDark,
-    alignItems: 'center',
-  },
-  btnCancelText: { color: colors.textLight, fontWeight: '600' },
-  btnSave: {
-    flex: 1,
-    padding: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.pinkAccent,
-    alignItems: 'center',
-  },
-  btnSaveText: { color: colors.white, fontWeight: '700' },
 });

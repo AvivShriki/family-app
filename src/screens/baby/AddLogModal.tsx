@@ -14,6 +14,7 @@ import { useCollection } from '../../hooks/useCollection';
 import { useAuth } from '../../context/AuthContext';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius } from '../../config/theme';
+import Button from '../../components/Button';
 
 interface Props {
   visible: boolean;
@@ -256,9 +257,8 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                   />
                 </Field>
 
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                  <Text style={styles.saveBtnText}>{editLog ? 'עדכון' : 'שמירה'}</Text>
-                </TouchableOpacity>
+                {/* Glossary: persisting is always "שמירה" — the title already says עריכת */}
+                <Button label="שמירה" onPress={handleSave} style={{ marginTop: spacing.md }} />
               </View>
             )}
           </ScrollView>
@@ -427,12 +427,4 @@ const styles = StyleSheet.create({
   checkLabel: { fontSize: 13, color: colors.textLight, fontWeight: '500' },
   checkLabelActive: { color: colors.text, fontWeight: '700' },
 
-  saveBtn: {
-    backgroundColor: colors.pinkAccent,
-    borderRadius: radius.full,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  saveBtnText: { color: colors.white, fontWeight: '700', fontSize: 16 },
 });

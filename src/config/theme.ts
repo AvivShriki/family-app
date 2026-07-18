@@ -33,6 +33,27 @@ export const radius = {
   full: 999,
 };
 
+// Typographic scale — every fontSize in the app should come from here.
+// Sizes step ~1.2x; roles, not raw numbers, so hierarchy stays consistent.
+export const font = {
+  caption: 11,   // tab labels, tiny meta
+  small: 13,     // secondary text, field labels, chips
+  body: 15,      // running text, list items, inputs
+  bodyLg: 16,    // emphasized body, buttons
+  title: 18,     // card/section titles, modal titles
+  titleLg: 22,   // screen greetings, big numbers
+  display: 32,   // login hero
+  weight: {
+    regular: '400' as const,
+    medium: '500' as const,
+    semibold: '600' as const,
+    bold: '700' as const,
+    heavy: '800' as const,
+  },
+};
+
+// Two elevation levels: soft for resting cards, raised for floating
+// action buttons and anything that should feel closest to the finger.
 export const shadow = {
   soft: {
     shadowColor: colors.pinkDark,
@@ -40,5 +61,12 @@ export const shadow = {
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 3,
+  },
+  raised: {
+    shadowColor: colors.pinkDark,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 8,
   },
 };

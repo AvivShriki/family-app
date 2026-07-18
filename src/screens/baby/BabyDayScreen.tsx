@@ -8,26 +8,8 @@ import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 import AddLogModal from './AddLogModal';
 import ConfirmModal from '../../components/ConfirmModal';
-
-function fmtTime(ts: number) {
-  return new Date(ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-}
-
-function fmtDuration(start: number, end: number) {
-  const min = Math.round((end - start) / 60000);
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return h > 0 ? `${h}:${String(m).padStart(2, '0')} שעות` : `${m} דק'`;
-}
-
-function isSameDay(ts: number, date: Date) {
-  const d = new Date(ts);
-  return (
-    d.getFullYear() === date.getFullYear() &&
-    d.getMonth() === date.getMonth() &&
-    d.getDate() === date.getDate()
-  );
-}
+import EmptyState from '../../components/EmptyState';
+import { fmtTime, fmtDuration, isSameDay } from '../../utils/dates';
 
 const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
   feeding: { emoji: '🍼', label: 'ארוחה', bg: '#FADADD' },
@@ -61,15 +43,13 @@ export default function BabyDayScreen() {
     setSelectedDate(new Date(paramDateStr));
   }
 
-  // כפתור ה"+" בטאב-בר פותח את המודאל דרך פרמטר ניווט — הנראוּת נגזרת ממנו
-  // ישירות במקום להעתיק אותו ל-state בתוך effect
-  const [addVisibleLocal, setAddVisibleLocal] = useState(false);
-  const addModalVisible = addVisibleLocal || !!route.params?.openAdd;
+  // הוספה נפתחת רק דרך כפתור ה"+" בטאב-בר (מקור אחד לפעולה, לפי סקירת הצוות) —
+  // הנראוּת נגזרת ישירות מפרמטר הניווט
+  const addModalVisible = !!route.params?.openAdd;
   const [editTarget, setEditTarget] = useState<BabyLog | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const closeAddModal = () => {
-    setAddVisibleLocal(false);
     setEditTarget(null);
     if (route.params?.openAdd) navigation.setParams({ openAdd: false });
   };
@@ -136,7 +116,11 @@ export default function BabyDayScreen() {
 
         {/* Timeline */}
         {todayLogs.length === 0 ? (
-          <Text style={styles.empty}>אין רשומות ליום זה</Text>
+          <EmptyState
+            icon="journal-outline"
+            title="עוד לא תיעדתם כלום ביום הזה"
+            hint="כפתור ה־+ למטה מוסיף ארוחה, שינה או חיתול 💗"
+          />
         ) : (
           todayLogs.map((log, i) => (
             <TimelineItem
@@ -149,13 +133,8 @@ export default function BabyDayScreen() {
           ))
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* Add button */}
-      <TouchableOpacity style={styles.addBtn} onPress={() => setAddVisibleLocal(true)}>
-        <Text style={styles.addBtnText}>+ הוסף אירוע</Text>
-      </TouchableOpacity>
 
       <AddLogModal
         key={editTarget?.id ?? 'new'}
@@ -201,7 +180,7 @@ function TimelineItem({
   let detail = '';
   if (log.type === 'feeding' && log.amountMl) detail = `${log.amountMl} מ"ל`;
   if (log.type === 'sleep' && log.endTimestamp) {
-    detail = `נרדמה ${fmtTime(log.timestamp)} · התעוררה ${fmtTime(log.endTimestamp)} · משך ${fmtDuration(log.timestamp, log.endTimestamp)}`;
+    detail = `נרדמה ${fmtTime(log.timestamp)} · התעוררה ${fmtTime(log.endTimestamp)} · משך ${fmtDuration(log.endTimestamp - log.timestamp)}`;
   }
   if (log.type === 'diaper' && log.diaperType) detail = DIAPER_LABEL[log.diaperType] ?? '';
   if (log.details) detail += (detail ? ' · ' : '') + log.details;
@@ -286,8 +265,6 @@ const styles = StyleSheet.create({
   missionLabelDone: { color: '#2E7D32', fontWeight: '600' },
   missionCheck: { fontSize: 14, color: '#2E7D32', fontWeight: '700' },
 
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xxl, fontSize: 15 },
-
   timelineRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
   timeCol: { alignItems: 'center', width: 48 },
   timeText: { fontSize: 12, fontWeight: '600', color: colors.textLight, marginTop: 12 },
@@ -323,17 +300,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  addBtn: {
-    position: 'absolute',
-    bottom: 16,
-    left: spacing.lg,
-    right: spacing.lg,
-    backgroundColor: colors.pinkAccent,
-    borderRadius: radius.full,
-    padding: spacing.md,
-    alignItems: 'center',
-    ...shadow.soft,
-  },
-  addBtnText: { color: colors.white, fontWeight: '700', fontSize: 16 },
 });

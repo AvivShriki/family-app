@@ -3,23 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useCollection } from '../../hooks/useCollection';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
-
-function isSameDay(ts: number, date: Date) {
-  const d = new Date(ts);
-  return (
-    d.getFullYear() === date.getFullYear() &&
-    d.getMonth() === date.getMonth() &&
-    d.getDate() === date.getDate()
-  );
-}
-
-function fmtDuration(ms: number) {
-  const totalMin = Math.round(ms / 60000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  if (h === 0) return `${m} דק'`;
-  return `${h}:${String(m).padStart(2, '0')} שע'`;
-}
+import { fmtDuration, isSameDay } from '../../utils/dates';
 
 export default function BabySummaryScreen() {
   const { items: allLogs } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');

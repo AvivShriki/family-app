@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, Modal } from 'react-native';
+import Button from './Button';
 import { colors, spacing, radius, shadow } from '../config/theme';
 
 interface Props {
@@ -26,12 +27,8 @@ export default function ConfirmModal({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.btnCancel} onPress={onCancel}>
-              <Text style={styles.btnCancelText}>ביטול</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.btnConfirm} onPress={onConfirm}>
-              <Text style={styles.btnConfirmText}>{confirmLabel}</Text>
-            </TouchableOpacity>
+            <Button label="ביטול" variant="secondary" onPress={onCancel} style={{ flex: 1 }} />
+            <Button label={confirmLabel} variant="danger" onPress={onConfirm} style={{ flex: 1 }} />
           </View>
         </View>
       </View>
@@ -64,20 +61,4 @@ const styles = StyleSheet.create({
   },
   message: { fontSize: 14, color: colors.textLight, textAlign: 'center', marginBottom: spacing.lg },
   actions: { flexDirection: 'row', gap: spacing.md },
-  btnCancel: {
-    flex: 1,
-    padding: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.creamDark,
-    alignItems: 'center',
-  },
-  btnCancelText: { color: colors.textLight, fontWeight: '600' },
-  btnConfirm: {
-    flex: 1,
-    padding: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.danger,
-    alignItems: 'center',
-  },
-  btnConfirmText: { color: colors.white, fontWeight: '700' },
 });

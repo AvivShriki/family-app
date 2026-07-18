@@ -12,27 +12,9 @@ export interface BabyProfile {
 // Shown until the Firestore doc loads (or if it was never saved)
 export const DEFAULT_PROFILE: BabyProfile = { name: 'ליבי', birthDate: '2026-01-30' };
 
-// Clamp to the month's actual last day (e.g. birth day 31 in a 30-day month)
-function monthAnniversary(year: number, monthIndex: number, day: number) {
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  return new Date(year, monthIndex, Math.min(day, daysInMonth));
-}
-
-// Age text like "בת 5 חודשים ו-12 ימים", shared by the baby screens
-export function getAgeText(birthDate: string, ref = new Date()) {
-  const birth = new Date(birthDate);
-  let months = (ref.getFullYear() - birth.getFullYear()) * 12 + (ref.getMonth() - birth.getMonth());
-  // If the birth day-of-month hasn't been reached yet this month, that month isn't complete
-  if (ref.getDate() < birth.getDate()) months -= 1;
-
-  const anniversary = monthAnniversary(
-    ref.getFullYear(),
-    ref.getMonth() - (ref.getDate() < birth.getDate() ? 1 : 0),
-    birth.getDate(),
-  );
-  const days = Math.max(0, Math.round((ref.getTime() - anniversary.getTime()) / 86400000));
-  return `בת ${months} חודשים ו-${days} ימים`;
-}
+// Age calculation lives in utils/dates (pure + unit-tested); re-exported here
+// so existing imports keep working.
+export { getAgeText } from '../utils/dates';
 
 // Demo mode keeps the profile in memory, shared across screens
 let demoProfile: BabyProfile = { ...DEFAULT_PROFILE };

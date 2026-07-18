@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import DatePickerModal from '../../components/DatePickerModal';
+import Button from '../../components/Button';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 
 export default function BabySettingsScreen() {
@@ -51,16 +52,10 @@ export default function BabySettingsScreen() {
         </TouchableOpacity>
         <Text style={styles.agePreview}>{getAgeText(birthDate)}</Text>
 
-        <TouchableOpacity
-          style={[styles.saveBtn, (!dirty || !valid) && styles.saveBtnDisabled]}
-          disabled={!dirty || !valid}
-          onPress={onSave}
-        >
-          <Text style={styles.saveBtnText}>שמירה</Text>
-        </TouchableOpacity>
+        <Button label="שמירה" onPress={onSave} disabled={!dirty || !valid} />
 
-        {status === 'saved' && <Text style={styles.saved}>נשמר ✓</Text>}
-        {status === 'error' && <Text style={styles.error}>השמירה נכשלה, נסו שוב</Text>}
+        {status === 'saved' && <Text style={styles.saved}>נשמר! הפרופיל של {profile.name} מעודכן 🌸</Text>}
+        {status === 'error' && <Text style={styles.error}>השמירה לא הצליחה — בדקו את החיבור ונסו שוב</Text>}
       </View>
 
       <DatePickerModal
@@ -118,14 +113,6 @@ const styles = StyleSheet.create({
     marginTop: -spacing.sm,
     marginBottom: spacing.md,
   },
-  saveBtn: {
-    backgroundColor: colors.pinkAccent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm + 4,
-    alignItems: 'center',
-  },
-  saveBtnDisabled: { backgroundColor: colors.pink },
-  saveBtnText: { fontSize: 15, fontWeight: '700', color: colors.white },
   saved: {
     fontSize: 14,
     color: colors.success,

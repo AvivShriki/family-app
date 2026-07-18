@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import Button from './Button';
 import { colors, spacing, radius } from '../config/theme';
 
 interface Props {
@@ -69,11 +70,7 @@ export default function TimePickerModal({ visible, value, onSelect, onClose }: P
             </View>
           </View>
 
-          <TouchableOpacity style={styles.confirmBtn} onPress={confirm}>
-            <Text style={styles.confirmText}>
-              אישור {hour}:{minute}
-            </Text>
-          </TouchableOpacity>
+          <Button label={`אישור ${hour}:${minute}`} onPress={confirm} />
         </View>
       </View>
     </Modal>
@@ -117,11 +114,4 @@ const styles = StyleSheet.create({
   optionText: { fontSize: 16, color: colors.text },
   optionTextActive: { color: colors.white, fontWeight: '700' },
   colon: { fontSize: 20, fontWeight: '700', color: colors.text, marginTop: 40 },
-  confirmBtn: {
-    backgroundColor: colors.pinkAccent,
-    borderRadius: radius.full,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  confirmText: { color: colors.white, fontWeight: '700', fontSize: 16 },
 });

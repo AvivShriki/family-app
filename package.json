@@ -23,12 +23,14 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@types/node": "^26.1.1",
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~56.0.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
     "prettier": "^3.9.5",
+    "tsx": "^4.23.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -40,7 +42,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json}\"",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint",
-    "deploy:web": "./scripts/deploy-web.sh"
+    "deploy:web": "./scripts/deploy-web.sh",
+    "test": "tsx --test tests/unit.test.ts"
   },
   "private": true
 }

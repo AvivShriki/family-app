@@ -3,13 +3,12 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import Button from '../components/Button';
 import { colors, spacing, radius } from '../config/theme';
 
 export default function LoginScreen() {
@@ -66,13 +65,7 @@ export default function LoginScreen() {
             textAlign="right"
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={styles.btnText}>כניסה</Text>
-            )}
-          </TouchableOpacity>
+          <Button label="כניסה" onPress={handleLogin} loading={loading} style={{ marginTop: spacing.sm }} />
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -120,13 +113,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  btn: {
-    backgroundColor: colors.pinkAccent,
-    borderRadius: radius.full,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  btnText: { color: colors.white, fontWeight: '700', fontSize: 16 },
   errorText: { color: colors.danger, fontSize: 13, textAlign: 'center', marginBottom: spacing.sm },
 });

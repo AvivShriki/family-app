@@ -17,6 +17,7 @@ import { useCollection } from '../hooks/useCollection';
 import { ShoppingItem } from '../types';
 import { colors, spacing, radius, shadow } from '../config/theme';
 import { fetchProductImage, categoryEmoji } from '../utils/productImage';
+import EmptyState from '../components/EmptyState';
 
 export default function ShoppingScreen() {
   const { user } = useAuth();
@@ -27,23 +28,38 @@ export default function ShoppingScreen() {
     'desc',
   );
   const [text, setText] = useState('');
+  const [writeError, setWriteError] = useState('');
+
+  // Surface a write failure briefly instead of swallowing it — on flaky
+  // mobile connections a silent no-op looks like the app is broken.
+  const showWriteError = () => {
+    setWriteError('הפעולה לא נשמרה — בדקו את החיבור ונסו שוב');
+    setTimeout(() => setWriteError(''), 4000);
+  };
 
   const addItem = async () => {
     const name = text.trim();
     if (!name) return;
-    // Add immediately so the UI feels instant; attach the photo when the lookup finishes
-    const id = await add({
-      text: name,
-      checked: false,
-      addedBy: user?.email ?? 'demo',
-      createdAt: Date.now(),
-    } as any);
+    let id: string;
+    try {
+      // Add immediately so the UI feels instant; attach the photo when the lookup finishes
+      id = await add({
+        text: name,
+        checked: false,
+        addedBy: user?.email ?? 'demo',
+        createdAt: Date.now(),
+      } as any);
+    } catch {
+      showWriteError();
+      return;
+    }
     setText('');
     const imageUrl = await fetchProductImage(name);
-    if (imageUrl && id) update(id, { imageUrl } as any);
+    if (imageUrl && id) update(id, { imageUrl } as any).catch(() => {}); // photo is nice-to-have
   };
 
-  const toggleItem = (item: ShoppingItem) => update(item.id, { checked: !item.checked } as any);
+  const toggleItem = (item: ShoppingItem) =>
+    update(item.id, { checked: !item.checked } as any).catch(showWriteError);
 
   const deleteChecked = () => {
     items.filter((i) => i.checked).forEach((i) => remove(i.id));
@@ -71,7 +87,13 @@ export default function ShoppingScreen() {
             </TouchableOpacity>
           ) : null
         }
-        ListEmptyComponent={<Text style={styles.empty}>הרשימה ריקה 🛒</Text>}
+        ListEmptyComponent={
+          <EmptyState
+            icon="cart-outline"
+            title="הרשימה ריקה — הכול קנוי 🎉"
+            hint="מה שנגמר בבית נכנס כאן בשורה למטה"
+          />
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[styles.item, item.checked && styles.itemChecked]}
@@ -93,6 +115,7 @@ export default function ShoppingScreen() {
           </TouchableOpacity>
         )}
       />
+      {writeError ? <Text style={styles.writeError}>{writeError}</Text> : null}
       <View style={[styles.inputBar, { paddingBottom: spacing.md + insets.bottom }]}>
         <TouchableOpacity style={styles.addBtn} onPress={addItem}>
           <Text style={styles.addBtnText}>הוסף</Text>
@@ -115,7 +138,14 @@ export default function ShoppingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   list: { padding: spacing.lg, paddingBottom: 120 },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xxl, fontSize: 16 },
+  writeError: {
+    textAlign: 'center',
+    color: colors.white,
+    backgroundColor: colors.danger,
+    paddingVertical: spacing.sm,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   clearBtn: {
     alignSelf: 'center',
     paddingHorizontal: spacing.lg,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import BabyCalendarScreen from './BabyCalendarScreen';
@@ -11,20 +12,24 @@ import { colors, spacing, radius, shadow } from '../../config/theme';
 
 const Tab = createBottomTabNavigator();
 
-// Rendered left-to-right around the center "+" button
-const LEFT_TABS = [
-  { name: 'BabySettings', emoji: '⚙️', label: 'הגדרות' },
-  { name: 'BabySummary', emoji: '📊', label: 'סיכום' },
+// Rendered left-to-right around the center "+" button.
+// Ionicons instead of emoji so icons render identically on every device —
+// the team review flagged the mixed emoji/icon language.
+// "חודש" (not "בית") so the label doesn't collide with the app's real Home.
+type TabDef = { name: string; icon: keyof typeof Ionicons.glyphMap; label: string };
+const LEFT_TABS: TabDef[] = [
+  { name: 'BabySettings', icon: 'settings-outline', label: 'הגדרות' },
+  { name: 'BabySummary', icon: 'stats-chart-outline', label: 'סיכום' },
 ];
-const RIGHT_TABS = [
-  { name: 'BabyDay', emoji: '📓', label: 'יומן' },
-  { name: 'BabyCalendar', emoji: '🏠', label: 'בית' },
+const RIGHT_TABS: TabDef[] = [
+  { name: 'BabyDay', icon: 'book-outline', label: 'יומן' },
+  { name: 'BabyCalendar', icon: 'calendar-outline', label: 'חודש' },
 ];
 
 function BabyTabBar({ state, navigation, onAddPress }: any) {
   const insets = useSafeAreaInsets();
 
-  const renderTab = (t: { name: string; emoji: string; label: string }) => {
+  const renderTab = (t: TabDef) => {
     const focused = state.routes[state.index].name === t.name;
     return (
       <TouchableOpacity
@@ -32,7 +37,7 @@ function BabyTabBar({ state, navigation, onAddPress }: any) {
         style={[styles.tabItem, focused && styles.tabItemActive]}
         onPress={() => navigation.navigate(t.name)}
       >
-        <Text style={styles.tabEmoji}>{t.emoji}</Text>
+        <Ionicons name={t.icon} size={22} color={focused ? colors.pinkAccent : colors.textMuted} />
         <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{t.label}</Text>
       </TouchableOpacity>
     );
@@ -69,10 +74,13 @@ export default function BabyNavigator() {
         <BabyTabBar
           {...props}
           onAddPress={() =>
-            props.navigation.navigate('BabyDay', {
-              dateStr: new Date().toISOString(),
-              openAdd: true,
-            })
+            // merge:true keeps BabyDay's current dateStr, so adding from the
+            // tab bar logs to the day being viewed instead of jumping to today
+            props.navigation.navigate({
+              name: 'BabyDay',
+              params: { openAdd: true },
+              merge: true,
+            } as never)
           }
         />
       )}
@@ -103,8 +111,7 @@ const styles = StyleSheet.create({
     margin: 4,
   },
   tabItemActive: { backgroundColor: colors.pink },
-  tabEmoji: { fontSize: 20 },
-  tabLabel: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  tabLabel: { fontSize: 11, color: colors.textMuted, marginTop: 3 },
   tabLabelActive: { color: colors.text, fontWeight: '600' },
   fab: {
     width: 48,
@@ -114,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: -20,
-    ...shadow.soft,
+    ...shadow.raised,
   },
   fabText: { fontSize: 26, color: colors.white, lineHeight: 28, fontWeight: '600' },
 });
