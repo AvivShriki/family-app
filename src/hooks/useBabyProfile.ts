@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, deleteField } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { DEMO_MODE } from './useCollection';
@@ -7,6 +7,7 @@ import { DEMO_MODE } from './useCollection';
 export interface BabyProfile {
   name: string;
   birthDate: string; // 'YYYY-MM-DD'
+  photoUrl?: string; // compact JPEG data-URL, stored inside the profile doc
 }
 
 // Shown until the Firestore doc loads (or if it was never saved)
@@ -61,7 +62,13 @@ export function useBabyProfile() {
       demoListeners.forEach((l) => l(demoProfile));
       return;
     }
-    await setDoc(profileDoc(), data, { merge: true });
+    // Firestore rejects undefined values — removing the photo needs deleteField()
+    const payload = {
+      name: data.name,
+      birthDate: data.birthDate,
+      photoUrl: data.photoUrl ?? deleteField(),
+    };
+    await setDoc(profileDoc(), payload, { merge: true });
   };
 
   return { profile, loading, save };

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useCollection } from '../hooks/useCollection';
 import { useBabyProfile } from '../hooks/useBabyProfile';
+import BabyAvatar from '../components/BabyAvatar';
 import { FamilyEvent, ShoppingItem, BabyLog } from '../types';
 import { colors, spacing, radius, shadow, font } from '../config/theme';
 import { getAgeText, isSameDay } from '../utils/dates';
@@ -118,9 +119,7 @@ export default function HomeScreen({ navigation }: Props) {
         activeOpacity={0.85}
       >
         <View style={styles.babyTopRow}>
-          <View style={styles.babyAvatar}>
-            <Text style={styles.babyAvatarEmoji}>👶</Text>
-          </View>
+          <BabyAvatar size={48} />
           <View style={{ flex: 1 }}>
             <Text style={styles.babyName}>{profile.name} 🌸</Text>
             <Text style={styles.babyAge}>{getAgeText(profile.birthDate)}</Text>
@@ -203,15 +202,6 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   babyTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  babyAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  babyAvatarEmoji: { fontSize: 24 },
   babyName: { fontSize: font.title, fontWeight: font.weight.heavy, color: colors.text },
   babyAge: { fontSize: font.small, color: colors.textLight, marginTop: 1 },
 

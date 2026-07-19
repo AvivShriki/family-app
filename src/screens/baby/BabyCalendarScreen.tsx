@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useCollection } from '../../hooks/useCollection';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
+import BabyAvatar from '../../components/BabyAvatar';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 
@@ -169,7 +170,7 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
 
       {/* Baby card */}
       <View style={styles.babyCard}>
-        <Text style={styles.babyEmoji}>👶</Text>
+        <BabyAvatar size={52} />
         <View>
           <Text style={styles.babyName}>{profile.name} שלנו 🌸</Text>
           <Text style={styles.babyAge}>{getAgeText(profile.birthDate, today)}</Text>

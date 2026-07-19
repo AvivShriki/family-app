@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useBabyProfile } from '../../hooks/useBabyProfile';
+import BabyAvatar from '../../components/BabyAvatar';
 import { colors, spacing } from '../../config/theme';
 
 export default function BabyHeader() {
@@ -17,9 +18,7 @@ export default function BabyHeader() {
           <Text style={styles.subtitle}>יומן תינוקת שלי 💗</Text>
         </View>
       </View>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarEmoji}>👶</Text>
-      </View>
+      <BabyAvatar size={40} />
     </View>
   );
 }
