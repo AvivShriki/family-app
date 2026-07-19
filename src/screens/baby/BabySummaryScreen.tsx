@@ -1,13 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useCollection } from '../../hooks/useCollection';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
+import { useBabyDate } from './BabyDateContext';
 import { fmtDuration, isSameDay } from '../../utils/dates';
 
 export default function BabySummaryScreen() {
   const { items: allLogs } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // התאריך משותף עם היומן — "סיכום" נפתח על היום שצפינו בו, לא על היום הנוכחי
+  const { date: selectedDate, setDate: setSelectedDate } = useBabyDate();
 
   const logs = useMemo(
     () => allLogs.filter((l) => isSameDay(l.timestamp, selectedDate)),
@@ -44,8 +46,9 @@ export default function BabySummaryScreen() {
     <View style={styles.container}>
       {/* Date nav */}
       <View style={styles.dateBar}>
-        <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(1)}>
-          <Text style={styles.arrow}>‹</Text>
+        {/* קדימה (מחר) — חסום כשמגיעים להיום */}
+        <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(1)} disabled={isToday}>
+          <Text style={[styles.arrow, isToday && styles.arrowDisabled]}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.dateText}>
           {selectedDate.toLocaleDateString('he-IL', {
@@ -54,8 +57,9 @@ export default function BabySummaryScreen() {
             year: 'numeric',
           })}
         </Text>
-        <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(-1)} disabled={isToday}>
-          <Text style={[styles.arrow, isToday && styles.arrowDisabled]}>›</Text>
+        {/* אחורה (אתמול) — תמיד פתוח */}
+        <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(-1)}>
+          <Text style={styles.arrow}>›</Text>
         </TouchableOpacity>
       </View>
 

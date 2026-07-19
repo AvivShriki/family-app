@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { colors, spacing, radius, shadow } from '../../config/theme';
 import AddLogModal from './AddLogModal';
 import ConfirmModal from '../../components/ConfirmModal';
 import EmptyState from '../../components/EmptyState';
+import { useBabyDate } from './BabyDateContext';
 import { fmtTime, fmtDuration, isSameDay } from '../../utils/dates';
 
 const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
@@ -31,17 +32,14 @@ export default function BabyDayScreen() {
   const navigation = useNavigation<any>();
   const { items: allLogs, remove } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
   const { profile } = useBabyProfile();
-  // ניווט מהלוח עם תאריך: מאתחלים לפי הפרמטר, וכשמגיע פרמטר חדש מעדכנים
-  // תוך כדי רנדר (הדפוס המומלץ ב-React להתאמת state לשינוי prop, במקום effect)
+  // התאריך משותף לכל מדור התינוקת (יומן + סיכום) דרך context —
+  // כך מעבר לטאב "סיכום" נשאר על היום שצפינו בו
+  const { date: selectedDate, setDate: setSelectedDate } = useBabyDate();
+  // ניווט מהלוח מגיע עם dateStr — מסנכרנים אותו לתאריך המשותף
   const paramDateStr: string | undefined = route.params?.dateStr;
-  const [selectedDate, setSelectedDate] = useState(() =>
-    paramDateStr ? new Date(paramDateStr) : new Date(),
-  );
-  const [prevDateStr, setPrevDateStr] = useState(paramDateStr);
-  if (paramDateStr && paramDateStr !== prevDateStr) {
-    setPrevDateStr(paramDateStr);
-    setSelectedDate(new Date(paramDateStr));
-  }
+  useEffect(() => {
+    if (paramDateStr) setSelectedDate(new Date(paramDateStr));
+  }, [paramDateStr]);
 
   // הוספה נפתחת רק דרך כפתור ה"+" בטאב-בר (מקור אחד לפעולה, לפי סקירת הצוות) —
   // הנראוּת נגזרת ישירות מפרמטר הניווט
@@ -81,8 +79,9 @@ export default function BabyDayScreen() {
     <View style={styles.container}>
       {/* Date header */}
       <View style={styles.dateBar}>
-        <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(1)}>
-          <Text style={styles.arrow}>‹</Text>
+        {/* קדימה (מחר) — חסום כשמגיעים להיום; אין תיעוד לעתיד */}
+        <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(1)} disabled={isToday}>
+          <Text style={[styles.arrow, isToday && styles.arrowDisabled]}>‹</Text>
         </TouchableOpacity>
         <View style={styles.dateLabelWrap}>
           <Text style={styles.dateText}>
@@ -96,8 +95,9 @@ export default function BabyDayScreen() {
             {selectedDate.toLocaleDateString('he-IL', { weekday: 'long' })}
           </Text>
         </View>
-        <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(-1)} disabled={isToday}>
-          <Text style={[styles.arrow, isToday && styles.arrowDisabled]}>›</Text>
+        {/* אחורה (אתמול) — תמיד פתוח, לצפייה בימים שכבר תועדו */}
+        <TouchableOpacity style={styles.arrowBtn} onPress={() => goDay(-1)}>
+          <Text style={styles.arrow}>›</Text>
         </TouchableOpacity>
       </View>
 
