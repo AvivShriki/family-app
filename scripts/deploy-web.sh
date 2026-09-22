@@ -56,6 +56,9 @@ find "$WORKTREE" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 cp -R dist/. "$WORKTREE"/
 # בלי הקובץ הזה Jekyll של GitHub Pages מתעלם מתיקיות שמתחילות בקו תחתון (_expo)
 touch "$WORKTREE/.nojekyll"
+# CNAME מחזיק את חיבור תת-הדומיין. הוא חי רק ב-gh-pages, וכל פריסה מוחקת את
+# תוכן ה-branch — בלי השורה הזו הדומיין family.avivdigi.com מתנתק בכל פריסה.
+cp CNAME "$WORKTREE/CNAME"
 git -C "$WORKTREE" add -A
 if git -C "$WORKTREE" diff --cached --quiet; then
   echo "==> אין שינויים לפריסה"
