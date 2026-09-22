@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import Button from './Button';
 import { colors, spacing, radius } from '../config/theme';
@@ -8,15 +8,88 @@ interface Props {
   value: string; // 'HH:MM' or ''
   onSelect: (timeStr: string) => void;
   onClose: () => void;
+  /** רזולוציית הדקות. אירועים ביומן מסתפקים ב-15; תיעוד תינוקת דורש 5. */
+  minuteStep?: 5 | 15;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-const MINUTES = ['00', '15', '30', '45'];
 
-export default function TimePickerModal({ visible, value, onSelect, onClose }: Props) {
+const OPTION_HEIGHT = 44; // גובה שורה + מרווח — חייב להתאים ל-styles.option
+const COLUMN_HEIGHT = 180;
+
+function minuteOptions(step: number) {
+  return Array.from({ length: 60 / step }, (_, i) => String(i * step).padStart(2, '0'));
+}
+
+/**
+ * עמודה נגללת שמביאה את הערך הנבחר לתצוגה בפתיחה — אחרת כל בחירת
+ * שעה מתחילה מ-00 ודורשת גלילה ארוכה.
+ */
+function ScrollColumn({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  options: string[];
+  selected: string;
+  onSelect: (v: string) => void;
+}) {
+  const ref = useRef<ScrollView>(null);
+
+  // גובה פריט קבוע (OPTION_HEIGHT) מאפשר לחשב את ההיסט במדויק, בלי להסתמך
+  // על מדידת תוכן — שמגיעה מאוחר מדי ב-react-native-web.
+  useEffect(() => {
+    const index = options.indexOf(selected);
+    if (index <= 0) return;
+    const id = setTimeout(() => {
+      // מרכוז יחסי של הערך הנבחר בתוך החלון הנראה
+      const y = Math.max(0, index * OPTION_HEIGHT - COLUMN_HEIGHT / 2 + OPTION_HEIGHT / 2);
+      ref.current?.scrollTo({ y, animated: false });
+    }, 50);
+    return () => clearTimeout(id);
+    // פעם אחת בלבד בפתיחה — אחר כך הגלילה שייכת למשתמש
+  }, []);
+
+  return (
+    <View style={styles.column}>
+      <Text style={styles.colLabel}>{label}</Text>
+      <ScrollView ref={ref} style={styles.colScroll}>
+        {options.map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            style={[styles.option, selected === opt && styles.optionActive]}
+            onPress={() => onSelect(opt)}
+          >
+            <Text style={[styles.optionText, selected === opt && styles.optionTextActive]}>
+              {opt}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+export default function TimePickerModal({
+  visible,
+  value,
+  onSelect,
+  onClose,
+  minuteStep = 15,
+}: Props) {
+  const MINUTES = minuteOptions(minuteStep);
   const [initialHour, initialMinute] = value ? value.split(':') : ['09', '00'];
   const [hour, setHour] = useState(initialHour);
-  const [minute, setMinute] = useState(initialMinute);
+  // שעה קיימת יכולה ליפול בין הצעדים (למשל 07:47) — מעגלים לאפשרות הקרובה
+  const [minute, setMinute] = useState(
+    () => MINUTES.reduce((best, m) =>
+      Math.abs(Number(m) - Number(initialMinute)) < Math.abs(Number(best) - Number(initialMinute))
+        ? m
+        : best,
+    ),
+  );
 
   const confirm = () => {
     onSelect(`${hour}:${minute}`);
@@ -35,39 +108,9 @@ export default function TimePickerModal({ visible, value, onSelect, onClose }: P
           </View>
 
           <View style={styles.columns}>
-            <View style={styles.column}>
-              <Text style={styles.colLabel}>שעה</Text>
-              <ScrollView style={styles.colScroll}>
-                {HOURS.map((hh) => (
-                  <TouchableOpacity
-                    key={hh}
-                    style={[styles.option, hour === hh && styles.optionActive]}
-                    onPress={() => setHour(hh)}
-                  >
-                    <Text style={[styles.optionText, hour === hh && styles.optionTextActive]}>
-                      {hh}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+            <ScrollColumn label="שעה" options={HOURS} selected={hour} onSelect={setHour} />
             <Text style={styles.colon}>:</Text>
-            <View style={styles.column}>
-              <Text style={styles.colLabel}>דקות</Text>
-              <ScrollView style={styles.colScroll}>
-                {MINUTES.map((mm) => (
-                  <TouchableOpacity
-                    key={mm}
-                    style={[styles.option, minute === mm && styles.optionActive]}
-                    onPress={() => setMinute(mm)}
-                  >
-                    <Text style={[styles.optionText, minute === mm && styles.optionTextActive]}>
-                      {mm}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+            <ScrollColumn label="דקות" options={MINUTES} selected={minute} onSelect={setMinute} />
           </View>
 
           <Button label={`אישור ${hour}:${minute}`} onPress={confirm} />
@@ -103,9 +146,10 @@ const styles = StyleSheet.create({
   },
   column: { alignItems: 'center' },
   colLabel: { fontSize: 12, color: colors.textLight, marginBottom: spacing.xs },
-  colScroll: { height: 180, width: 70 },
+  colScroll: { height: COLUMN_HEIGHT, width: 70 },
   option: {
-    paddingVertical: spacing.sm,
+    height: OPTION_HEIGHT - 4,
+    justifyContent: 'center',
     alignItems: 'center',
     borderRadius: radius.md,
     marginBottom: 4,

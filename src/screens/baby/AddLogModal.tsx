@@ -10,11 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useCollection } from '../../hooks/useCollection';
 import { useAuth } from '../../context/AuthContext';
 import { BabyLog } from '../../types';
-import { colors, spacing, radius } from '../../config/theme';
+import { colors, spacing, radius, font } from '../../config/theme';
 import Button from '../../components/Button';
+import TimePickerModal from '../../components/TimePickerModal';
+import AmountPickerModal from '../../components/AmountPickerModal';
 
 interface Props {
   visible: boolean;
@@ -79,6 +82,12 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const [vitaminGiven, setVitaminGiven] = useState(false);
   const [ironGiven, setIronGiven] = useState(false);
 
+  // בוררים נפתחים מעל המודל. הם מורכבים רק כשפתוחים, כדי שכל פתיחה
+  // תתחיל מהערך הנוכחי של השדה ולא מזה שנבחר בפעם הקודמת.
+  const [startPickerVisible, setStartPickerVisible] = useState(false);
+  const [endPickerVisible, setEndPickerVisible] = useState(false);
+  const [amountPickerVisible, setAmountPickerVisible] = useState(false);
+
   const reset = () => {
     setStep('pick');
     setStartTime(nowHHMM());
@@ -130,6 +139,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const typeMeta = TYPES.find((t) => t.type === selectedType)!;
 
   return (
+    <>
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <KeyboardAvoidingView
         style={styles.overlay}
@@ -175,27 +185,33 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
               <View>
                 {/* Start time — always shown */}
                 <Field label={selectedType === 'sleep' ? 'שעת כניסה לשינה' : 'שעה'}>
-                  <TimeInput value={startTime} onChange={setStartTime} />
+                  <PickerField
+                    icon="time-outline"
+                    text={startTime}
+                    onPress={() => setStartPickerVisible(true)}
+                  />
                 </Field>
 
                 {/* Sleep end time */}
                 {selectedType === 'sleep' && (
                   <Field label="שעת התעוררות">
-                    <TimeInput value={endTime} onChange={setEndTime} placeholder="HH:MM" />
+                    <PickerField
+                      icon="time-outline"
+                      text={endTime}
+                      placeholder="בחר שעה"
+                      onPress={() => setEndPickerVisible(true)}
+                    />
                   </Field>
                 )}
 
                 {/* Feeding amount */}
                 {selectedType === 'feeding' && (
-                  <Field label='כמות (מ"ל)'>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="numeric"
-                      value={amountMl}
-                      onChangeText={setAmountMl}
-                      placeholder="150"
-                      placeholderTextColor={colors.textMuted}
-                      textAlign="right"
+                  <Field label="כמות">
+                    <PickerField
+                      icon="water-outline"
+                      text={amountMl ? `${amountMl} מ"ל` : ''}
+                      placeholder="בחר כמות (או הנקה)"
+                      onPress={() => setAmountPickerVisible(true)}
                     />
                   </Field>
                 )}
@@ -265,6 +281,57 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
         </View>
       </KeyboardAvoidingView>
     </Modal>
+
+    {/* הבוררים הם אחים של המודל, לא ילדים שלו — מודל בתוך מודל
+        לא נפרס נכון ב-react-native-web. */}
+    {startPickerVisible && (
+      <TimePickerModal
+        visible
+        value={startTime}
+        minuteStep={5}
+        onSelect={setStartTime}
+        onClose={() => setStartPickerVisible(false)}
+      />
+    )}
+    {endPickerVisible && (
+      <TimePickerModal
+        visible
+        value={endTime || startTime}
+        minuteStep={5}
+        onSelect={setEndTime}
+        onClose={() => setEndPickerVisible(false)}
+      />
+    )}
+    {amountPickerVisible && (
+      <AmountPickerModal
+        visible
+        value={amountMl}
+        onSelect={setAmountMl}
+        onClose={() => setAmountPickerVisible(false)}
+      />
+    )}
+    </>
+  );
+}
+
+function PickerField({
+  icon,
+  text,
+  placeholder,
+  onPress,
+}: {
+  icon: 'time-outline' | 'water-outline';
+  text: string;
+  placeholder?: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.pickerField} onPress={onPress}>
+      <Ionicons name={icon} size={18} color={colors.textMuted} />
+      <Text style={[styles.pickerFieldText, !text && styles.pickerFieldPlaceholder]}>
+        {text || placeholder}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -299,29 +366,6 @@ function CheckChip({
       <Text style={styles.checkEmoji}>{emoji}</Text>
       <Text style={[styles.checkLabel, checked && styles.checkLabelActive]}>{label}</Text>
     </TouchableOpacity>
-  );
-}
-
-function TimeInput({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <TextInput
-      style={styles.input}
-      value={value}
-      onChangeText={onChange}
-      placeholder={placeholder ?? 'HH:MM'}
-      placeholderTextColor={colors.textMuted}
-      keyboardType="numbers-and-punctuation"
-      textAlign="center"
-      maxLength={5}
-    />
   );
 }
 
@@ -384,6 +428,19 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   inputMulti: { height: 72, textAlignVertical: 'top' },
+
+  pickerField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.cream,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pickerFieldText: { fontSize: font.bodyLg, color: colors.text },
+  pickerFieldPlaceholder: { color: colors.textMuted },
 
   optionRow: { flexDirection: 'row', gap: spacing.sm },
   optionBtn: {
