@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useCollection } from '../hooks/useCollection';
-import MigrationCard from '../components/MigrationCard';
 import { useBabyProfile } from '../hooks/useBabyProfile';
 import BabyAvatar from '../components/BabyAvatar';
 import { FamilyEvent, ShoppingItem, BabyLog } from '../types';
@@ -112,9 +111,6 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.logoutText}>יציאה</Text>
         </TouchableOpacity>
       </View>
-
-      {/* זמני — נעלם מעצמו אחרי העברת הנתונים למבנה החדש */}
-      <MigrationCard />
 
       {/* כרטיס התינוקת — הכוכבת של המסך */}
       <TouchableOpacity
