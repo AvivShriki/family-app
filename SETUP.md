@@ -57,19 +57,25 @@ npx expo start
 
 סרוק את ה-QR code עם אפליקציית **Expo Go** בטלפון.
 
-## Firestore Rules (לאחר בדיקה ראשונית)
+## אבטחה והפרדה בין משפחות
 
-כדי לאבטח את הנתונים, עדכן את החוקים ב-Firestore → Rules:
+החוקים המעודכנים נמצאים בקובץ `firebase/firestore.rules` — מדביקים אותם
+בקונסולה תחת Firestore Database ואז Rules ואז Publish.
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}
-```
+הם אוכפים שני דברים:
 
-זה מגביל גישה למשתמשים מחוברים בלבד (אביב ונוי).
+1. כל נתוני המשפחה חיים תחת `households/{householdId}`.
+2. משתמש מגיע רק למשק הבית שרשום עבורו במסמך `users/{email}`.
+
+## הוספת משפחה חדשה לאפליקציה
+
+אין הרשמה עצמית — צירוף משפחה נעשה ידנית, בשני שלבים בקונסולה:
+
+1. Authentication ואז Users ואז Add user — פותחים חשבון לכל אחד מבני הזוג
+   עם אימייל וסיסמה ראשונית.
+2. Firestore Database ואז האוסף `users` — מוסיפים מסמך לכל אחד מהם.
+   מזהה המסמך הוא האימייל באותיות קטנות, והשדה היחיד הוא `householdId`
+   (טקסט) עם מזהה משותף לשני בני הזוג, למשל `roizen-eliyahu`.
+
+זה הכול. בכניסה הראשונה הם מגדירים בעצמם את שם הילדה ואת תאריך הלידה
+במסך ההגדרות, והתא שלהם מבודד לחלוטין משאר המשפחות.
