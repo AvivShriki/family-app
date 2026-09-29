@@ -29,6 +29,10 @@ test('getAgeText: birth day 30 in a month without a 30th clamps (Feb)', () => {
   assert.equal(getAgeText('2026-01-30', new Date(2026, 2, 1)), 'בת 1 חודשים ו-1 ימים');
 });
 
+test('getAgeText: no birth date yet (new family) instead of NaN', () => {
+  assert.equal(getAgeText(''), 'תאריך לידה טרם הוגדר');
+});
+
 // ---- fmtDuration -----------------------------------------------------------
 test('fmtDuration: under an hour uses minutes', () => {
   assert.equal(fmtDuration(45 * 60000), "45 דק'");

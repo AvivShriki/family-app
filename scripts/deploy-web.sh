@@ -7,8 +7,8 @@ cd "$(dirname "$0")/.."
 
 # --- שערי בטיחות (רשימת הרגרסיה של מור, TESTING.md) ---------------------
 # 1: מצב דמו חייב להיות כבוי — פעם שנשכח דלוק, ההתחברות נעלמה מהאתר החי
-if ! grep -q "export const DEMO_MODE = false" src/hooks/useCollection.ts; then
-  echo "!! עצירה: DEMO_MODE אינו false ב-src/hooks/useCollection.ts" >&2
+if ! grep -q "export const DEMO_MODE = false" src/config/demo.ts; then
+  echo "!! עצירה: DEMO_MODE אינו false ב-src/config/demo.ts" >&2
   exit 1
 fi
 echo "==> שער 1: מצב דמו כבוי"

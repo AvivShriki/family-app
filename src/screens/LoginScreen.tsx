@@ -42,7 +42,7 @@ export default function LoginScreen() {
       <View style={styles.inner}>
         <Text style={styles.emoji}>🌸</Text>
         <Text style={styles.title}>המשפחה שלנו</Text>
-        <Text style={styles.subtitle}>אביב, נוי וליבי 💕</Text>
+        <Text style={styles.subtitle}>הכול במקום אחד 💕</Text>
 
         <View style={styles.card}>
           <TextInput

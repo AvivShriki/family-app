@@ -1,0 +1,37 @@
+// חוקים זמניים לחלון ההעברה בלבד (שלב 1).
+// זהים לחוקים הרגילים, בתוספת הרשאת קריאה לאוספים הישנים בשורש —
+// בלי זה אי אפשר להעתיק את הנתונים הקיימים אל תוך משק הבית.
+//
+// חובה לחזור ל-firestore.rules מיד בתום ההעברה, ולפני שנפתחים
+// חשבונות למשפחה נוספת. כל עוד החוקים האלה פעילים, כל משתמש מחובר
+// יכול לקרוא את הנתונים הישנים.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // השיוך נשמר במסמך users/{email} — האימייל באותיות קטנות
+    function userEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function householdOf() {
+      return get(/databases/$(database)/documents/users/$(userEmail())).data.householdId;
+    }
+
+    match /users/{email} {
+      allow read: if request.auth != null && userEmail() == email;
+      allow write: if false;
+    }
+
+    match /households/{householdId}/{document=**} {
+      allow read, write: if request.auth != null && householdOf() == householdId;
+    }
+
+    // --- זמני: האוספים הישנים בשורש, לקריאה ומחיקה בלבד ---
+    match /events/{id}       { allow read, delete: if request.auth != null; }
+    match /shoppingList/{id} { allow read, delete: if request.auth != null; }
+    match /babyLogs/{id}     { allow read, delete: if request.auth != null; }
+    match /settings/{id}     { allow read, delete: if request.auth != null; }
+  }
+}

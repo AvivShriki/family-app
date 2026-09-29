@@ -1,0 +1,33 @@
+// חוקי האבטחה של Firestore — מודבקים בקונסולה:
+// Firebase console > Firestore Database > Rules > Publish
+//
+// העיקרון: כל משפחה חיה בתוך households/{householdId}, והשיוך של משתמש
+// למשק בית נקבע במסמך users/{email}. משתמש יכול לגעת אך ורק בנתונים של
+// משק הבית שלו — האכיפה היא בשרת, לא בקוד האפליקציה.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // השיוך נשמר במסמך users/{email} — האימייל באותיות קטנות
+    function userEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function householdOf() {
+      return get(/databases/$(database)/documents/users/$(userEmail())).data.householdId;
+    }
+
+    // כל משתמש קורא רק את השיוך שלו. הכתיבה נעשית ידנית מהקונסולה,
+    // כדי שאף אחד לא יוכל להעביר את עצמו למשפחה אחרת.
+    match /users/{email} {
+      allow read: if request.auth != null && userEmail() == email;
+      allow write: if false;
+    }
+
+    // כל נתוני המשפחה: אירועים, קניות, תיעוד התינוקת והפרופיל
+    match /households/{householdId}/{document=**} {
+      allow read, write: if request.auth != null && householdOf() == householdId;
+    }
+  }
+}

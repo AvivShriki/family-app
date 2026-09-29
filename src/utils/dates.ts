@@ -29,6 +29,8 @@ function monthAnniversary(year: number, monthIndex: number, day: number) {
 // Age text like "בת 5 חודשים ו-12 ימים", shared by the baby screens
 export function getAgeText(birthDate: string, ref = new Date()) {
   const birth = new Date(birthDate);
+  // משפחה חדשה עדיין לא מילאה תאריך לידה — עדיף הודעה מאשר "בת NaN חודשים"
+  if (!birthDate || Number.isNaN(birth.getTime())) return 'תאריך לידה טרם הוגדר';
   let months = (ref.getFullYear() - birth.getFullYear()) * 12 + (ref.getMonth() - birth.getMonth());
   // If the birth day-of-month hasn't been reached yet this month, that month isn't complete
   if (ref.getDate() < birth.getDate()) months -= 1;

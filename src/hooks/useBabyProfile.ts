@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { doc, onSnapshot, setDoc, deleteField } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { useAuth } from '../context/AuthContext';
-import { DEMO_MODE } from './useCollection';
+import { useHousehold } from '../context/HouseholdContext';
+import { DEMO_MODE } from '../config/demo';
 
 export interface BabyProfile {
   name: string;
@@ -10,8 +10,9 @@ export interface BabyProfile {
   photoUrl?: string; // compact JPEG data-URL, stored inside the profile doc
 }
 
-// Shown until the Firestore doc loads (or if it was never saved)
-export const DEFAULT_PROFILE: BabyProfile = { name: 'ליבי', birthDate: '2026-01-30' };
+// מוצג עד שהמסמך נטען, וגם למשפחה חדשה שעדיין לא מילאה את הפרטים —
+// לכן ניטרלי, בלי שם או תאריך של משפחה מסוימת
+export const DEFAULT_PROFILE: BabyProfile = { name: 'התינוקת', birthDate: '' };
 
 // Age calculation lives in utils/dates (pure + unit-tested); re-exported here
 // so existing imports keep working.
@@ -21,10 +22,11 @@ export { getAgeText } from '../utils/dates';
 let demoProfile: BabyProfile = { ...DEFAULT_PROFILE };
 const demoListeners = new Set<(p: BabyProfile) => void>();
 
-const profileDoc = () => doc(db, 'settings', 'babyProfile');
+const profileDoc = (householdId: string) =>
+  doc(db, 'households', householdId, 'settings', 'babyProfile');
 
 export function useBabyProfile() {
-  const { user } = useAuth();
+  const { householdId } = useHousehold();
   const [profile, setProfile] = useState<BabyProfile>(DEMO_MODE ? demoProfile : DEFAULT_PROFILE);
   // בדמו אין טעינה מרחוק — מתחילים לא-בטעינה במקום לעדכן state בתוך effect
   const [loading, setLoading] = useState(!DEMO_MODE);
@@ -38,10 +40,10 @@ export function useBabyProfile() {
     }
 
     // Firestore rules require auth — don't subscribe from the login screen
-    if (!user) return;
+    if (!householdId) return;
 
     const unsub = onSnapshot(
-      profileDoc(),
+      profileDoc(householdId),
       (snap) => {
         if (snap.exists())
           setProfile({ ...DEFAULT_PROFILE, ...(snap.data() as Partial<BabyProfile>) });
@@ -54,7 +56,7 @@ export function useBabyProfile() {
       },
     );
     return unsub;
-  }, [user]);
+  }, [householdId]);
 
   const save = async (data: BabyProfile) => {
     if (DEMO_MODE) {
@@ -68,7 +70,8 @@ export function useBabyProfile() {
       birthDate: data.birthDate,
       photoUrl: data.photoUrl ?? deleteField(),
     };
-    await setDoc(profileDoc(), payload, { merge: true });
+    if (!householdId) throw new Error('אין משק בית משויך למשתמש הזה');
+    await setDoc(profileDoc(householdId), payload, { merge: true });
   };
 
   return { profile, loading, save };

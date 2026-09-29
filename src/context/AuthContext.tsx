@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import { DEMO_MODE } from '../hooks/useCollection';
+import { DEMO_MODE } from '../config/demo';
 
 // Fake user object used in demo mode
 const DEMO_USER = { email: 'aviv@demo', uid: 'demo' } as unknown as User;

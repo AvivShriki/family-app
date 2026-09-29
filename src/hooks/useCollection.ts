@@ -10,18 +10,23 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { useHousehold } from '../context/HouseholdContext';
 import { mockSubscribe, mockAdd, mockDelete, mockUpdate } from '../mocks/store';
 
-// Set to true to run locally without a real Firebase project
-export const DEMO_MODE = false;
+import { DEMO_MODE } from '../config/demo';
 
 type ColName = 'events' | 'shoppingList' | 'babyLogs';
+
+// כל אוסף חי בתוך משק הבית של המשפחה — זה מה שמבודד בין משפחות
+const colRef = (householdId: string, colName: ColName) =>
+  collection(db, 'households', householdId, colName);
 
 export function useCollection<T extends { id: string }>(
   colName: ColName,
   orderByField: string,
   direction: 'asc' | 'desc' = 'asc',
 ) {
+  const { householdId } = useHousehold();
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +49,14 @@ export function useCollection<T extends { id: string }>(
       return unsub;
     }
 
-    const q = query(collection(db, colName), orderBy(orderByField, direction));
+    // עדיין לא יודעים לאיזה משק בית לפנות — נשארים בטעינה במקום לשאול את
+    // השורש ולקבל שגיאת הרשאות
+    if (!householdId) {
+      setItems([]);
+      return;
+    }
+
+    const q = query(colRef(householdId, colName), orderBy(orderByField, direction));
     const unsub = onSnapshot(
       q,
       (snap) => {
@@ -60,11 +72,17 @@ export function useCollection<T extends { id: string }>(
       },
     );
     return unsub;
-  }, [colName, orderByField, direction]);
+  }, [colName, orderByField, direction, householdId]);
+
+  // כתיבה בלי משק בית תיכשל ממילא בחוקי האבטחה — עדיף להיכשל מוקדם ובבירור
+  const requireHousehold = () => {
+    if (!householdId) throw new Error('אין משק בית משויך למשתמש הזה');
+    return householdId;
+  };
 
   const add = async (data: Omit<T, 'id'>): Promise<string> => {
     if (DEMO_MODE) return mockAdd(colName, data);
-    const ref = await addDoc(collection(db, colName), data);
+    const ref = await addDoc(colRef(requireHousehold(), colName), data);
     return ref.id;
   };
 
@@ -73,7 +91,7 @@ export function useCollection<T extends { id: string }>(
       mockDelete(colName, id);
       return;
     }
-    await deleteDoc(doc(db, colName, id));
+    await deleteDoc(doc(db, 'households', requireHousehold(), colName, id));
   };
 
   const update = async (id: string, data: Partial<T>) => {
@@ -81,7 +99,7 @@ export function useCollection<T extends { id: string }>(
       mockUpdate(colName, id, data);
       return;
     }
-    await updateDoc(doc(db, colName, id), data as any);
+    await updateDoc(doc(db, 'households', requireHousehold(), colName, id), data as any);
   };
 
   return { items, loading, error, add, remove, update };

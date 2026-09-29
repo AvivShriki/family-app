@@ -3,8 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useHousehold } from '../context/HouseholdContext';
 import { useBabyProfile } from '../hooks/useBabyProfile';
 import LoginScreen from '../screens/LoginScreen';
+import NoHouseholdScreen from '../screens/NoHouseholdScreen';
 import HomeScreen from '../screens/HomeScreen';
 import EventsScreen from '../screens/EventsScreen';
 import ShoppingScreen from '../screens/ShoppingScreen';
@@ -22,9 +24,11 @@ const headerStyle = {
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
+  const { householdId, loading: householdLoading } = useHousehold();
   const { profile } = useBabyProfile();
 
-  if (loading) {
+  // ממתינים גם לשיוך המשפחה — בלי זה המסכים נפתחים בלי לדעת לאיזה תא לפנות
+  if (loading || (user && householdLoading)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.cream }}>
         <ActivityIndicator color={colors.pinkAccent} size="large" />
@@ -37,6 +41,12 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={headerStyle}>
         {!user ? (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        ) : !householdId ? (
+          <Stack.Screen
+            name="NoHousehold"
+            component={NoHouseholdScreen}
+            options={{ headerShown: false }}
+          />
         ) : (
           <>
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
