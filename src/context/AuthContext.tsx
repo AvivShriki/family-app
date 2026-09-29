@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  User,
+} from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { DEMO_MODE } from '../config/demo';
 
@@ -11,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -44,8 +53,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signOut(auth);
   };
 
+  // Firebase דורש התחברות טרייה לפני החלפת סיסמה. אימות מחדש עם הסיסמה
+  // הנוכחית עונה על הדרישה, וגם מוודא שמי שמחליף הוא בעל החשבון.
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (DEMO_MODE) return;
+    const current = auth.currentUser;
+    if (!current?.email) throw new Error('auth/no-user');
+    const credential = EmailAuthProvider.credential(current.email, currentPassword);
+    await reauthenticateWithCredential(current, credential);
+    await updatePassword(current, newPassword);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, logout, changePassword }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 

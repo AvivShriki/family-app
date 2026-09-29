@@ -7,6 +7,7 @@ import { useHousehold } from '../context/HouseholdContext';
 import { useBabyProfile } from '../hooks/useBabyProfile';
 import LoginScreen from '../screens/LoginScreen';
 import NoHouseholdScreen from '../screens/NoHouseholdScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import EventsScreen from '../screens/EventsScreen';
 import ShoppingScreen from '../screens/ShoppingScreen';
@@ -64,6 +65,11 @@ export default function AppNavigator() {
               name="Baby"
               component={BabyNavigator}
               options={{ title: `מעקב ${profile.name} 👶` }}
+            />
+            <Stack.Screen
+              name="ChangePassword"
+              component={ChangePasswordScreen}
+              options={{ title: 'שינוי סיסמה 🔐' }}
             />
           </>
         )}

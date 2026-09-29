@@ -107,9 +107,15 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.greeting}>{greeting()}, {displayName} ☀️</Text>
           <Text style={styles.dateLine}>{dateLine}</Text>
         </View>
-        <TouchableOpacity onPress={logout} hitSlop={8}>
-          <Text style={styles.logoutText}>יציאה</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => navigation.navigate('ChangePassword')} hitSlop={8}>
+            <Text style={styles.headerAction}>סיסמה</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerAction}>·</Text>
+          <TouchableOpacity onPress={logout} hitSlop={8}>
+            <Text style={styles.headerAction}>יציאה</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* כרטיס התינוקת — הכוכבת של המסך */}
@@ -192,7 +198,8 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: font.titleLg, fontWeight: font.weight.heavy, color: colors.text },
   dateLine: { fontSize: font.small, color: colors.textMuted, marginTop: 2 },
-  logoutText: { color: colors.textMuted, fontSize: font.small, paddingTop: 6 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingTop: 6 },
+  headerAction: { color: colors.textMuted, fontSize: font.small },
 
   babyCard: {
     backgroundColor: colors.pink,
