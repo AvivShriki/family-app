@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import { useCollection } from '../hooks/useCollection';
+import { useBabyLogs } from '../context/BabyLogsContext';
 import { useBabyProfile, DEFAULT_PROFILE } from '../hooks/useBabyProfile';
 import Button from '../components/Button';
 import { BabyLog } from '../types';
@@ -65,7 +65,7 @@ function lastLogText(log: BabyLog | undefined): string {
 
 export default function HomeScreen({ navigation }: Props) {
   const { logout } = useAuth();
-  const { items: babyLogs } = useCollection<BabyLog>('babyLogs', 'timestamp', 'desc');
+  const { items: babyLogs } = useBabyLogs();
   const { profile } = useBabyProfile();
 
   // שני הכפתורים החדשים עוד לא מחוברים לכלום. לחיצה שלא מחזירה דבר
@@ -94,8 +94,8 @@ export default function HomeScreen({ navigation }: Props) {
     () => babyLogs.filter((l) => isSameDay(l.timestamp, new Date())),
     [babyLogs],
   );
-  // הרשימה ממוינת יורד, ולכן האיבר הראשון הוא האחרון שתועד
-  const statusText = lastLogText(babyLogs[0]);
+  // הרשימה המשותפת ממוינת עולה, ולכן האחרון שתועד הוא האיבר האחרון
+  const statusText = lastLogText(babyLogs[babyLogs.length - 1]);
   const vitaminDone = todayLogs.some((l) => l.type === 'vitamin');
   const ironDone = todayLogs.some((l) => l.type === 'iron');
 

@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useCollection } from '../../hooks/useCollection';
+import { useBabyLogs } from '../../context/BabyLogsContext';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 import { useBabyDate } from './BabyDateContext';
 import { fmtDuration, isSameDay } from '../../utils/dates';
 
 export default function BabySummaryScreen() {
-  const { items: allLogs } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
+  const { items: allLogs } = useBabyLogs();
   // התאריך משותף עם היומן — "סיכום" נפתח על היום שצפינו בו, לא על היום הנוכחי
   const { date: selectedDate, setDate: setSelectedDate } = useBabyDate();
 

@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCollection } from '../../hooks/useCollection';
+import { useBabyLogs } from '../../context/BabyLogsContext';
 import { useAuth } from '../../context/AuthContext';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, font } from '../../config/theme';
@@ -62,7 +62,7 @@ function hhmmFromTs(ts: number) {
 
 export default function AddLogModal({ visible, onClose, selectedDate, editLog }: Props) {
   const { user } = useAuth();
-  const { add, update } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
+  const { add, update } = useBabyLogs();
 
   // מצב עריכה מאותחל ישירות מ-editLog — ההורה מרנדר מחדש עם key שונה
   // (id הרשומה או 'new'), כך שאין צורך לסנכרן את הטופס בתוך effect.

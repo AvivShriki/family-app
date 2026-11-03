@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCollection } from '../../hooks/useCollection';
+import { useBabyLogs } from '../../context/BabyLogsContext';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
@@ -30,7 +30,7 @@ const DIAPER_LABEL: Record<string, string> = {
 export default function BabyDayScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { items: allLogs, remove } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
+  const { items: allLogs, remove } = useBabyLogs();
   const { profile } = useBabyProfile();
   // התאריך משותף לכל מדור התינוקת (יומן + סיכום) דרך context —
   // כך מעבר לטאב "סיכום" נשאר על היום שצפינו בו

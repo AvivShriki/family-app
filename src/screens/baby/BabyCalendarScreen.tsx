@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useCollection } from '../../hooks/useCollection';
+import { useBabyLogs } from '../../context/BabyLogsContext';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import BabyAvatar from '../../components/BabyAvatar';
 import { BabyLog } from '../../types';
@@ -37,7 +37,7 @@ interface Props {
 }
 
 export default function BabyCalendarScreen({ onSelectDay }: Props) {
-  const { items: allLogs } = useCollection<BabyLog>('babyLogs', 'timestamp', 'asc');
+  const { items: allLogs } = useBabyLogs();
   const { profile } = useBabyProfile();
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));

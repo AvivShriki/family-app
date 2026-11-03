@@ -1,5 +1,9 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -14,4 +18,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+/**
+ * מטמון מקומי קבוע (IndexedDB) במקום ברירת המחדל שחיה בזיכרון בלבד.
+ *
+ * בלעדיו כל פתיחה של האפליקציה קוראת מחדש את כל רישומי התינוקת מהשרת —
+ * 1,171 מסמכים ומטפס — ו-Firestore מחייב על כל מסמך. ככה נגמרה המכסה
+ * היומית החינמית. עם המטמון, הפתיחה נענית מהדיסק והשרת שולח רק את מה
+ * שהשתנה מאז, כך שהעלות בפתיחה חוזרת קרובה לאפס.
+ *
+ * persistentMultipleTabManager נחוץ כי זו אפליקציית ווב: בלעדיו לשונית
+ * שנייה נכשלת בהפעלת המטמון וחוזרת לקרוא הכול מהשרת.
+ */
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
