@@ -60,8 +60,7 @@ function lastLogText(log: BabyLog | undefined): string {
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const { user, logout } = useAuth();
-  const displayName = user?.email?.split('@')[0] ?? 'משפחה';
+  const { logout } = useAuth();
 
   const { items: events } = useCollection<FamilyEvent>('events', 'date', 'asc');
   const { items: shoppingItems } = useCollection<ShoppingItem>('shoppingList', 'createdAt', 'desc');
@@ -101,21 +100,32 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
+      {/* Header — כפתור עגול בכל צד וברכה ממורכזת ביניהם, כך שהשורה
+          מאוזנת ולא נשענת לצד אחד. הברכה בעברית בלבד: שם מהאימייל היה
+          מכניס אנגלית לאמצע משפט ומסובב את סדר המילים. */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{greeting()}, {displayName} ☀️</Text>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate('ChangePassword')}
+          accessibilityLabel="שינוי סיסמה"
+          hitSlop={8}
+        >
+          <Ionicons name="key-outline" size={18} color={colors.textLight} />
+        </TouchableOpacity>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.greeting}>{greeting()} ☀️</Text>
           <Text style={styles.dateLine}>{dateLine}</Text>
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => navigation.navigate('ChangePassword')} hitSlop={8}>
-            <Text style={styles.headerAction}>סיסמה</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerAction}>·</Text>
-          <TouchableOpacity onPress={logout} hitSlop={8}>
-            <Text style={styles.headerAction}>יציאה</Text>
-          </TouchableOpacity>
-        </View>
+
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={logout}
+          accessibilityLabel="יציאה"
+          hitSlop={8}
+        >
+          <Ionicons name="log-out-outline" size={18} color={colors.textLight} />
+        </TouchableOpacity>
       </View>
 
       {/* כרטיס התינוקת — הכוכבת של המסך */}
@@ -192,14 +202,28 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  greeting: { fontSize: font.titleLg, fontWeight: font.weight.heavy, color: colors.text },
-  dateLine: { fontSize: font.small, color: colors.textMuted, marginTop: 2 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingTop: 6 },
-  headerAction: { color: colors.textMuted, fontSize: font.small },
+  // הכפתורים זהים בגודלם ויושבים בשני הקצוות; הברכה תופסת את מה שביניהם
+  // ומתמרכזת בדיוק באמצע המסך.
+  headerCenter: { flex: 1, alignItems: 'center' },
+  greeting: {
+    fontSize: font.titleLg,
+    fontWeight: font.weight.heavy,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  dateLine: { fontSize: font.small, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadow.soft,
+  },
 
   babyCard: {
     backgroundColor: colors.pink,
