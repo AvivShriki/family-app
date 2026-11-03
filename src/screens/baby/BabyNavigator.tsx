@@ -7,7 +7,6 @@ import BabyCalendarScreen from './BabyCalendarScreen';
 import BabyDayScreen from './BabyDayScreen';
 import BabySummaryScreen from './BabySummaryScreen';
 import BabySettingsScreen from './BabySettingsScreen';
-import BabyHeader from './BabyHeader';
 import { BabyDateProvider } from './BabyDateContext';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 
@@ -62,7 +61,6 @@ function CalendarWithNav({ navigation }: any) {
   };
   return (
     <View style={{ flex: 1 }}>
-      <BabyHeader />
       <BabyCalendarScreen onSelectDay={handleSelectDay} />
     </View>
   );

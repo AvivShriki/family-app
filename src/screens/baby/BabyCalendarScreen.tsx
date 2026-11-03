@@ -181,7 +181,7 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
       <View style={styles.babyCard}>
         <BabyAvatar size={52} />
         <View>
-          <Text style={styles.babyName}>{profile.name} שלנו 🌸</Text>
+          {/* בלי השם — הוא כבר בכותרת המסך */}
           <Text style={styles.babyAge}>{getAgeText(profile.birthDate, today)}</Text>
           <Text style={styles.babyDate}>
             {today.toLocaleDateString('he-IL', {
@@ -278,7 +278,6 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   babyEmoji: { fontSize: 44 },
-  babyName: { fontSize: 18, fontWeight: '700', color: colors.text },
   babyAge: { fontSize: 13, color: colors.textLight, marginTop: 2 },
   babyDate: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
 });

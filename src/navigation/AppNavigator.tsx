@@ -18,6 +18,7 @@ const headerStyle = {
   headerStyle: { backgroundColor: colors.white },
   headerTintColor: colors.text,
   headerTitleStyle: { fontWeight: '700' as const },
+  headerTitleAlign: 'center' as const,
   headerBackTitle: 'חזרה',
 };
 

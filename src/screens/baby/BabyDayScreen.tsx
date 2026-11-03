@@ -103,8 +103,9 @@ export default function BabyDayScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Baby card */}
+        {/* השם כבר מופיע בכותרת המסך למעלה — כאן נשאר רק הגיל, כדי שלא
+            ייקרא פעמיים ברצף */}
         <View style={styles.babyCard}>
-          <Text style={styles.babyName}>{profile.name} 🌸</Text>
           <Text style={styles.babyAge}>{getAgeText(profile.birthDate, selectedDate)}</Text>
         </View>
 
@@ -240,7 +241,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow.soft,
   },
-  babyName: { fontSize: 18, fontWeight: '700', color: colors.text },
   babyAge: { fontSize: 13, color: colors.textLight, marginTop: 2 },
 
   missionsRow: {
