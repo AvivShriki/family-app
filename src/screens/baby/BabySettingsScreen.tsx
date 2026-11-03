@@ -7,7 +7,7 @@ import Button from '../../components/Button';
 import { pickProfileImage } from '../../utils/imagePicker';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 
-export default function BabySettingsScreen() {
+export default function BabySettingsScreen({ navigation }: any) {
   const { profile, save } = useBabyProfile();
   // עריכות המשתמש חיות בנפרד מהפרופיל; כל עוד לא נערך — מציגים את הערך מהשרת.
   // כך אין צורך לסנכרן state בתוך effect כשהפרופיל נטען.
@@ -120,6 +120,18 @@ export default function BabySettingsScreen() {
         {status === 'error' && <Text style={styles.error}>השמירה לא הצליחה — בדקו את החיבור ונסו שוב</Text>}
       </View>
 
+      {/* פעולות חשבון — כאן ולא בכותרת דף הבית, ששמורה לניווט */}
+      <TouchableOpacity
+        style={styles.accountRow}
+        onPress={() => navigation.navigate('ChangePassword')}
+        accessibilityLabel="שינוי סיסמה"
+      >
+        {/* ב-RTL האייקון המוביל יושב בימין והחץ סוגר בשמאל */}
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        <Text style={styles.accountLabel}>שינוי סיסמה</Text>
+        <Ionicons name="key-outline" size={18} color={colors.textLight} />
+      </TouchableOpacity>
+
       <DatePickerModal
         visible={pickerOpen}
         value={birthDate}
@@ -186,6 +198,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream,
     marginBottom: spacing.md,
   },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    minHeight: 56,
+    marginTop: spacing.md,
+    ...shadow.soft,
+  },
+  accountLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'right' },
   dateText: { fontSize: 15, color: colors.text, textAlign: 'right' },
   datePlaceholder: { color: colors.textMuted },
   agePreview: {

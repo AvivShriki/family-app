@@ -11,7 +11,7 @@ import NoHouseholdScreen from '../screens/NoHouseholdScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BabyNavigator from '../screens/baby/BabyNavigator';
-import { colors } from '../config/theme';
+import { colors, spacing, radius } from '../config/theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -63,11 +63,14 @@ export default function AppNavigator() {
                 headerRight: () => (
                   <TouchableOpacity
                     onPress={() => navigation.popToTop()}
-                    style={homeButtonStyles.button}
+                    style={homeButtonStyles.touch}
                     accessibilityLabel="חזרה לדף הבית"
+                    activeOpacity={0.7}
                   >
-                    <Ionicons name="home-outline" size={20} color={colors.text} />
-                    <Text style={homeButtonStyles.label}>בית</Text>
+                    <View style={homeButtonStyles.pill}>
+                      <Ionicons name="home" size={15} color={colors.text} />
+                      <Text style={homeButtonStyles.label}>בית</Text>
+                    </View>
                   </TouchableOpacity>
                 ),
               })}
@@ -84,16 +87,18 @@ export default function AppNavigator() {
   );
 }
 
-// יעד מגע של 44 — החץ שהוחלף היה 30, מתחת לרף
+// הכפתור הוא שבב, לא טקסט מרחף: הרקע נותן לו גבול ברור ומסמן שהוא
+// נלחץ. השבב עצמו 32 בגובה, ועטוף במגע של 44 כדי לעמוד ביעד המגע.
 const homeButtonStyles = StyleSheet.create({
-  button: {
-    minWidth: 44,
-    height: 44,
+  touch: { height: 44, justifyContent: 'center', paddingLeft: spacing.xs },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 4,
+    gap: 5,
+    height: 32,
+    paddingHorizontal: spacing.sm + 2,
+    borderRadius: radius.full,
+    backgroundColor: colors.creamDark,
   },
   label: { fontSize: 13, fontWeight: '600', color: colors.text },
 });

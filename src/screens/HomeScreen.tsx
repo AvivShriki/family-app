@@ -111,11 +111,11 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => navigation.navigate('ChangePassword')}
-          accessibilityLabel="שינוי סיסמה"
+          onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
+          accessibilityLabel="הגדרות"
           hitSlop={8}
         >
-          <Ionicons name="key-outline" size={18} color={colors.textLight} />
+          <Ionicons name="settings-outline" size={19} color={colors.textLight} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
