@@ -29,7 +29,9 @@ export default function BabySettingsScreen() {
     birthDate !== profile.birthDate ||
     familyName.trim() !== (profile.familyName ?? '') ||
     photoUrl !== profile.photoUrl;
-  const valid = name.trim().length > 0 && birthDate.length > 0;
+  // תאריך הלידה אינו חובה לשמירה: בלעדיו מוצג "תאריך לידה טרם הוגדר",
+  // ואין סיבה שהוא יחסום הגדרה של שם המשפחה או של שם התינוקת.
+  const valid = name.trim().length > 0;
 
   const onPickPhoto = async () => {
     const dataUrl = await pickProfileImage();

@@ -36,7 +36,9 @@ function timeAgo(ts: number): string {
   if (min < 1) return 'ממש עכשיו';
   if (min < 60) return `לפני ${min} דק'`;
   const h = Math.floor(min / 60);
-  return `לפני ${h} שע'`;
+  if (h < 24) return `לפני ${h} שע'`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'אתמול' : `לפני ${d} ימים`;
 }
 
 // תיאור הפעולה האחרונה בשפה של הורים
@@ -117,7 +119,9 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.greeting}>{greetingLine}</Text>
+          <Text style={styles.greeting} numberOfLines={2}>
+            {greetingLine}
+          </Text>
           <Text style={styles.dateLine}>{dateLine}</Text>
         </View>
 
@@ -183,7 +187,7 @@ export default function HomeScreen({ navigation }: Props) {
 
         <Button
           label="פתיחת היומן"
-          onPress={() => navigation.navigate('Baby')}
+          onPress={() => navigation.navigate('Baby', { screen: 'BabyDay' })}
           style={{ marginTop: spacing.md, alignSelf: 'stretch' }}
         />
       </View>

@@ -32,6 +32,11 @@ test('getAgeText: no birth date yet (new family) instead of NaN', () => {
   assert.equal(getAgeText(''), 'תאריך לידה טרם הוגדר');
 });
 
+// מור מצאה "בת -4 חודשים" אחרי בחירת תאריך עתידי בטעות
+test('getAgeText: a future birth date is a typo, not a negative age', () => {
+  assert.equal(getAgeText('2027-01-01', new Date(2026, 10, 3)), 'תאריך הלידה עוד לא הגיע');
+});
+
 // ---- fmtDuration -----------------------------------------------------------
 test('fmtDuration: under an hour uses minutes', () => {
   assert.equal(fmtDuration(45 * 60000), "45 דק'");

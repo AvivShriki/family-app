@@ -25,7 +25,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // כל נתוני המשפחה: אירועים, קניות, תיעוד התינוקת והפרופיל
+    // כל נתוני המשפחה: תיעוד התינוקת, הפרופיל שלה, ונתונים ישנים משומרים
     match /households/{householdId}/{document=**} {
       allow read, write: if request.auth != null && householdOf() == householdId;
     }

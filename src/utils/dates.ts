@@ -31,6 +31,8 @@ export function getAgeText(birthDate: string, ref = new Date()) {
   const birth = new Date(birthDate);
   // משפחה חדשה עדיין לא מילאה תאריך לידה — עדיף הודעה מאשר "בת NaN חודשים"
   if (!birthDate || Number.isNaN(birth.getTime())) return 'תאריך לידה טרם הוגדר';
+  // תאריך בעתיד החזיר "בת -4 חודשים" — כנראה טעות הקלדה, לא גיל
+  if (birth.getTime() > ref.getTime()) return 'תאריך הלידה עוד לא הגיע';
   let months = (ref.getFullYear() - birth.getFullYear()) * 12 + (ref.getMonth() - birth.getMonth());
   // If the birth day-of-month hasn't been reached yet this month, that month isn't complete
   if (ref.getDate() < birth.getDate()) months -= 1;
