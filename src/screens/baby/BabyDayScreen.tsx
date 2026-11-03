@@ -203,7 +203,11 @@ function TimelineItem({
           <Text style={styles.logTitle}>{meta.label}</Text>
           {detail ? <Text style={styles.logDetail}>{detail}</Text> : null}
         </View>
-        <TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={8}>
+        <TouchableOpacity
+          style={styles.editBtn}
+          onPress={onEdit}
+          accessibilityLabel={`עריכת ${meta.label}`}
+        >
           <Ionicons name="create-outline" size={20} color={colors.textLight} />
         </TouchableOpacity>
       </View>
@@ -241,7 +245,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow.soft,
   },
-  babyAge: { fontSize: 13, color: colors.textLight, marginTop: 2 },
+  babyAge: { fontSize: 13, color: colors.text, marginTop: 2 },
 
   missionsRow: {
     flexDirection: 'row',
@@ -295,8 +299,8 @@ const styles = StyleSheet.create({
   logDetail: { fontSize: 12, color: colors.textLight, marginTop: 2 },
   editBtn: {
     padding: spacing.xs,
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -160,7 +160,11 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                 ? 'הוסף אירוע'
                 : `${editLog ? 'עריכת ' : ''}${typeMeta.emoji} ${typeMeta.label}`}
             </Text>
-            <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.closeBtn}
+              accessibilityLabel="סגירה"
+            >
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -392,7 +396,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 60 },
   backText: { fontSize: 16, color: colors.pinkAccent, fontWeight: '600' },
   title: { fontSize: 18, fontWeight: '700', color: colors.text },
-  closeBtn: { width: 60, alignItems: 'flex-end' },
+  closeBtn: { width: 60, height: 44, alignItems: 'flex-end', justifyContent: 'center' },
   closeText: { fontSize: 18, color: colors.textMuted },
 
   body: { padding: spacing.lg, paddingBottom: 40 },

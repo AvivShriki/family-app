@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   },
   dayNum: { fontSize: 14, fontWeight: '500', color: colors.text },
   todayNum: { color: colors.white, fontWeight: '700' },
-  futureNum: { color: colors.border },
+  futureNum: { color: '#9A8070' }, // היה colors.border — 1.23, בלתי קריא
   dotsRow: {
     flexDirection: 'row',
     gap: 2,
@@ -278,6 +278,6 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   babyEmoji: { fontSize: 44 },
-  babyAge: { fontSize: 13, color: colors.textLight, marginTop: 2 },
+  babyAge: { fontSize: 13, color: colors.text, marginTop: 2 },
   babyDate: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
 });

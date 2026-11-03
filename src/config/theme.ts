@@ -4,15 +4,15 @@ export const colors = {
   pinkAccent: '#E8789A',
   blue: '#BDE0FE',
   blueDark: '#A2C4F5',
-  blueAccent: '#5BA4E8',
+  blueAccent: '#2668A8', // היה 5BA4E8 — 2.65 בלבד מול לבן
   cream: '#FFF8F0',
   creamDark: '#F5EDE0',
   white: '#FFFFFF',
   text: '#4A3728',
   textLight: '#8B6F5E',
-  textMuted: '#B5998A',
+  textMuted: '#7A5F4E', // היה B5998A — 2.66; תוויות הטאבים וכל ה-placeholders
   success: '#A8D5B5',
-  danger: '#F4A7A7',
+  danger: '#C0392B', // היה F4A7A7 — 1.92; זה צבע הודעת השגיאה בהתחברות
   border: '#EDE0D4',
 };
 

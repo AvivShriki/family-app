@@ -31,11 +31,21 @@ sed -i '' 's|href="/favicon.ico"|href="favicon.ico"|' dist/index.html
 sed -i '' 's|src="/_expo|src="_expo|' dist/index.html
 find dist/_expo/static/js/web -name '*.js' -exec sed -i '' 's|"/assets/|"assets/|g' {} +
 
-# הגנה מפני גלילה אלסטית אופקית בספארי במובייל
+# הגנה מפני גלילה אלסטית אופקית בספארי במובייל, ומצב פוקוס לניווט מקלדת.
+# expo export מייצר את index.html בעצמו, ולכן שתי ההזרקות חיות כאן.
 sed -i '' '/overflow: hidden;/a\
         overscroll-behavior-x: none;
 ' dist/index.html
 grep -q "overscroll-behavior-x" dist/index.html || { echo "!! עצירה: הזרקת ה-CSS נכשלה" >&2; exit 1; }
+
+# האפליקציה כולה בעברית; בלי זה קורא-מסך מקריא אותה במבטא אנגלי
+sed -i '' 's|<html lang="en">|<html lang="he">|' dist/index.html
+grep -q '<html lang="he">' dist/index.html || { echo "!! עצירה: שפת המסמך לא עודכנה" >&2; exit 1; }
+
+# react-native-web מכבה את טבעת הפוקוס בכל אלמנט — בלעדיה אי אפשר לנווט במקלדת
+sed -i '' 's|      /\* These styles make the root element full-height \*/|      :focus-visible { outline: 3px solid #C9456B; outline-offset: 2px; }\
+      /* These styles make the root element full-height */|' dist/index.html
+grep -q "focus-visible" dist/index.html || { echo "!! עצירה: הזרקת מצב הפוקוס נכשלה" >&2; exit 1; }
 
 # שסתום בטיחות: אם נשאר נתיב אבסולוטי ב-index.html — עוצרים לפני שדוחפים אתר שבור
 if grep -qE '(href|src)="/' dist/index.html; then
