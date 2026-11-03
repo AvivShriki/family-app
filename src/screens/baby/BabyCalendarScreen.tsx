@@ -76,6 +76,10 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
     setViewDate(new Date(year, month + delta, 1));
   };
 
+  const goToday = () => setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const atCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+
   const isToday = (d: number) =>
     d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
@@ -83,27 +87,32 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      {/* Month navigation */}
+      {/* ניווט בין חודשים. אין מה לראות בעתיד, ולכן רק החץ קדימה ננעל
+          בחודש הנוכחי — אחורה תמיד פתוח, עד תחילת התיעוד. */}
       <View style={styles.monthBar}>
-        <TouchableOpacity onPress={() => goMonth(1)} style={styles.arrowBtn}>
-          <Text style={styles.arrow}>‹</Text>
+        <TouchableOpacity
+          onPress={() => goMonth(1)}
+          disabled={atCurrentMonth}
+          style={styles.arrowBtn}
+          accessibilityLabel="החודש הבא"
+        >
+          <Text style={[styles.arrow, atCurrentMonth && styles.arrowDisabled]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.monthTitle}>
-          {HE_MONTHS[month]} {year}
-        </Text>
+
+        {/* לחיצה על הכותרת חוזרת לחודש הנוכחי אחרי גלישה אחורה */}
+        <TouchableOpacity onPress={() => goToday()} disabled={atCurrentMonth}>
+          <Text style={styles.monthTitle}>
+            {HE_MONTHS[month]} {year}
+          </Text>
+          {!atCurrentMonth ? <Text style={styles.backToToday}>חזרה לחודש הנוכחי</Text> : null}
+        </TouchableOpacity>
+
         <TouchableOpacity
           onPress={() => goMonth(-1)}
-          disabled={year === today.getFullYear() && month === today.getMonth()}
           style={styles.arrowBtn}
+          accessibilityLabel="החודש הקודם"
         >
-          <Text
-            style={[
-              styles.arrow,
-              year === today.getFullYear() && month === today.getMonth() && styles.arrowDisabled,
-            ]}
-          >
-            ›
-          </Text>
+          <Text style={styles.arrow}>›</Text>
         </TouchableOpacity>
       </View>
 
@@ -201,7 +210,13 @@ const styles = StyleSheet.create({
   arrowBtn: { padding: spacing.sm },
   arrow: { fontSize: 28, color: colors.pinkAccent, fontWeight: '300' },
   arrowDisabled: { color: colors.border },
-  monthTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+  monthTitle: { fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  backToToday: {
+    fontSize: 11,
+    color: colors.pinkAccent,
+    textAlign: 'center',
+    marginTop: 2,
+  },
 
   dowRow: {
     flexDirection: 'row',
