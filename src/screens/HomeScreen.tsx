@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useCollection } from '../hooks/useCollection';
-import { useBabyProfile } from '../hooks/useBabyProfile';
-import BabyAvatar from '../components/BabyAvatar';
-import { FamilyEvent, ShoppingItem, BabyLog } from '../types';
+import { useBabyProfile, DEFAULT_PROFILE } from '../hooks/useBabyProfile';
+import Button from '../components/Button';
+import { BabyLog } from '../types';
 import { colors, spacing, radius, shadow, font } from '../config/theme';
 import { getAgeText, isSameDay } from '../utils/dates';
 
@@ -22,19 +22,21 @@ function greeting(): string {
   return 'לילה טוב';
 }
 
-// מחוץ לקומפוננטה: Date.now ישירות בגוף הרנדר נחשב קריאה לא-טהורה
-function latestLog(logs: BabyLog[]): BabyLog | undefined {
-  const now = Date.now();
-  return logs.find((l) => l.timestamp <= now);
+// גרסה קצרה של משך זמן לאריח הסיכום — המילה "שעות" גולשת לשורה שנייה
+// ומיותרת, כי התווית מתחת כבר אומרת שמדובר בשינה.
+function shortDuration(ms: number): string {
+  const min = Math.round(ms / 60000);
+  const h = Math.floor(min / 60);
+  return h > 0 ? `${h}:${String(min % 60).padStart(2, '0')}` : `${min} דק'`;
 }
 
+// מחוץ לקומפוננטה: Date.now ישירות בגוף הרנדר נחשב קריאה לא-טהורה
 function timeAgo(ts: number): string {
-  const diffMin = Math.round((Date.now() - ts) / 60000);
-  if (diffMin < 1) return 'ממש עכשיו';
-  if (diffMin < 60) return `לפני ${diffMin} דק'`;
-  const diffHours = Math.round(diffMin / 60);
-  if (diffHours < 24) return `לפני ${diffHours} שע'`;
-  return 'לפני יותר מיום';
+  const min = Math.round((Date.now() - ts) / 60000);
+  if (min < 1) return 'ממש עכשיו';
+  if (min < 60) return `לפני ${min} דק'`;
+  const h = Math.floor(min / 60);
+  return `לפני ${h} שע'`;
 }
 
 // תיאור הפעולה האחרונה בשפה של הורים
@@ -61,11 +63,16 @@ function lastLogText(log: BabyLog | undefined): string {
 
 export default function HomeScreen({ navigation }: Props) {
   const { logout } = useAuth();
-
-  const { items: events } = useCollection<FamilyEvent>('events', 'date', 'asc');
-  const { items: shoppingItems } = useCollection<ShoppingItem>('shoppingList', 'createdAt', 'desc');
   const { items: babyLogs } = useCollection<BabyLog>('babyLogs', 'timestamp', 'desc');
   const { profile } = useBabyProfile();
+
+  // שני הכפתורים החדשים עוד לא מחוברים לכלום. לחיצה שלא מחזירה דבר
+  // מלמדת שהאפליקציה שבורה, ולכן היא מציגה הודעה קצרה במקום כלום.
+  const [soonFor, setSoonFor] = useState<string | null>(null);
+  const tapSoon = (what: string) => {
+    setSoonFor(what);
+    setTimeout(() => setSoonFor(null), 4000);
+  };
 
   const dateLine = new Date().toLocaleDateString('he-IL', {
     weekday: 'long',
@@ -73,36 +80,32 @@ export default function HomeScreen({ navigation }: Props) {
     month: 'long',
   });
 
-  // --- סטטוס התינוקת: פעולה אחרונה + משימות היום ---
-  const statusText = useMemo(() => lastLogText(latestLog(babyLogs)), [babyLogs]);
-  const todayBabyLogs = useMemo(
+  // "משפחת" מתווסף בקוד, אחרת כל משפחה תקליד אחרת ונקבל "משפחת משפחת שריקי"
+  const family = profile.familyName?.trim();
+  // רווח קשיח בין "משפחת" לשם, כדי שגלישה לשורה שנייה לא תפריד ביניהם
+  const greetingLine = family ? `${greeting()}, משפחת ${family}` : greeting();
+
+  const hasName = profile.name && profile.name !== DEFAULT_PROFILE.name;
+
+  // --- מצב התינוקת: פעולה אחרונה, משימות היום וסיכום היום ---
+  const todayLogs = useMemo(
     () => babyLogs.filter((l) => isSameDay(l.timestamp, new Date())),
     [babyLogs],
   );
-  const vitaminDone = todayBabyLogs.some((l) => l.type === 'vitamin');
-  const ironDone = todayBabyLogs.some((l) => l.type === 'iron');
+  // הרשימה ממוינת יורד, ולכן האיבר הראשון הוא האחרון שתועד
+  const statusText = lastLogText(babyLogs[0]);
+  const vitaminDone = todayLogs.some((l) => l.type === 'vitamin');
+  const ironDone = todayLogs.some((l) => l.type === 'iron');
 
-  // --- לוח שנה: אירוע היום, או הקרוב הבא ---
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayEvent = events.find((e) => e.date === todayStr);
-  const nextEvent = events.find((e) => e.date > todayStr);
-  const calendarTitle = todayEvent ? `היום: ${todayEvent.title}` : 'היום אין כלום — נהנים 🙌';
-  const calendarSub = nextEvent
-    ? `הקרוב: ${nextEvent.title} · ${new Date(nextEvent.date).toLocaleDateString('he-IL', { weekday: 'long' })}`
-    : 'אין אירועים קרובים בלוח';
-
-  // --- קניות: כמה פתוחים + מה הם ---
-  const openItems = shoppingItems.filter((i) => !i.checked);
-  const shoppingTitle = openItems.length > 0 ? `${openItems.length} דברים מחכים בסופר` : 'הכול קנוי 🎉';
-  const shoppingSub = openItems.length > 0
-    ? openItems.slice(0, 3).map((i) => i.text).join(' · ')
-    : 'הרשימה ריקה ומחכה לסיבוב הבא';
+  const meals = todayLogs.filter((l) => l.type === 'feeding').length;
+  const diapers = todayLogs.filter((l) => l.type === 'diaper').length;
+  const sleepMs = todayLogs
+    .filter((l) => l.type === 'sleep' && l.endTimestamp)
+    .reduce((sum, l) => sum + (l.endTimestamp! - l.timestamp), 0);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header — כפתור עגול בכל צד וברכה ממורכזת ביניהם, כך שהשורה
-          מאוזנת ולא נשענת לצד אחד. הברכה בעברית בלבד: שם מהאימייל היה
-          מכניס אנגלית לאמצע משפט ומסובב את סדר המילים. */}
+      {/* כותרת — כפתור עגול בכל צד וברכה ממורכזת ביניהם */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.iconButton}
@@ -114,7 +117,7 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.greeting}>{greeting()} ☀️</Text>
+          <Text style={styles.greeting}>{greetingLine}</Text>
           <Text style={styles.dateLine}>{dateLine}</Text>
         </View>
 
@@ -128,20 +131,38 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* כרטיס התינוקת — הכוכבת של המסך */}
-      <TouchableOpacity
-        style={styles.babyCard}
-        onPress={() => navigation.navigate('Baby')}
-        activeOpacity={0.85}
-      >
-        <View style={styles.babyTopRow}>
-          <BabyAvatar size={48} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.babyName}>{profile.name} 🌸</Text>
-            <Text style={styles.babyAge}>{getAgeText(profile.birthDate)}</Text>
+      {/* כרטיס הירו — 70% מהמשקל הוויזואלי של המסך.
+          הכרטיס עצמו אינו לחיץ: האווטאר מוביל להגדרות והכפתור ליומן,
+          כך שאין שני יעדי מגע מקוננים. */}
+      <View style={styles.hero}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
+          accessibilityLabel="עריכת פרופיל התינוקת"
+          activeOpacity={0.85}
+        >
+          <View style={styles.avatarRing}>
+            {profile.photoUrl ? (
+              <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarEmoji}>👶</Text>
+              </View>
+            )}
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={14} color={colors.white} />
+            </View>
           </View>
-          <Text style={styles.chevron}>‹</Text>
-        </View>
+        </TouchableOpacity>
+
+        {!profile.photoUrl ? <Text style={styles.photoHint}>לחיצה מוסיפה תמונה</Text> : null}
+
+        <Text style={styles.babyName}>{profile.name}</Text>
+        <Text style={styles.babyAge}>{getAgeText(profile.birthDate)}</Text>
+        {profile.birthDate ? (
+          <Text style={styles.babyBirth}>
+            נולדה ב-{new Date(profile.birthDate).toLocaleDateString('he-IL')}
+          </Text>
+        ) : null}
 
         <View style={styles.statusChip}>
           <Text style={styles.statusChipText}>{statusText}</Text>
@@ -159,54 +180,79 @@ export default function HomeScreen({ navigation }: Props) {
             </Text>
           </View>
         </View>
-      </TouchableOpacity>
 
-      {/* לוח שנה */}
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => navigation.navigate('Events')}
-        activeOpacity={0.85}
-      >
-        <View style={[styles.cardIcon, { backgroundColor: colors.pink }]}>
-          <Ionicons name="calendar-outline" size={22} color={colors.pinkAccent} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{calendarTitle}</Text>
-          <Text style={styles.cardSub}>{calendarSub}</Text>
-        </View>
-        <Text style={styles.chevron}>‹</Text>
-      </TouchableOpacity>
+        <Button
+          label="פתיחת היומן"
+          onPress={() => navigation.navigate('Baby')}
+          style={{ marginTop: spacing.md, alignSelf: 'stretch' }}
+        />
+      </View>
 
-      {/* קניות */}
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => navigation.navigate('Shopping')}
-        activeOpacity={0.85}
-      >
-        <View style={[styles.cardIcon, { backgroundColor: colors.blue }]}>
-          <Ionicons name="cart-outline" size={22} color={colors.blueAccent} />
+      {/* סיכום היום — נקרא הרבה, נלחץ מעט */}
+      <View style={styles.statsRow}>
+        <View style={styles.statTile}>
+          <Text style={styles.statValue}>{meals}</Text>
+          <Text style={styles.statLabel}>ארוחות היום</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{shoppingTitle}</Text>
-          <Text style={styles.cardSub} numberOfLines={1}>{shoppingSub}</Text>
+        <View style={styles.statTile}>
+          <Text style={styles.statValue}>{sleepMs > 0 ? shortDuration(sleepMs) : '—'}</Text>
+          <Text style={styles.statLabel}>שינה היום</Text>
         </View>
-        <Text style={styles.chevron}>‹</Text>
-      </TouchableOpacity>
+        <View style={styles.statTile}>
+          <Text style={styles.statValue}>{diapers}</Text>
+          <Text style={styles.statLabel}>חיתולים היום</Text>
+        </View>
+      </View>
+
+      {/* שירותים עתידיים — מוצגים, מסומנים "בקרוב", ועוד לא מחוברים */}
+      <View style={styles.servicesRow}>
+        <TouchableOpacity
+          style={styles.serviceCard}
+          onPress={() => tapSoon('ask')}
+          accessibilityState={{ disabled: true }}
+          accessibilityHint="בקרוב"
+          activeOpacity={0.9}
+        >
+          <View style={[styles.serviceIcon, { backgroundColor: colors.pink }]}>
+            <Ionicons name="sparkles-outline" size={20} color={colors.text} />
+          </View>
+          <Text style={styles.serviceLabel}>
+            {hasName ? `שאלה על ${profile.name}` : 'יש לי שאלה'}
+          </Text>
+          <View style={styles.soonChip}>
+            <Text style={styles.soonText}>בקרוב</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.serviceCard}
+          onPress={() => tapSoon('doctor')}
+          accessibilityState={{ disabled: true }}
+          accessibilityHint="בקרוב"
+          activeOpacity={0.9}
+        >
+          <View style={[styles.serviceIcon, { backgroundColor: colors.blue }]}>
+            <Ionicons name="medkit-outline" size={20} color={colors.text} />
+          </View>
+          <Text style={styles.serviceLabel}>שיחה עם רופא</Text>
+          <View style={styles.soonChip}>
+            <Text style={styles.soonText}>בקרוב</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {soonFor ? <Text style={styles.soonNotice}>עוד לא מוכן — נעדכן כאן כשייפתח.</Text> : null}
     </ScrollView>
   );
 }
+
+const AVATAR = 88;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  // הכפתורים זהים בגודלם ויושבים בשני הקצוות; הברכה תופסת את מה שביניהם
-  // ומתמרכזת בדיוק באמצע המסך.
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
   headerCenter: { flex: 1, alignItems: 'center' },
   greeting: {
     fontSize: font.titleLg,
@@ -214,10 +260,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
-  dateLine: { fontSize: font.small, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
+  dateLine: { fontSize: font.small, color: colors.textLight, marginTop: 2, textAlign: 'center' },
   iconButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: radius.full,
     backgroundColor: colors.white,
     alignItems: 'center',
@@ -225,56 +271,130 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
 
-  babyCard: {
+  hero: {
     backgroundColor: colors.pink,
     borderRadius: radius.lg,
-    padding: spacing.md,
+    padding: spacing.lg,
+    alignItems: 'center',
     marginBottom: spacing.md,
     ...shadow.soft,
   },
-  babyTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  babyName: { fontSize: font.title, fontWeight: font.weight.heavy, color: colors.text },
-  babyAge: { fontSize: font.small, color: colors.textLight, marginTop: 1 },
+  // הטבעת הלבנה מפרידה את התמונה מהרקע הוורוד ונותנת לה את הבולטות
+  avatarRing: {
+    width: AVATAR + 6,
+    height: AVATAR + 6,
+    borderRadius: (AVATAR + 6) / 2,
+    borderWidth: 3,
+    borderColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
+  avatarPlaceholder: {
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEmoji: { fontSize: AVATAR / 2 },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 28,
+    height: 28,
+    borderRadius: radius.full,
+    backgroundColor: colors.pinkAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  photoHint: { fontSize: font.caption, color: colors.text, marginTop: spacing.xs },
+
+  // בתוך הכרטיס הוורוד הצבע אינו כלי היררכיה — ניגודיות של טקסט בהיר על
+  // ורוד נופלת מהתקן, ולכן ההפרדה היא בגודל ובמשקל בלבד.
+  babyName: {
+    fontSize: font.titleLg,
+    fontWeight: font.weight.heavy,
+    color: colors.text,
+    marginTop: spacing.md,
+  },
+  babyAge: { fontSize: font.body, fontWeight: font.weight.medium, color: colors.text, marginTop: 2 },
+  babyBirth: { fontSize: font.small, color: colors.text, marginTop: 2 },
 
   statusChip: {
     backgroundColor: colors.white,
     borderRadius: radius.full,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start',
+    marginTop: spacing.md,
   },
   statusChipText: { fontSize: font.small, fontWeight: font.weight.semibold, color: colors.text },
 
-  missionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  missionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, alignSelf: 'stretch' },
   missionChip: {
+    flex: 1,
     backgroundColor: colors.white,
-    borderRadius: radius.full,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-  },
-  missionDone: { backgroundColor: '#E8F8EE' },
-  missionText: { fontSize: font.caption + 1, fontWeight: font.weight.semibold, color: colors.textMuted },
-  missionTextDone: { color: '#2E7D32' },
-
-  card: {
-    flexDirection: 'row',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
     alignItems: 'center',
+  },
+  missionDone: { backgroundColor: '#F0FFF4', borderColor: colors.success },
+  missionText: { fontSize: font.caption, color: colors.text },
+  missionTextDone: { fontWeight: font.weight.bold },
+
+  statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  statTile: {
+    flex: 1,
     backgroundColor: colors.white,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     padding: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.md,
+    alignItems: 'center',
     ...shadow.soft,
   },
-  cardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
+  statValue: { fontSize: font.titleLg, fontWeight: font.weight.bold, color: colors.text },
+  statLabel: { fontSize: font.caption, color: colors.textLight, marginTop: 2, textAlign: 'center' },
+
+  servicesRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+  serviceCard: {
+    flex: 1,
+    minHeight: 72,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    alignItems: 'center',
+    ...shadow.soft,
+  },
+  serviceIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
-  cardTitle: { fontSize: font.body, fontWeight: font.weight.bold, color: colors.text },
-  cardSub: { fontSize: font.small, color: colors.textLight, marginTop: 2 },
-  chevron: { fontSize: 22, color: colors.textMuted, fontWeight: '300' },
+  serviceLabel: {
+    fontSize: font.body,
+    fontWeight: font.weight.bold,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  soonChip: {
+    backgroundColor: colors.creamDark,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    marginTop: spacing.xs,
+  },
+  soonText: { fontSize: font.caption, fontWeight: font.weight.semibold, color: colors.textLight },
+  soonNotice: {
+    fontSize: font.small,
+    color: colors.textLight,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
 });

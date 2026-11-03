@@ -3,7 +3,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getAgeText, fmtDuration, isSameDay } from '../src/utils/dates';
-import { categoryEmoji } from '../src/utils/productImage';
 
 // ---- getAgeText ------------------------------------------------------------
 // The bug this guards against: month count must respect day-of-month.
@@ -57,12 +56,3 @@ test('isSameDay: adjacent days are different', () => {
   assert.equal(isSameDay(new Date(2026, 6, 12, 0, 1).getTime(), day), false);
 });
 
-// ---- categoryEmoji ---------------------------------------------------------
-test('categoryEmoji: specific match wins over general (תפוח אדמה)', () => {
-  assert.equal(categoryEmoji('תפוח אדמה'), '🥔');
-  assert.equal(categoryEmoji('תפוח'), '🍎');
-});
-
-test('categoryEmoji: unknown item falls back to cart', () => {
-  assert.equal(categoryEmoji('מוצר שלא קיים בכלל'), '🛒');
-});

@@ -13,6 +13,7 @@ export default function BabySettingsScreen() {
   // כך אין צורך לסנכרן state בתוך effect כשהפרופיל נטען.
   const [nameEdit, setNameEdit] = useState<string | null>(null);
   const [birthDateEdit, setBirthDateEdit] = useState<string | null>(null);
+  const [familyNameEdit, setFamilyNameEdit] = useState<string | null>(null);
   // undefined = לא נגעו בתמונה, null = הוסרה, string = תמונה חדשה שנבחרה
   const [photoEdit, setPhotoEdit] = useState<string | null | undefined>(undefined);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -20,11 +21,13 @@ export default function BabySettingsScreen() {
 
   const name = nameEdit ?? profile.name;
   const birthDate = birthDateEdit ?? profile.birthDate;
+  const familyName = familyNameEdit ?? profile.familyName ?? '';
   const photoUrl = photoEdit === undefined ? profile.photoUrl : photoEdit ?? undefined;
 
   const dirty =
     name.trim() !== profile.name ||
     birthDate !== profile.birthDate ||
+    familyName.trim() !== (profile.familyName ?? '') ||
     photoUrl !== profile.photoUrl;
   const valid = name.trim().length > 0 && birthDate.length > 0;
 
@@ -38,8 +41,9 @@ export default function BabySettingsScreen() {
 
   const onSave = async () => {
     try {
-      await save({ name: name.trim(), birthDate, photoUrl });
+      await save({ name: name.trim(), birthDate, photoUrl, familyName: familyName.trim() });
       setPhotoEdit(undefined); // מסונכרן מחדש מהפרופיל השמור
+      setFamilyNameEdit(null);
       setStatus('saved');
     } catch {
       setStatus('error');
@@ -89,9 +93,24 @@ export default function BabySettingsScreen() {
 
         <Text style={styles.label}>תאריך לידה</Text>
         <TouchableOpacity style={styles.input} onPress={() => setPickerOpen(true)}>
-          <Text style={styles.dateText}>{new Date(birthDate).toLocaleDateString('he-IL')}</Text>
+          {/* משפחה חדשה מגיעה בלי תאריך; בלי הבדיקה הזו מוצג "Invalid Date" */}
+          <Text style={[styles.dateText, !birthDate && styles.datePlaceholder]}>
+            {birthDate ? new Date(birthDate).toLocaleDateString('he-IL') : 'בחירת תאריך'}
+          </Text>
         </TouchableOpacity>
         <Text style={styles.agePreview}>{getAgeText(birthDate)}</Text>
+
+        <Text style={styles.label}>שם המשפחה</Text>
+        <TextInput
+          style={styles.input}
+          value={familyName}
+          onChangeText={(t) => {
+            setFamilyNameEdit(t);
+            setStatus('idle');
+          }}
+          placeholder="לברכה בדף הבית, למשל: שריקי"
+          placeholderTextColor={colors.textMuted}
+        />
 
         <Button label="שמירה" onPress={onSave} disabled={!dirty || !valid} />
 
@@ -166,6 +185,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   dateText: { fontSize: 15, color: colors.text, textAlign: 'right' },
+  datePlaceholder: { color: colors.textMuted },
   agePreview: {
     fontSize: 13,
     color: colors.textMuted,

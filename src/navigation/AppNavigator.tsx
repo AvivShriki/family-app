@@ -9,8 +9,6 @@ import LoginScreen from '../screens/LoginScreen';
 import NoHouseholdScreen from '../screens/NoHouseholdScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
-import EventsScreen from '../screens/EventsScreen';
-import ShoppingScreen from '../screens/ShoppingScreen';
 import BabyNavigator from '../screens/baby/BabyNavigator';
 import { colors } from '../config/theme';
 
@@ -51,16 +49,6 @@ export default function AppNavigator() {
         ) : (
           <>
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen
-              name="Events"
-              component={EventsScreen}
-              options={{ title: 'לוח שנה 📅' }}
-            />
-            <Stack.Screen
-              name="Shopping"
-              component={ShoppingScreen}
-              options={{ title: 'רשימת קניות 🛒' }}
-            />
             <Stack.Screen
               name="Baby"
               component={BabyNavigator}

@@ -1,7 +1,7 @@
 // In-memory store that mimics Firestore's real-time behavior via listeners.
-import { FamilyEvent, ShoppingItem, BabyLog } from '../types';
+import { BabyLog } from '../types';
 
-type CollectionName = 'events' | 'shoppingList' | 'babyLogs';
+type CollectionName = 'babyLogs';
 
 const now = Date.now();
 const day = 86400000;
@@ -14,48 +14,6 @@ function setTime(h: number, m: number): number {
 }
 
 const seed: Record<CollectionName, any[]> = {
-  events: [
-    {
-      id: 'e1',
-      title: 'ביקור אצל סבא וסבתא',
-      date: '2026-07-04',
-      time: '16:00',
-      note: '',
-      createdBy: 'aviv',
-      createdAt: now - day * 3,
-    },
-    {
-      id: 'e2',
-      title: 'ביקורת רופא ילדים — ליבי',
-      date: '2026-07-10',
-      time: '10:30',
-      note: 'חיסון חמישה חודשים',
-      createdBy: 'noy',
-      createdAt: now - day,
-    },
-    {
-      id: 'e3',
-      title: 'יום הולדת לנוי 🎂',
-      date: '2026-07-22',
-      time: '',
-      note: '',
-      createdBy: 'aviv',
-      createdAt: now,
-    },
-  ] as FamilyEvent[],
-  shoppingList: [
-    { id: 's1', text: 'חיתולים מידה 3', checked: false, addedBy: 'noy', createdAt: now - 1000 },
-    { id: 's2', text: 'מגבונים לחים', checked: false, addedBy: 'noy', createdAt: now - 2000 },
-    { id: 's3', text: 'בננות', checked: true, addedBy: 'aviv', createdAt: now - 3000 },
-    {
-      id: 's4',
-      text: 'חלב אם — שקיות אחסון',
-      checked: false,
-      addedBy: 'noy',
-      createdAt: now - 4000,
-    },
-    { id: 's5', text: 'לחם', checked: true, addedBy: 'aviv', createdAt: now - 5000 },
-  ] as ShoppingItem[],
   babyLogs: [
     { id: 'b1', type: 'feeding', timestamp: setTime(7, 45), amountMl: 180, loggedBy: 'noy' },
     {
@@ -82,8 +40,6 @@ const seed: Record<CollectionName, any[]> = {
 
 // Deep-clone seed so mutations don't affect the original
 const store: Record<CollectionName, any[]> = {
-  events: seed.events.map((e) => ({ ...e })),
-  shoppingList: seed.shoppingList.map((e) => ({ ...e })),
   babyLogs: seed.babyLogs.map((e) => ({ ...e })),
 };
 

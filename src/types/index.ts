@@ -1,23 +1,3 @@
-export interface FamilyEvent {
-  id: string;
-  title: string;
-  date: string; // ISO string
-  time?: string;
-  endTime?: string; // for a time range, e.g. 15:00–17:00
-  note?: string;
-  createdBy: string;
-  createdAt: number;
-}
-
-export interface ShoppingItem {
-  id: string;
-  text: string;
-  checked: boolean;
-  imageUrl?: string; // small product photo from Open Food Facts
-  addedBy: string;
-  createdAt: number;
-}
-
 export interface BabyLog {
   id: string;
   type: 'feeding' | 'sleep' | 'diaper' | 'note' | 'vitamin' | 'iron';

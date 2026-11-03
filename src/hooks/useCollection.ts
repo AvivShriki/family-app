@@ -15,7 +15,7 @@ import { mockSubscribe, mockAdd, mockDelete, mockUpdate } from '../mocks/store';
 
 import { DEMO_MODE } from '../config/demo';
 
-type ColName = 'events' | 'shoppingList' | 'babyLogs';
+type ColName = 'babyLogs';
 
 // כל אוסף חי בתוך משק הבית של המשפחה — זה מה שמבודד בין משפחות
 const colRef = (householdId: string, colName: ColName) =>

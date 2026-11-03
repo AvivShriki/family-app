@@ -8,6 +8,9 @@ export interface BabyProfile {
   name: string;
   birthDate: string; // 'YYYY-MM-DD'
   photoUrl?: string; // compact JPEG data-URL, stored inside the profile doc
+  // שם המשפחה לברכה בדף הבית. שייך למשק הבית ולא לתינוקת, אבל חי באותו
+  // מסמך הגדרות כדי לא לפצל קריאה אחת לשתיים.
+  familyName?: string;
 }
 
 // מוצג עד שהמסמך נטען, וגם למשפחה חדשה שעדיין לא מילאה את הפרטים —
@@ -69,6 +72,7 @@ export function useBabyProfile() {
       name: data.name,
       birthDate: data.birthDate,
       photoUrl: data.photoUrl ?? deleteField(),
+      familyName: data.familyName?.trim() || deleteField(),
     };
     if (!householdId) throw new Error('אין משק בית משויך למשתמש הזה');
     await setDoc(profileDoc(householdId), payload, { merge: true });
