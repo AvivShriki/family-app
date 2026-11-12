@@ -1,27 +1,43 @@
-// חוקי האבטחה של Firestore — מודבקים בקונסולה:
-// Firebase console > Firestore Database > Rules > Publish
+// חוקי האבטחה של Firestore. מתפרסמים עם:
+//   firebase deploy --only firestore:rules
 //
 // העיקרון: כל משפחה חיה בתוך households/{householdId}, והשיוך של משתמש
-// למשק בית נקבע במסמך users/{email}. משתמש יכול לגעת אך ורק בנתונים של
+// למשק בית נקבע במסמך users/{uid}. משתמש יכול לגעת אך ורק בנתונים של
 // משק הבית שלו — האכיפה היא בשרת, לא בקוד האפליקציה.
+//
+// שלב מעבר: השיוך עבר ממפתח אימייל למפתח מזהה-משתמש. שני המפתחות
+// נתמכים במקביל, כי למשתמש שהאתר כבר פתוח אצלו רץ עדיין הקוד הישן
+// שקורא לפי אימייל. אחרי שכולם יתרעננו, מוחקים את הנתיב הישן.
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // השיוך נשמר במסמך users/{email} — האימייל באותיות קטנות
     function userEmail() {
       return request.auth.token.email.lower();
     }
 
-    function householdOf() {
-      return get(/databases/$(database)/documents/users/$(userEmail())).data.householdId;
+    function uidDoc() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    // כל משתמש קורא רק את השיוך שלו. הכתיבה נעשית ידנית מהקונסולה,
-    // כדי שאף אחד לא יוכל להעביר את עצמו למשפחה אחרת.
-    match /users/{email} {
-      allow read: if request.auth != null && userEmail() == email;
+    function emailDoc() {
+      return /databases/$(database)/documents/users/$(userEmail());
+    }
+
+    // מעדיפים את השיוך לפי מזהה; נופלים לאימייל רק כל עוד המעבר נמשך
+    function householdOf() {
+      return exists(uidDoc())
+        ? get(uidDoc()).data.householdId
+        : get(emailDoc()).data.householdId;
+    }
+
+    // כל משתמש קורא רק את השיוך של עצמו, בשני המפתחות.
+    // כתיבה עדיין חסומה לחלוטין — היא תיפתח בשלב ההרשמה העצמית, ואז
+    // תחת תנאים: משפחה חדשה שמזההּ הוא מזהה היוצר, או הזמנה תקפה.
+    match /users/{userId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == userId || userEmail() == userId);
       allow write: if false;
     }
 

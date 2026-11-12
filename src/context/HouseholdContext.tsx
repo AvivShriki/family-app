@@ -7,9 +7,11 @@ import { DEMO_MODE } from '../config/demo';
 /**
  * משק בית = תא נתונים מבודד של משפחה אחת.
  * כל הנתונים (תיעוד התינוקת והפרופיל שלה) חיים תחת
- * households/{householdId}, והשיוך נשמר במסמך users/{email}.
- * המפתח הוא האימייל ולא ה-uid, כדי שאפשר יהיה לצרף משפחה מהקונסולה
- * בלי להעתיק מזהים. בלי השכבה הזו כל מי שמחובר רואה את הנתונים של כולם.
+ * households/{householdId}, והשיוך נשמר במסמך users/{uid}.
+ *
+ * המפתח הוא מזהה המשתמש ולא האימייל: אימייל אפשר לכתוב בכמה צורות
+ * שמגיעות לאותה תיבה (ב-Gmail נקודות נבלעות), ומזהה המשתמש יציב,
+ * ייחודי, ולא ניתן לזיוף — וזה מה שההרשמה העצמית תישען עליו.
  */
 interface HouseholdContextType {
   householdId: string | null;
@@ -37,10 +39,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (DEMO_MODE) return;
 
-    // Firebase מנרמל אימייל לאותיות קטנות; מיישרים קו כדי שהמסמך יימצא
-    const email = user?.email?.trim().toLowerCase();
-
-    if (!user || !email) {
+    if (!user) {
       setHouseholdId(null);
       setLoading(false);
       setError(null);
@@ -51,7 +50,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
     // היה עולה קריאות מיותרות מהמכסה החינמית.
     let cancelled = false;
     setLoading(true);
-    getDoc(doc(db, 'users', email))
+    getDoc(doc(db, 'users', user.uid))
       .then((snap) => {
         if (cancelled) return;
         const id = snap.exists() ? (snap.data().householdId as string | undefined) : undefined;
