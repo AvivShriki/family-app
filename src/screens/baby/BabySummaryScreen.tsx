@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useBabyLogs } from '../../context/BabyLogsContext';
+import { useMedications } from '../../context/MedicationsContext';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 import { useBabyDate } from './BabyDateContext';
@@ -8,6 +9,7 @@ import { fmtDuration, isSameDay } from '../../utils/dates';
 
 export default function BabySummaryScreen() {
   const { items: allLogs } = useBabyLogs();
+  const { activeToday } = useMedications();
   // התאריך משותף עם היומן — "סיכום" נפתח על היום שצפינו בו, לא על היום הנוכחי
   const { date: selectedDate, setDate: setSelectedDate } = useBabyDate();
 
@@ -31,8 +33,13 @@ export default function BabySummaryScreen() {
   const totalSleepMs = sleeps.reduce((s, l) => s + ((l.endTimestamp ?? 0) - l.timestamp), 0);
 
   const diapers = logs.filter((l) => l.type === 'diaper');
-  const vitaminDone = logs.some((l) => l.type === 'vitamin');
-  const ironDone = logs.some((l) => l.type === 'iron');
+  // משימות היום לפי התרופות שהמשפחה הגדירה, ולא לפי רשימה קבועה
+  const missions = activeToday.map((m) => ({
+    id: m.id,
+    emoji: m.emoji,
+    label: m.name,
+    done: logs.some((l) => l.type === 'medication' && l.medicationId === m.id),
+  }));
 
   const stats: { emoji: string; value: string; label: string; color: string }[] = [
     { emoji: '🍼', value: String(feedings.length), label: 'ארוחות', color: colors.pink },
@@ -76,13 +83,16 @@ export default function BabySummaryScreen() {
         </View>
 
         {/* Missions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>משימות יומיות</Text>
-          <View style={styles.missionsRow}>
-            <MissionTile done={vitaminDone} emoji="☀️" label="ויטמין D" />
-            <MissionTile done={ironDone} emoji="💧" label="ברזל" />
+        {missions.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>משימות יומיות</Text>
+            <View style={styles.missionsRow}>
+              {missions.map((m) => (
+                <MissionTile key={m.id} done={m.done} emoji={m.emoji} label={m.label} />
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {/* Sleep breakdown */}
         {sleeps.length > 0 && (

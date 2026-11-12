@@ -5,6 +5,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { HouseholdProvider } from './src/context/HouseholdContext';
 import { BabyLogsProvider } from './src/context/BabyLogsContext';
 import { MessagesProvider } from './src/context/MessagesContext';
+import { MedicationsProvider } from './src/context/MedicationsContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
@@ -14,8 +15,10 @@ export default function App() {
         <HouseholdProvider>
           <BabyLogsProvider>
             <MessagesProvider>
-              <StatusBar style="dark" />
-              <AppNavigator />
+              <MedicationsProvider>
+                <StatusBar style="dark" />
+                <AppNavigator />
+              </MedicationsProvider>
             </MessagesProvider>
           </BabyLogsProvider>
         </HouseholdProvider>

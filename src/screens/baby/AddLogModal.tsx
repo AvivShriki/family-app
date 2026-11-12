@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBabyLogs } from '../../context/BabyLogsContext';
+import { useMedications } from '../../context/MedicationsContext';
 import { useAuth } from '../../context/AuthContext';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, font } from '../../config/theme';
@@ -28,12 +29,11 @@ interface Props {
 
 type LogType = BabyLog['type'];
 
+// סוגי הבסיס. התרופות והתוספים מגיעים מהרשימה של המשפחה ונוספים לרשת.
 const TYPES: { type: LogType; emoji: string; label: string }[] = [
   { type: 'feeding', emoji: '🍼', label: 'ארוחה' },
   { type: 'sleep', emoji: '😴', label: 'שינה' },
   { type: 'diaper', emoji: '💩', label: 'חיתול' },
-  { type: 'vitamin', emoji: '☀️', label: 'ויטמין D' },
-  { type: 'iron', emoji: '💧', label: 'ברזל' },
   { type: 'note', emoji: '📝', label: 'הערה' },
 ];
 
@@ -63,6 +63,7 @@ function hhmmFromTs(ts: number) {
 export default function AddLogModal({ visible, onClose, selectedDate, editLog }: Props) {
   const { user } = useAuth();
   const { add, update } = useBabyLogs();
+  const { medications, activeToday } = useMedications();
 
   // מצב עריכה מאותחל ישירות מ-editLog — ההורה מרנדר מחדש עם key שונה
   // (id הרשומה או 'new'), כך שאין צורך לסנכרן את הטופס בתוך effect.
@@ -79,8 +80,10 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const [amountMl, setAmountMl] = useState(editLog?.amountMl ? String(editLog.amountMl) : '');
   const [diaperType, setDiaperType] = useState<string>(editLog?.diaperType ?? 'dirty');
   const [note, setNote] = useState(editLog?.details ?? '');
-  const [vitaminGiven, setVitaminGiven] = useState(false);
-  const [ironGiven, setIronGiven] = useState(false);
+  // התרופות שסומנו כניתנות יחד עם הארוחה הזו
+  const [givenWith, setGivenWith] = useState<string[]>([]);
+  // התרופה שנבחרה כשהרישום עצמו הוא נטילת תרופה
+  const [medId, setMedId] = useState<string>(editLog?.medicationId ?? '');
 
   // בוררים נפתחים מעל המודל. הם מורכבים רק כשפתוחים, כדי שכל פתיחה
   // תתחיל מהערך הנוכחי של השדה ולא מזה שנבחר בפעם הקודמת.
@@ -95,8 +98,8 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     setAmountMl('');
     setDiaperType('dirty');
     setNote('');
-    setVitaminGiven(false);
-    setIronGiven(false);
+    setGivenWith([]);
+    setMedId('');
   };
 
   const handleClose = () => {
@@ -104,8 +107,9 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     onClose();
   };
 
-  const pickType = (type: LogType) => {
+  const pickType = (type: LogType, medicationId = '') => {
     setSelectedType(type);
+    setMedId(medicationId);
     setStep('form');
   };
 
@@ -119,24 +123,30 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     if (selectedType === 'feeding') entry.amountMl = parseInt(amountMl) || 0;
     if (selectedType === 'sleep' && endTime) entry.endTimestamp = parseTime(endTime, selectedDate);
     if (selectedType === 'diaper') entry.diaperType = diaperType as any;
+    if (selectedType === 'medication' && medId) entry.medicationId = medId;
     if (note) entry.details = note;
 
     if (editLog) {
       await update(editLog.id, entry);
     } else {
       await add(entry as any);
-      // Vitamin D and iron are given during feedings — log them alongside instead of a separate entry
-      if (selectedType === 'feeding' && vitaminGiven) {
-        await add({ type: 'vitamin', timestamp: ts, loggedBy: entry.loggedBy } as any);
-      }
-      if (selectedType === 'feeding' && ironGiven) {
-        await add({ type: 'iron', timestamp: ts, loggedBy: entry.loggedBy } as any);
+      // תרופות ניתנות לרוב יחד עם הארוחה — נרשמות לצידה באותה שעה
+      for (const id of givenWith) {
+        await add({
+          type: 'medication',
+          medicationId: id,
+          timestamp: ts,
+          loggedBy: entry.loggedBy,
+        } as any);
       }
     }
     handleClose();
   };
 
-  const typeMeta = TYPES.find((t) => t.type === selectedType)!;
+  const selectedMed = medications.find((m) => m.id === medId);
+  const typeMeta = selectedMed
+    ? { type: 'medication' as LogType, emoji: selectedMed.emoji, label: selectedMed.name }
+    : (TYPES.find((t) => t.type === selectedType) ?? TYPES[TYPES.length - 1]);
 
   return (
     <>
@@ -183,6 +193,16 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                     <Text style={styles.typeLabel}>{t.label}</Text>
                   </TouchableOpacity>
                 ))}
+                {activeToday.map((m) => (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.typeBtn}
+                    onPress={() => pickType('medication', m.id)}
+                  >
+                    <Text style={styles.typeEmoji}>{m.emoji}</Text>
+                    <Text style={styles.typeLabel}>{m.name}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             ) : (
               /* Form fields */
@@ -220,25 +240,35 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                   </Field>
                 )}
 
-                {/* Vitamin D / iron given at this feeding */}
-                {selectedType === 'feeding' && !editLog && (
+                {/* תרופות שניתנו יחד עם הארוחה */}
+                {selectedType === 'feeding' && !editLog && activeToday.length > 0 && (
                   <Field label="ניתנו גם בארוחה זו">
                     <View style={styles.checkRow}>
-                      <CheckChip
-                        emoji="☀️"
-                        label="ויטמין D"
-                        checked={vitaminGiven}
-                        onPress={() => setVitaminGiven((v) => !v)}
-                      />
-                      <CheckChip
-                        emoji="💧"
-                        label="ברזל"
-                        checked={ironGiven}
-                        onPress={() => setIronGiven((v) => !v)}
-                      />
+                      {activeToday.map((m) => (
+                        <CheckChip
+                          key={m.id}
+                          emoji={m.emoji}
+                          label={m.name}
+                          checked={givenWith.includes(m.id)}
+                          onPress={() =>
+                            setGivenWith((prev) =>
+                              prev.includes(m.id)
+                                ? prev.filter((x) => x !== m.id)
+                                : [...prev, m.id],
+                            )
+                          }
+                        />
+                      ))}
                     </View>
                   </Field>
                 )}
+
+                {/* מינון התרופה, כשהוגדר לה כזה */}
+                {selectedType === 'medication' && selectedMed?.dose ? (
+                  <Field label="מינון">
+                    <Text style={styles.doseText}>{selectedMed.dose}</Text>
+                  </Field>
+                ) : null}
 
                 {/* Diaper type */}
                 {selectedType === 'diaper' && (
@@ -396,6 +426,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 60 },
   backText: { fontSize: 16, color: colors.pinkAccent, fontWeight: '600' },
   title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  doseText: { fontSize: font.body, color: colors.text, textAlign: 'right' },
   closeBtn: { width: 60, height: 44, alignItems: 'flex-end', justifyContent: 'center' },
   closeText: { fontSize: 18, color: colors.textMuted },
 

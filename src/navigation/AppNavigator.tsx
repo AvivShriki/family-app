@@ -13,6 +13,7 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import InviteScreen from '../screens/InviteScreen';
 import InviteWelcomeScreen from '../screens/InviteWelcomeScreen';
 import ChatScreen from '../screens/ChatScreen';
+import MedicationsScreen from '../screens/baby/MedicationsScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BabyNavigator from '../screens/baby/BabyNavigator';
@@ -122,6 +123,11 @@ export default function AppNavigator() {
               name="Chat"
               component={ChatScreen}
               options={{ title: 'הודעות למשפחה 💬' }}
+            />
+            <Stack.Screen
+              name="Medications"
+              component={MedicationsScreen}
+              options={{ title: 'תרופות ותוספים 💊' }}
             />
           </>
         )}

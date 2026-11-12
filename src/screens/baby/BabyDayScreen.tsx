@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBabyLogs } from '../../context/BabyLogsContext';
+import { useMedications } from '../../context/MedicationsContext';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
@@ -17,6 +18,8 @@ const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
   sleep: { emoji: '😴', label: 'שינה', bg: '#BDE0FE' },
   diaper: { emoji: '💩', label: 'חיתול', bg: '#FFF3CD' },
   note: { emoji: '📝', label: 'הערה', bg: '#E8F5E9' },
+  medication: { emoji: '💊', label: 'תרופה', bg: '#FFF8DC' },
+  // המבנה הישן, לרישומים שנכתבו לפני המעבר לרשימה
   vitamin: { emoji: '☀️', label: 'ויטמין D', bg: '#FFF8DC' },
   iron: { emoji: '💧', label: 'ברזל', bg: '#FFE4E1' },
 };
@@ -32,6 +35,7 @@ export default function BabyDayScreen() {
   const navigation = useNavigation<any>();
   const { items: allLogs, remove } = useBabyLogs();
   const { profile } = useBabyProfile();
+  const { medications, activeToday } = useMedications();
   // התאריך משותף לכל מדור התינוקת (יומן + סיכום) דרך context —
   // כך מעבר לטאב "סיכום" נשאר על היום שצפינו בו
   const { date: selectedDate, setDate: setSelectedDate } = useBabyDate();
@@ -57,10 +61,13 @@ export default function BabyDayScreen() {
     [allLogs, selectedDate],
   );
 
-  const missionsDone = {
-    vitamin: todayLogs.some((l) => l.type === 'vitamin'),
-    iron: todayLogs.some((l) => l.type === 'iron'),
-  };
+  // משימות היום נגזרות מהתרופות הפעילות, לא מרשימה קבועה
+  const missions = activeToday.map((m) => ({
+    id: m.id,
+    emoji: m.emoji,
+    label: m.name,
+    done: todayLogs.some((l) => l.type === 'medication' && l.medicationId === m.id),
+  }));
 
   const goDay = (delta: number) => {
     const d = new Date(selectedDate);
@@ -110,10 +117,13 @@ export default function BabyDayScreen() {
         </View>
 
         {/* Missions */}
-        <View style={styles.missionsRow}>
-          <MissionChip done={missionsDone.iron} emoji="💧" label="ברזל" />
-          <MissionChip done={missionsDone.vitamin} emoji="☀️" label="ויטמין D" />
-        </View>
+        {missions.length > 0 ? (
+          <View style={styles.missionsRow}>
+            {missions.map((m) => (
+              <MissionChip key={m.id} done={m.done} emoji={m.emoji} label={m.label} />
+            ))}
+          </View>
+        ) : null}
 
         {/* Timeline */}
         {todayLogs.length === 0 ? (
@@ -130,6 +140,8 @@ export default function BabyDayScreen() {
               isLast={i === todayLogs.length - 1}
               onEdit={() => setEditTarget(log)}
               onLongPress={() => setDeleteTargetId(log.id)}
+              medName={medications.find((m) => m.id === log.medicationId)?.name}
+              medEmoji={medications.find((m) => m.id === log.medicationId)?.emoji}
             />
           ))
         )}
@@ -170,13 +182,19 @@ function TimelineItem({
   isLast,
   onEdit,
   onLongPress,
+  medName,
+  medEmoji,
 }: {
   log: BabyLog;
   isLast: boolean;
   onEdit: () => void;
   onLongPress: () => void;
+  medName?: string;
+  medEmoji?: string;
 }) {
-  const meta = LOG_META[log.type] ?? LOG_META.note;
+  const base = LOG_META[log.type] ?? LOG_META.note;
+  // רישום תרופה מציג את שם התרופה עצמה, לא את המילה "תרופה"
+  const meta = medName ? { ...base, label: medName, emoji: medEmoji || base.emoji } : base;
 
   let detail = '';
   if (log.type === 'feeding' && log.amountMl) detail = `${log.amountMl} מ"ל`;

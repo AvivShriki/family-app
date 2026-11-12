@@ -130,6 +130,16 @@ export default function BabySettingsScreen({ navigation }: any) {
         {status === 'error' && <Text style={styles.error}>השמירה לא הצליחה — בדקו את החיבור ונסו שוב</Text>}
       </View>
 
+      <TouchableOpacity
+        style={styles.accountRow}
+        onPress={() => navigation.navigate('Medications')}
+        accessibilityLabel="תרופות ותוספים"
+      >
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        <Text style={styles.accountLabel}>תרופות ותוספים</Text>
+        <Ionicons name="medkit-outline" size={18} color={colors.textLight} />
+      </TouchableOpacity>
+
       {/* פעולות חשבון — כאן ולא בכותרת דף הבית, ששמורה לניווט */}
       <TouchableOpacity
         style={styles.accountRow}

@@ -11,8 +11,7 @@ const DOT_COLOR: Record<string, string> = {
   feeding: '#F4A7B9',
   sleep: '#90CAF9',
   diaper: '#FFD54F',
-  vitamin: '#FFF176',
-  iron: '#EF9A9A',
+  medication: '#FFF176',
   note: '#A5D6A7',
 };
 
@@ -167,8 +166,7 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
                   feeding: 'ארוחות',
                   sleep: 'שינה',
                   diaper: 'חיתול',
-                  vitamin: 'ויטמין D',
-                  iron: 'ברזל',
+                  medication: 'תרופה',
                   note: 'הערה',
                 }[type]
               }

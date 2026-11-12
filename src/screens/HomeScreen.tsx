@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useBabyLogs } from '../context/BabyLogsContext';
 import { useMessages } from '../context/MessagesContext';
+import { useMedications } from '../context/MedicationsContext';
 import { useBabyProfile, DEFAULT_PROFILE } from '../hooks/useBabyProfile';
 import Button from '../components/Button';
 import { BabyLog } from '../types';
@@ -43,7 +44,7 @@ function timeAgo(ts: number): string {
 }
 
 // תיאור הפעולה האחרונה בשפה של הורים
-function lastLogText(log: BabyLog | undefined): string {
+function lastLogText(log: BabyLog | undefined, medName?: string): string {
   if (!log) return 'עוד אין תיעוד — הכול רגוע 💤';
   const ago = timeAgo(log.timestamp);
   switch (log.type) {
@@ -55,6 +56,8 @@ function lastLogText(log: BabyLog | undefined): string {
         : `😴 נרדמה ${ago}`;
     case 'diaper':
       return `💩 חיתול הוחלף ${ago}`;
+    case 'medication':
+      return `💊 ${medName ?? 'תרופה'} ניתנה ${ago}`;
     case 'vitamin':
       return `☀️ ויטמין D ניתן ${ago}`;
     case 'iron':
@@ -69,6 +72,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { items: babyLogs } = useBabyLogs();
   const { profile } = useBabyProfile();
   const { messages } = useMessages();
+  const { medications, activeToday } = useMedications();
 
   // שני הכפתורים החדשים עוד לא מחוברים לכלום. לחיצה שלא מחזירה דבר
   // מלמדת שהאפליקציה שבורה, ולכן היא מציגה הודעה קצרה במקום כלום.
@@ -97,9 +101,17 @@ export default function HomeScreen({ navigation }: Props) {
     [babyLogs],
   );
   // הרשימה המשותפת ממוינת עולה, ולכן האחרון שתועד הוא האיבר האחרון
-  const statusText = lastLogText(babyLogs[babyLogs.length - 1]);
-  const vitaminDone = todayLogs.some((l) => l.type === 'vitamin');
-  const ironDone = todayLogs.some((l) => l.type === 'iron');
+  const lastLog = babyLogs[babyLogs.length - 1];
+  const statusText = lastLogText(
+    lastLog,
+    medications.find((m) => m.id === lastLog?.medicationId)?.name,
+  );
+  // המשימות נגזרות מהתרופות שהמשפחה הגדירה, ולא מרשימה קבועה
+  const missions = activeToday.map((m) => ({
+    id: m.id,
+    label: m.name,
+    done: todayLogs.some((l) => l.type === 'medication' && l.medicationId === m.id),
+  }));
 
   const lastMessage = messages[messages.length - 1];
 
@@ -176,18 +188,17 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.statusChipText}>{statusText}</Text>
         </View>
 
-        <View style={styles.missionsRow}>
-          <View style={[styles.missionChip, vitaminDone && styles.missionDone]}>
-            <Text style={[styles.missionText, vitaminDone && styles.missionTextDone]}>
-              {vitaminDone ? '✓ ויטמין D' : '○ ויטמין D — עוד לא'}
-            </Text>
+        {missions.length > 0 ? (
+          <View style={styles.missionsRow}>
+            {missions.map((m) => (
+              <View key={m.id} style={[styles.missionChip, m.done && styles.missionDone]}>
+                <Text style={[styles.missionText, m.done && styles.missionTextDone]}>
+                  {m.done ? `✓ ${m.label}` : `○ ${m.label} — עוד לא`}
+                </Text>
+              </View>
+            ))}
           </View>
-          <View style={[styles.missionChip, ironDone && styles.missionDone]}>
-            <Text style={[styles.missionText, ironDone && styles.missionTextDone]}>
-              {ironDone ? '✓ ברזל' : '○ ברזל — עוד לא'}
-            </Text>
-          </View>
-        </View>
+        ) : null}
 
         <Button
           label="פתיחת היומן"
