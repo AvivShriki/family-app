@@ -1,26 +1,24 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  ScrollView,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import { useAuth } from '../../context/AuthContext';
 import DatePickerModal from '../../components/DatePickerModal';
 import Button from '../../components/Button';
+import TextField from '../../components/TextField';
+import Card from '../../components/Card';
+import Banner from '../../components/Banner';
+import ListRow from '../../components/ListRow';
+import SectionHeader from '../../components/SectionHeader';
+import Screen from '../../components/Screen';
 import { pickProfileImage } from '../../utils/imagePicker';
-import { colors, spacing, radius, shadow } from '../../config/theme';
+import { colors, spacing, radius, type, TOUCH } from '../../config/theme';
 
 export default function BabySettingsScreen({ navigation }: any) {
   const { profile, save } = useBabyProfile();
-  const { logout } = useAuth();
-  // עריכות המשתמש חיות בנפרד מהפרופיל; כל עוד לא נערך — מציגים את הערך מהשרת.
-  // כך אין צורך לסנכרן state בתוך effect כשהפרופיל נטען.
+  const { user, logout } = useAuth();
+  // עריכות המשתמש חיות בנפרד מהפרופיל; כל עוד לא נערך — מציגים את הערך
+  // מהשרת. כך אין צורך לסנכרן state בתוך effect כשהפרופיל נטען.
   const [nameEdit, setNameEdit] = useState<string | null>(null);
   const [birthDateEdit, setBirthDateEdit] = useState<string | null>(null);
   const [familyNameEdit, setFamilyNameEdit] = useState<string | null>(null);
@@ -28,11 +26,12 @@ export default function BabySettingsScreen({ navigation }: any) {
   const [photoEdit, setPhotoEdit] = useState<string | null | undefined>(undefined);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [saving, setSaving] = useState(false);
 
   const name = nameEdit ?? profile.name;
   const birthDate = birthDateEdit ?? profile.birthDate;
   const familyName = familyNameEdit ?? profile.familyName ?? '';
-  const photoUrl = photoEdit === undefined ? profile.photoUrl : photoEdit ?? undefined;
+  const photoUrl = photoEdit === undefined ? profile.photoUrl : (photoEdit ?? undefined);
 
   const dirty =
     name.trim() !== profile.name ||
@@ -52,6 +51,7 @@ export default function BabySettingsScreen({ navigation }: any) {
   };
 
   const onSave = async () => {
+    setSaving(true);
     try {
       await save({ name: name.trim(), birthDate, photoUrl, familyName: familyName.trim() });
       setPhotoEdit(undefined); // מסונכרן מחדש מהפרופיל השמור
@@ -59,116 +59,128 @@ export default function BabySettingsScreen({ navigation }: any) {
       setStatus('saved');
     } catch {
       setStatus('error');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    // המסך חייב להיגלל: הכרטיס לבדו ממלא מסך טלפון, והשורות שמתחתיו
-    // היו נחתכות בלי שום דרך להגיע אליהן
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>פרופיל התינוקת 🌸</Text>
+    <Screen tabBar>
+      <SectionHeader title="פרופיל התינוקת" />
 
-        {/* תמונת פרופיל — מוצגת בכל האפליקציה */}
+      <Card>
+        {/* ---- תמונת הפרופיל — מוצגת בכל האפליקציה ---- */}
         <View style={styles.photoSection}>
-          <TouchableOpacity onPress={onPickPhoto} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={onPickPhoto}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={photoUrl ? 'החלפת תמונת הפרופיל' : 'הוספת תמונת פרופיל'}
+          >
             {photoUrl ? (
               <Image source={{ uri: photoUrl }} style={styles.photo} />
             ) : (
               <View style={[styles.photo, styles.photoPlaceholder]}>
-                <Text style={styles.photoEmoji}>👶</Text>
+                <MaterialCommunityIcons name="baby-face-outline" size={48} color={colors.sage} />
               </View>
             )}
             <View style={styles.photoBadge}>
-              <Ionicons name="camera" size={14} color={colors.white} />
+              <Ionicons name="camera" size={15} color={colors.white} />
             </View>
           </TouchableOpacity>
-          <Text style={styles.photoHint}>
-            {photoUrl ? 'לחיצה על התמונה מחליפה אותה' : 'לחיצה מוסיפה תמונת פרופיל 📷'}
+          <Text style={[type.caption, styles.photoHint]}>
+            {photoUrl ? 'נגיעה בתמונה מחליפה אותה' : 'נגיעה מוסיפה תמונת פרופיל'}
           </Text>
           {photoUrl ? (
-            <TouchableOpacity onPress={() => { setPhotoEdit(null); setStatus('idle'); }} hitSlop={8}>
-              <Text style={styles.photoRemove}>הסרת התמונה</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setPhotoEdit(null);
+                setStatus('idle');
+              }}
+              style={styles.removeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="הסרת התמונה"
+            >
+              <Text style={styles.removeText}>הסרת התמונה</Text>
             </TouchableOpacity>
           ) : null}
         </View>
 
-        <Text style={styles.label}>שם</Text>
-        <TextInput
-          style={styles.input}
+        <TextField
+          label="שם"
           value={name}
           onChangeText={(t) => {
             setNameEdit(t);
             setStatus('idle');
           }}
-          placeholder="שם התינוקת"
-          placeholderTextColor={colors.textMuted}
+          placeholder="שם התינוק או התינוקת"
         />
 
-        <Text style={styles.label}>תאריך לידה</Text>
-        <TouchableOpacity style={styles.input} onPress={() => setPickerOpen(true)}>
-          {/* משפחה חדשה מגיעה בלי תאריך; בלי הבדיקה הזו מוצג "Invalid Date" */}
-          <Text style={[styles.dateText, !birthDate && styles.datePlaceholder]}>
-            {birthDate ? new Date(birthDate).toLocaleDateString('he-IL') : 'בחירת תאריך'}
-          </Text>
-        </TouchableOpacity>
-        <Text style={styles.agePreview}>{getAgeText(birthDate)}</Text>
+        <View style={styles.fieldWrap}>
+          <Text style={type.label}>תאריך לידה</Text>
+          <TouchableOpacity
+            style={styles.picker}
+            onPress={() => setPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="תאריך לידה, לבחירה"
+          >
+            <Ionicons name="calendar-outline" size={19} color={colors.sage} />
+            {/* משפחה חדשה מגיעה בלי תאריך; בלי הבדיקה הזו מוצג "Invalid Date" */}
+            <Text style={[type.bodyStrong, styles.pickerText, !birthDate && styles.placeholder]}>
+              {birthDate ? new Date(birthDate).toLocaleDateString('he-IL') : 'בחירת תאריך'}
+            </Text>
+            <Ionicons name="chevron-down" size={17} color={colors.textMuted} />
+          </TouchableOpacity>
+          <Text style={type.small}>{getAgeText(birthDate)}</Text>
+        </View>
 
-        <Text style={styles.label}>שם המשפחה</Text>
-        <TextInput
-          style={styles.input}
+        <TextField
+          label="שם המשפחה"
           value={familyName}
           onChangeText={(t) => {
             setFamilyNameEdit(t);
             setStatus('idle');
           }}
-          placeholder="לברכה בדף הבית, למשל: שריקי"
-          placeholderTextColor={colors.textMuted}
+          placeholder="לברכה בדף הבית"
+          hint="מופיע בפתיחת האפליקציה: בוקר טוב, משפחת..."
         />
 
-        <Button label="שמירה" onPress={onSave} disabled={!dirty || !valid} />
+        {status === 'saved' ? (
+          <Banner tone="success" text={`הפרופיל של ${profile.name} עודכן`} />
+        ) : null}
+        {status === 'error' ? (
+          <Banner tone="error" text="השמירה לא הצליחה — בדקו את החיבור ונסו שוב" />
+        ) : null}
 
-        {status === 'saved' && <Text style={styles.saved}>נשמר! הפרופיל של {profile.name} מעודכן 🌸</Text>}
-        {status === 'error' && <Text style={styles.error}>השמירה לא הצליחה — בדקו את החיבור ונסו שוב</Text>}
+        <Button label="שמירה" onPress={onSave} disabled={!dirty || !valid} loading={saving} />
+      </Card>
+
+      <View style={styles.section}>
+        <SectionHeader title="המשפחה" />
+        <ListRow
+          icon="medkit-outline"
+          label="תרופות ותוספים"
+          hint="מה שמוגדר כאן מופיע בתיעוד ובמשימות היום"
+          onPress={() => navigation.navigate('Medications')}
+        />
+        <ListRow
+          icon="person-add-outline"
+          label="הוספת בן משפחה"
+          hint="עד שלושה אנשים באותה משפחה"
+          onPress={() => navigation.navigate('Invite')}
+        />
       </View>
 
-      <TouchableOpacity
-        style={styles.accountRow}
-        onPress={() => navigation.navigate('Medications')}
-        accessibilityLabel="תרופות ותוספים"
-      >
-        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-        <Text style={styles.accountLabel}>תרופות ותוספים</Text>
-        <Ionicons name="medkit-outline" size={18} color={colors.textLight} />
-      </TouchableOpacity>
-
-      {/* פעולות חשבון — כאן ולא בכותרת דף הבית, ששמורה לניווט */}
-      <TouchableOpacity
-        style={styles.accountRow}
-        onPress={() => navigation.navigate('Invite')}
-        accessibilityLabel="הוספת בן משפחה"
-      >
-        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-        <Text style={styles.accountLabel}>הוספת בן משפחה</Text>
-        <Ionicons name="person-add-outline" size={18} color={colors.textLight} />
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.accountRow}
-        onPress={() => navigation.navigate('ChangePassword')}
-        accessibilityLabel="שינוי סיסמה"
-      >
-        {/* ב-RTL האייקון המוביל יושב בימין והחץ סוגר בשמאל */}
-        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-        <Text style={styles.accountLabel}>שינוי סיסמה</Text>
-        <Ionicons name="key-outline" size={18} color={colors.textLight} />
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.accountRow} onPress={logout} accessibilityLabel="יציאה">
-        <View style={{ width: 18 }} />
-        <Text style={[styles.accountLabel, styles.logoutLabel]}>יציאה</Text>
-        <Ionicons name="log-out-outline" size={18} color={colors.danger} />
-      </TouchableOpacity>
+      <View style={styles.section}>
+        <SectionHeader title="החשבון" />
+        <ListRow
+          icon="key-outline"
+          label="שינוי סיסמה"
+          hint={user?.email ?? undefined}
+          onPress={() => navigation.navigate('ChangePassword')}
+        />
+        <ListRow icon="log-out-outline" label="יציאה" onPress={logout} tone="danger" action />
+      </View>
 
       <DatePickerModal
         visible={pickerOpen}
@@ -179,99 +191,45 @@ export default function BabySettingsScreen({ navigation }: any) {
         }}
         onClose={() => setPickerOpen(false)}
       />
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
-  // הריווח התחתון מפנה מקום לסרגל הטאבים ולכפתור ההוספה שמרחפים מעליו
-  content: { padding: spacing.md, paddingBottom: 120 },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    ...shadow.soft,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
-    textAlign: 'right',
-  },
-  photoSection: { alignItems: 'center', marginBottom: spacing.lg },
-  photo: { width: 92, height: 92, borderRadius: 46, backgroundColor: colors.pink },
+  photoSection: { alignItems: 'center', marginBottom: spacing.lg, gap: spacing.xs },
+  photo: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.mossSoft },
   photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  photoEmoji: { fontSize: 44 },
   photoBadge: {
     position: 'absolute',
     bottom: 0,
     left: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.pinkAccent,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.sage,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: colors.white,
   },
-  photoHint: { fontSize: 12, color: colors.textMuted, marginTop: spacing.sm },
-  photoRemove: { fontSize: 12, color: colors.danger, fontWeight: '600', marginTop: spacing.xs },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textLight,
-    marginBottom: spacing.xs,
-    textAlign: 'right',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: 15,
-    color: colors.text,
-    textAlign: 'right',
-    backgroundColor: colors.cream,
-    marginBottom: spacing.md,
-  },
-  accountRow: {
-    flexDirection: 'row',
+  photoHint: { marginTop: spacing.sm, textAlign: 'center' },
+  removeBtn: { minHeight: TOUCH - 10, justifyContent: 'center' },
+  removeText: { ...type.caption, color: colors.danger, fontWeight: '700' },
+
+  fieldWrap: { marginBottom: spacing.md, gap: spacing.xs },
+  picker: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    minHeight: 56,
-    marginTop: spacing.md,
-    ...shadow.soft,
+    backgroundColor: colors.cream,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    minHeight: TOUCH + 6,
   },
-  accountLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'right' },
-  logoutLabel: { color: colors.danger },
-  dateText: { fontSize: 15, color: colors.text, textAlign: 'right' },
-  datePlaceholder: { color: colors.textMuted },
-  agePreview: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: 'right',
-    marginTop: -spacing.sm,
-    marginBottom: spacing.md,
-  },
-  saved: {
-    fontSize: 14,
-    color: colors.success,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    fontWeight: '600',
-  },
-  error: {
-    fontSize: 14,
-    color: colors.danger,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    fontWeight: '600',
-  },
+  pickerText: { flex: 1 },
+  placeholder: { ...type.body, color: colors.textMuted },
+
+  section: { marginTop: spacing.lg },
 });

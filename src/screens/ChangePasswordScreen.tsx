@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
-import { colors, spacing, radius, font, shadow } from '../config/theme';
+import Card from '../components/Card';
+import TextField from '../components/TextField';
+import Banner from '../components/Banner';
+import { colors, spacing, type, CONTENT_MAX } from '../config/theme';
 
 // המינימום ש-Firebase מקבל. בדיקה מקומית חוסכת סיבוב לשרת ונותנת
 // הודעה בעברית במקום קוד שגיאה.
@@ -39,7 +34,6 @@ export default function ChangePasswordScreen({ navigation }: any) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [reveal, setReveal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
@@ -83,16 +77,14 @@ export default function ChangePasswordScreen({ navigation }: any) {
   if (done) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.doneEmoji}>🔐</Text>
-        <Text style={styles.doneTitle}>הסיסמה הוחלפה</Text>
-        <Text style={styles.doneBody}>
+        <View style={styles.doneMark}>
+          <Ionicons name="shield-checkmark-outline" size={34} color={colors.success} />
+        </View>
+        <Text style={[type.h2, styles.center]}>הסיסמה הוחלפה</Text>
+        <Text style={[type.body, styles.center, styles.doneBody]}>
           בכניסה הבאה מכל מכשיר תשתמשו בסיסמה החדשה.
         </Text>
-        <Button
-          label="חזרה"
-          onPress={() => navigation.goBack()}
-          style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
-        />
+        <Button label="חזרה" onPress={() => navigation.goBack()} style={styles.doneBtn} />
       </View>
     );
   }
@@ -103,61 +95,47 @@ export default function ChangePasswordScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.card}>
-          <Text style={styles.account}>{user?.email}</Text>
+        <Card>
+          <View style={styles.account}>
+            <Ionicons name="person-circle-outline" size={20} color={colors.textMuted} />
+            <Text style={type.small}>{user?.email}</Text>
+          </View>
 
-          <Text style={styles.label}>הסיסמה הנוכחית</Text>
-          <TextInput
-            style={styles.input}
+          <TextField
+            label="הסיסמה הנוכחית"
             value={current}
             onChangeText={edit(setCurrent)}
-            secureTextEntry={!reveal}
+            password
             autoCapitalize="none"
-            textAlign="right"
+            autoComplete="current-password"
             placeholder="הסיסמה שאיתה נכנסתם"
-            placeholderTextColor={colors.textMuted}
           />
-
-          <Text style={styles.label}>סיסמה חדשה</Text>
-          <TextInput
-            style={styles.input}
+          <TextField
+            label="סיסמה חדשה"
             value={next}
             onChangeText={edit(setNext)}
-            secureTextEntry={!reveal}
+            password
             autoCapitalize="none"
-            textAlign="right"
+            autoComplete="new-password"
             placeholder={`לפחות ${MIN_LENGTH} תווים`}
-            placeholderTextColor={colors.textMuted}
           />
-
-          <Text style={styles.label}>אימות הסיסמה החדשה</Text>
-          <TextInput
-            style={styles.input}
+          <TextField
+            label="אימות הסיסמה החדשה"
             value={confirm}
             onChangeText={edit(setConfirm)}
-            secureTextEntry={!reveal}
+            password
             autoCapitalize="none"
-            textAlign="right"
+            autoComplete="new-password"
             placeholder="שוב, כדי לוודא"
-            placeholderTextColor={colors.textMuted}
           />
 
-          <TouchableOpacity onPress={() => setReveal((r) => !r)} hitSlop={8}>
-            <Text style={styles.reveal}>{reveal ? 'הסתרת הסיסמאות' : 'הצגת הסיסמאות'}</Text>
-          </TouchableOpacity>
+          {error ? <Banner tone="error" text={error} /> : null}
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Button label="שמירת הסיסמה" onPress={onSave} loading={loading} />
+        </Card>
 
-          <Button
-            label="שמירת הסיסמה"
-            onPress={onSave}
-            loading={loading}
-            style={{ marginTop: spacing.md }}
-          />
-        </View>
-
-        <Text style={styles.hint}>
-          מי ששכח את הסיסמה לגמרי לא יכול לאפס אותה כאן — צריך לפנות למי שפתח את החשבון.
+        <Text style={[type.small, styles.hint]}>
+          {'מי ששכח את הסיסמה לגמרי יכול לאפס אותה ממסך הכניסה, דרך "שכחתי סיסמה".'}
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -166,73 +144,37 @@ export default function ChangePasswordScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  content: { padding: spacing.md },
+  content: {
+    padding: spacing.md,
+    width: '100%',
+    maxWidth: CONTENT_MAX,
+    alignSelf: 'center',
+  },
+  account: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  hint: { textAlign: 'center', marginTop: spacing.md, paddingHorizontal: spacing.sm },
+
   centered: {
     flex: 1,
     backgroundColor: colors.cream,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
-  },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
     padding: spacing.lg,
-    ...shadow.soft,
   },
-  account: {
-    fontSize: font.small,
-    color: colors.textMuted,
-    textAlign: 'right',
+  doneMark: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: colors.successSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  label: {
-    fontSize: font.small,
-    color: colors.textLight,
-    textAlign: 'right',
-    marginBottom: spacing.xs,
-  },
-  input: {
-    backgroundColor: colors.cream,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    fontSize: font.body,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  reveal: {
-    fontSize: font.small,
-    color: colors.blueAccent,
-    textAlign: 'right',
-    marginBottom: spacing.sm,
-  },
-  error: {
-    fontSize: font.small,
-    color: colors.danger,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  hint: {
-    fontSize: font.small,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 19,
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.sm,
-  },
-  doneEmoji: { fontSize: 56, marginBottom: spacing.md },
-  doneTitle: {
-    fontSize: font.title,
-    fontWeight: font.weight.bold,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  doneBody: {
-    fontSize: font.body,
-    color: colors.textLight,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  center: { textAlign: 'center' },
+  doneBody: { marginTop: spacing.xs, maxWidth: 320 },
+  doneBtn: { marginTop: spacing.lg, alignSelf: 'stretch', maxWidth: 420 },
 });

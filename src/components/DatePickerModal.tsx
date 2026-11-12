@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
-import { colors, spacing, radius } from '../config/theme';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import BottomSheet from './BottomSheet';
+import { colors, spacing, radius, type, TOUCH } from '../config/theme';
 
 interface Props {
   visible: boolean;
-  value: string; // 'YYYY-MM-DD' or ''
+  value: string; // 'YYYY-MM-DD' או ''
   onSelect: (dateStr: string) => void;
   onClose: () => void;
 }
@@ -37,6 +39,7 @@ export default function DatePickerModal({ visible, value, onSelect, onClose }: P
   const month = viewDate.getMonth();
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
 
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
@@ -44,100 +47,116 @@ export default function DatePickerModal({ visible, value, onSelect, onClose }: P
 
   const goMonth = (delta: number) => setViewDate(new Date(year, month + delta, 1));
   const isSelected = (d: number) => value === toDateStr(year, month, d);
+  const isToday = (d: number) =>
+    d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+
+  const pick = (d: number) => {
+    onSelect(toDateStr(year, month, d));
+    onClose();
+  };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>בחר תאריך</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.close}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.monthBar}>
-            <TouchableOpacity onPress={() => goMonth(1)} style={styles.arrowBtn}>
-              <Text style={styles.arrow}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.monthTitle}>
-              {HE_MONTHS[month]} {year}
-            </Text>
-            <TouchableOpacity onPress={() => goMonth(-1)} style={styles.arrowBtn}>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.dowRow}>
-            {HE_DAYS.map((d) => (
-              <Text key={d} style={styles.dowText}>
-                {d}
-              </Text>
-            ))}
-          </View>
-
-          <View style={styles.grid}>
-            {cells.map((day, i) => {
-              if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
-              return (
-                <TouchableOpacity
-                  key={day}
-                  style={[styles.cell, isSelected(day) && styles.cellSelected]}
-                  onPress={() => {
-                    onSelect(toDateStr(year, month, day));
-                    onClose();
-                  }}
-                >
-                  <Text style={[styles.dayNum, isSelected(day) && styles.dayNumSelected]}>
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+    <BottomSheet visible={visible} title="בחירת תאריך" onClose={onClose} scroll={false}>
+      <View style={styles.monthBar}>
+        {/* בעברית הזמן זורם שמאלה: החץ השמאלי מקדם חודש */}
+        <TouchableOpacity
+          onPress={() => goMonth(1)}
+          style={styles.arrowBtn}
+          accessibilityRole="button"
+          accessibilityLabel="החודש הבא"
+        >
+          <Ionicons name="chevron-back" size={22} color={colors.sage} />
+        </TouchableOpacity>
+        <Text style={type.h3}>
+          {HE_MONTHS[month]} {year}
+        </Text>
+        <TouchableOpacity
+          onPress={() => goMonth(-1)}
+          style={styles.arrowBtn}
+          accessibilityRole="button"
+          accessibilityLabel="החודש הקודם"
+        >
+          <Ionicons name="chevron-forward" size={22} color={colors.sage} />
+        </TouchableOpacity>
       </View>
-    </Modal>
+
+      {/* row-reverse: יום ראשון בימין, כמו בכל לוח שנה עברי */}
+      <View style={styles.dowRow}>
+        {HE_DAYS.map((d) => (
+          <Text key={d} style={[type.caption, styles.dowText]}>
+            {d}
+          </Text>
+        ))}
+      </View>
+
+      <View style={styles.grid}>
+        {cells.map((day, i) => {
+          if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
+          const selected = isSelected(day);
+          return (
+            <View key={day} style={styles.cell}>
+              <TouchableOpacity
+                style={[
+                  styles.day,
+                  selected && styles.daySelected,
+                  !selected && isToday(day) && styles.dayToday,
+                ]}
+                onPress={() => pick(day)}
+                accessibilityRole="button"
+                accessibilityLabel={`${day} ב${HE_MONTHS[month]} ${year}`}
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.dayNum, selected && styles.dayNumSelected]}>{day}</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </View>
+
+      <TouchableOpacity
+        style={styles.todayBtn}
+        onPress={() => {
+          onSelect(toDateStr(today.getFullYear(), today.getMonth(), today.getDate()));
+          onClose();
+        }}
+        accessibilityRole="button"
+      >
+        <Text style={[type.smallStrong, { color: colors.sage, textAlign: 'center' }]}>היום</Text>
+      </TouchableOpacity>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: '#0004', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.lg,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text },
-  close: { fontSize: 18, color: colors.textMuted },
   monthBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
-  arrowBtn: { padding: spacing.sm },
-  arrow: { fontSize: 24, color: colors.pinkAccent, fontWeight: '300' },
-  monthTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  dowRow: { flexDirection: 'row', marginBottom: spacing.xs },
-  dowText: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textMuted,
+  arrowBtn: { width: TOUCH, height: TOUCH, alignItems: 'center', justifyContent: 'center' },
+  dowRow: { flexDirection: 'row-reverse', marginBottom: spacing.xs },
+  dowText: { flex: 1, textAlign: 'center' },
+  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap' },
+  cell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  cellSelected: { backgroundColor: colors.pinkAccent, borderRadius: radius.md },
-  dayNum: { fontSize: 15, color: colors.text },
-  dayNumSelected: { color: colors.white, fontWeight: '700' },
+  day: {
+    width: '100%',
+    height: '100%',
+    maxWidth: 44,
+    maxHeight: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  daySelected: { backgroundColor: colors.sage },
+  dayToday: { borderWidth: 1.5, borderColor: colors.moss },
+  dayNum: { ...type.bodyStrong, textAlign: 'center' },
+  dayNumSelected: { color: colors.white },
+  todayBtn: { minHeight: TOUCH, justifyContent: 'center', marginTop: spacing.sm },
 });

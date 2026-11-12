@@ -8,14 +8,14 @@ import BabyDayScreen from './BabyDayScreen';
 import BabySummaryScreen from './BabySummaryScreen';
 import BabySettingsScreen from './BabySettingsScreen';
 import { BabyDateProvider } from './BabyDateContext';
-import { colors, spacing, radius, shadow } from '../../config/theme';
+import PressScale from '../../components/PressScale';
+import { colors, spacing, radius, shadow, type, TOUCH, CONTENT_MAX } from '../../config/theme';
 
 const Tab = createBottomTabNavigator();
 
-// Rendered left-to-right around the center "+" button.
-// Ionicons instead of emoji so icons render identically on every device —
-// the team review flagged the mixed emoji/icon language.
-// "חודש" (not "בית") so the label doesn't collide with the app's real Home.
+// נפרסים משמאל לימין סביב כפתור ההוספה המרכזי.
+// אייקונים ולא אימוג'ים, כדי שייראו זהה בכל מכשיר.
+// "חודש" ולא "בית", כדי שהתווית לא תתנגש בדף הבית האמיתי של האפליקציה.
 type TabDef = { name: string; icon: keyof typeof Ionicons.glyphMap; label: string };
 const LEFT_TABS: TabDef[] = [
   { name: 'BabySettings', icon: 'settings-outline', label: 'הגדרות' },
@@ -34,27 +34,47 @@ function BabyTabBar({ state, navigation, onAddPress }: any) {
     return (
       <TouchableOpacity
         key={t.name}
-        style={[styles.tabItem, focused && styles.tabItemActive]}
+        style={styles.tabItem}
         onPress={() => navigation.navigate(t.name)}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: focused }}
+        accessibilityLabel={t.label}
+        activeOpacity={0.7}
       >
-        <Ionicons name={t.icon} size={22} color={focused ? colors.pinkAccent : colors.textMuted} />
+        {/* הסימון הנבחר הוא גם צבע וגם פס מעל האייקון — לא צבע בלבד */}
+        <View style={[styles.indicator, focused && styles.indicatorActive]} />
+        <Ionicons
+          name={focused ? (t.icon.replace('-outline', '') as any) : t.icon}
+          size={22}
+          color={focused ? colors.sage : colors.textMuted}
+        />
         <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{t.label}</Text>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View style={[styles.tabBar, { paddingBottom: 8 + insets.bottom }]}>
+    <View style={[styles.tabBar, { paddingBottom: spacing.sm + insets.bottom }]}>
       {LEFT_TABS.map(renderTab)}
-      <TouchableOpacity style={styles.fab} onPress={onAddPress}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      <View style={styles.fabSlot}>
+        <PressScale
+          to={0.92}
+          onPress={onAddPress}
+          accessibilityRole="button"
+          accessibilityLabel="הוספת תיעוד"
+          style={styles.fabOuter}
+        >
+          <View style={styles.fab}>
+            <Ionicons name="add" size={30} color={colors.white} />
+          </View>
+        </PressScale>
+      </View>
       {RIGHT_TABS.map(renderTab)}
     </View>
   );
 }
 
-// Wrapper components to inject navigation prop into screens that need it
+// עטיפה שמחברת את הלוח לניווט אל היומן
 function CalendarWithNav({ navigation }: any) {
   const handleSelectDay = (date: Date) => {
     navigation.navigate('BabyDay', { dateStr: date.toISOString() });
@@ -69,60 +89,76 @@ function CalendarWithNav({ navigation }: any) {
 export default function BabyNavigator() {
   return (
     <BabyDateProvider>
-    <Tab.Navigator
-      tabBar={(props) => (
-        <BabyTabBar
-          {...props}
-          onAddPress={() =>
-            // merge:true keeps BabyDay's current dateStr, so adding from the
-            // tab bar logs to the day being viewed instead of jumping to today
-            props.navigation.navigate({
-              name: 'BabyDay',
-              params: { openAdd: true },
-              merge: true,
-            } as never)
-          }
-        />
-      )}
-      screenOptions={{ headerShown: false }}
-      initialRouteName="BabyCalendar"
-    >
-      <Tab.Screen name="BabyCalendar" component={CalendarWithNav} />
-      <Tab.Screen name="BabyDay" component={BabyDayScreen} />
-      <Tab.Screen name="BabySummary" component={BabySummaryScreen} />
-      <Tab.Screen name="BabySettings" component={BabySettingsScreen} />
-    </Tab.Navigator>
+      <Tab.Navigator
+        tabBar={(props) => (
+          <BabyTabBar
+            {...props}
+            onAddPress={() =>
+              // merge:true שומר על התאריך שהיומן מציג, כך שהוספה מסרגל
+              // הטאבים נרשמת ליום שצופים בו ולא קופצת להיום
+              props.navigation.navigate({
+                name: 'BabyDay',
+                params: { openAdd: true },
+                merge: true,
+              } as never)
+            }
+          />
+        )}
+        screenOptions={{ headerShown: false }}
+        initialRouteName="BabyCalendar"
+      >
+        <Tab.Screen name="BabyCalendar" component={CalendarWithNav} />
+        <Tab.Screen name="BabyDay" component={BabyDayScreen} />
+        <Tab.Screen name="BabySummary" component={BabySummaryScreen} />
+        <Tab.Screen name="BabySettings" component={BabySettingsScreen} />
+      </Tab.Navigator>
     </BabyDateProvider>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
+    width: '100%',
+    maxWidth: CONTENT_MAX,
+    alignSelf: 'center',
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: colors.white,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    margin: 4,
+    minHeight: TOUCH + 6,
+    paddingTop: spacing.xs,
+    gap: 2,
   },
-  tabItemActive: { backgroundColor: colors.pink },
-  tabLabel: { fontSize: 11, color: colors.textMuted, marginTop: 3 },
-  tabLabelActive: { color: colors.text, fontWeight: '600' },
+  indicator: {
+    width: 18,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+    marginBottom: 2,
+  },
+  indicatorActive: { backgroundColor: colors.sage },
+  tabLabel: { ...type.caption, textAlign: 'center' },
+  tabLabelActive: { color: colors.sage, fontWeight: '700' },
+
+  // הכפתור יוצא מעל הסרגל, ולכן הוא צריך מקום משלו כדי לא לדחוס טאבים
+  fabSlot: { width: 76, alignItems: 'center' },
+  fabOuter: { width: 58, height: 58, marginTop: -26 },
   fab: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.pinkAccent,
+    flex: 1,
+    borderRadius: 29,
+    backgroundColor: colors.sage,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -20,
+    borderWidth: 4,
+    borderColor: colors.white,
     ...shadow.raised,
   },
-  fabText: { fontSize: 26, color: colors.white, lineHeight: 28, fontWeight: '600' },
 });

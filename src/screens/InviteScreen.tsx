@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../config/firebase';
@@ -7,8 +7,12 @@ import { useAuth } from '../context/AuthContext';
 import { useHousehold } from '../context/HouseholdContext';
 import { useBabyProfile } from '../hooks/useBabyProfile';
 import Button from '../components/Button';
+import Card from '../components/Card';
+import Screen from '../components/Screen';
+import Banner from '../components/Banner';
+import SectionHeader from '../components/SectionHeader';
 import { createInvite } from '../services/familySetup';
-import { colors, spacing, radius, font, shadow } from '../config/theme';
+import { colors, spacing, radius, type, TOUCH } from '../config/theme';
 
 const MAX_MEMBERS = 3;
 
@@ -61,18 +65,26 @@ export default function InviteScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.card}>
-        <Text style={styles.title}>הוספת בן משפחה 👨‍👩‍👧</Text>
-        <Text style={styles.body}>
-          שלחו את הקישור למי שתרצו שיתעד יחד אתכם. הוא נכנס לאותו תיעוד בדיוק,
-          ורואה את כל מה שאתם רואים.
+    <Screen>
+      <SectionHeader title="הוספת בן משפחה" />
+      <Card>
+        <Text style={type.body}>
+          שלחו את הקישור למי שתרצו שיתעד יחד אתכם. הוא נכנס לאותו תיעוד בדיוק, ורואה את כל מה שאתם
+          רואים.
         </Text>
 
         {members !== null ? (
-          <Text style={styles.count}>
-            במשפחה כרגע {members} מתוך {MAX_MEMBERS}
-          </Text>
+          <View style={styles.counter}>
+            {/* מחוון מקומות: שלושה עיגולים, המלאים הם מי שכבר במשפחה */}
+            <View style={styles.pips}>
+              {Array.from({ length: MAX_MEMBERS }, (_, i) => (
+                <View key={i} style={[styles.pip, i < members && styles.pipFull]} />
+              ))}
+            </View>
+            <Text style={type.smallStrong}>
+              {members} מתוך {MAX_MEMBERS} במשפחה
+            </Text>
+          </View>
         ) : null}
 
         {code ? (
@@ -82,21 +94,29 @@ export default function InviteScreen() {
                 {inviteLink(code)}
               </Text>
             </View>
-            <TouchableOpacity style={styles.copyRow} onPress={onCopy} accessibilityLabel="העתקת הקישור">
+            <TouchableOpacity
+              style={styles.copyRow}
+              onPress={onCopy}
+              accessibilityRole="button"
+              accessibilityLabel="העתקת הקישור"
+            >
               <Ionicons
-                name={copied ? 'checkmark' : 'copy-outline'}
-                size={18}
-                color={colors.blueAccent}
+                name={copied ? 'checkmark-circle' : 'copy-outline'}
+                size={19}
+                color={copied ? colors.success : colors.sage}
               />
-              <Text style={styles.copyText}>{copied ? 'הועתק' : 'העתקת הקישור'}</Text>
+              <Text style={[type.bodyStrong, { color: copied ? colors.success : colors.sage }]}>
+                {copied ? 'הועתק' : 'העתקת הקישור'}
+              </Text>
             </TouchableOpacity>
-            <Text style={styles.hint}>
+            <Text style={[type.small, styles.hint]}>
               הקישור תקף לשבוע ומשמש פעם אחת. אם הוא פג או כבר נוצל — פשוט צרו חדש.
             </Text>
           </>
         ) : (
           <Button
             label={full ? `המשפחה מלאה (${MAX_MEMBERS})` : 'יצירת קישור הזמנה'}
+            icon={full ? undefined : 'person-add-outline'}
             onPress={onCreate}
             loading={loading}
             disabled={full}
@@ -104,35 +124,29 @@ export default function InviteScreen() {
           />
         )}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </View>
-    </ScrollView>
+        {error ? <Banner tone="error" text={error} /> : null}
+      </Card>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
-  content: { padding: spacing.md },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    ...shadow.soft,
-  },
-  title: {
-    fontSize: font.title,
-    fontWeight: font.weight.bold,
-    color: colors.text,
-    textAlign: 'right',
-    marginBottom: spacing.sm,
-  },
-  body: { fontSize: font.body, color: colors.textLight, textAlign: 'right', lineHeight: 22 },
-  count: {
-    fontSize: font.small,
-    color: colors.textLight,
-    textAlign: 'right',
+  counter: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginTop: spacing.md,
   },
+  pips: { flexDirection: 'row-reverse', gap: 4 },
+  pip: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+  },
+  pipFull: { backgroundColor: colors.sage, borderColor: colors.sage },
+
   codeBox: {
     backgroundColor: colors.cream,
     borderRadius: radius.md,
@@ -141,25 +155,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.md,
   },
-  code: { fontSize: font.small, color: colors.text, textAlign: 'center' },
+  code: { ...type.small, color: colors.text, textAlign: 'center' },
   copyRow: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    minHeight: 44,
+    gap: spacing.xs + 2,
+    minHeight: TOUCH,
   },
-  copyText: { fontSize: font.body, fontWeight: font.weight.semibold, color: colors.blueAccent },
-  hint: {
-    fontSize: font.caption,
-    color: colors.textLight,
-    textAlign: 'center',
-    lineHeight: 17,
-  },
-  error: {
-    fontSize: font.small,
-    color: colors.danger,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
+  hint: { textAlign: 'center' },
 });

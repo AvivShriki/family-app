@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useHousehold } from '../context/HouseholdContext';
@@ -17,7 +17,8 @@ import MedicationsScreen from '../screens/baby/MedicationsScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BabyNavigator from '../screens/baby/BabyNavigator';
-import { colors, spacing, radius } from '../config/theme';
+import Loader from '../components/Loader';
+import { colors, spacing, radius, font, type, TOUCH } from '../config/theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,13 +28,32 @@ function inviteCodeFromUrl(): string {
   return new URLSearchParams(window.location.search).get('invite')?.toUpperCase() ?? '';
 }
 
+// הכותרת על הקרם ולא על לבן: כך היא לא נקראת כמשטח נוסף מעל המסך,
+// והמסך מתחיל בלי קו הפרדה אופקי.
 const headerStyle = {
-  headerStyle: { backgroundColor: colors.white },
-  headerTintColor: colors.text,
-  headerTitleStyle: { fontWeight: '700' as const },
+  headerStyle: { backgroundColor: colors.cream },
+  headerShadowVisible: false,
+  headerTintColor: colors.sage,
+  headerTitleStyle: {
+    fontFamily: font.family,
+    fontWeight: font.weight.bold,
+    fontSize: font.size.h3,
+    color: colors.text,
+  },
   headerTitleAlign: 'center' as const,
   headerBackTitle: 'חזרה',
 };
+
+/** כותרת של מסך פנימי: הכותרת במרכז, והחזרה כשבב בקצה ימין */
+const backHeader =
+  (title: string) =>
+  ({ navigation }: any) => ({
+    title,
+    headerLeft: () => null,
+    headerRight: () => (
+      <HeaderChip label="חזרה" icon="chevron-forward" onPress={() => navigation.goBack()} />
+    ),
+  });
 
 export default function AppNavigator() {
   const inviteCode = inviteCodeFromUrl();
@@ -43,11 +63,7 @@ export default function AppNavigator() {
 
   // ממתינים גם לשיוך המשפחה — בלי זה המסכים נפתחים בלי לדעת לאיזה תא לפנות
   if (loading || (user && householdLoading)) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.cream }}>
-        <ActivityIndicator color={colors.pinkAccent} size="large" />
-      </View>
-    );
+    return <Loader />;
   }
 
   return (
@@ -65,11 +81,7 @@ export default function AppNavigator() {
               />
             ) : null}
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen
-              name="SignUp"
-              component={SignUpScreen}
-              options={{ headerShown: false }}
-            />
+            <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="ForgotPassword"
               component={ForgotPasswordScreen}
@@ -86,48 +98,42 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
             {/* היציאה ממדור התינוקת: חץ ה-stack היה 30×30 ובקצה שמאל, שזה
-                הצד שאליו מסיימים לסרוק בעברית. במקומו כפתור 44 עם המילה
+                הצד שאליו מסיימים לסרוק בעברית. במקומו שבב 44 עם המילה
                 "בית" בקצה ימין, ו-popToTop שמחזיר מכל טאב. */}
             <Stack.Screen
               name="Baby"
               component={BabyNavigator}
               options={({ navigation }) => ({
-                title: `מעקב ${profile.name} 👶`,
+                title: `מעקב ${profile.name}`,
                 headerLeft: () => null,
                 headerRight: () => (
-                  <TouchableOpacity
+                  <HeaderChip
+                    label="בית"
+                    icon="home-outline"
                     onPress={() => navigation.popToTop()}
-                    style={homeButtonStyles.touch}
-                    accessibilityLabel="חזרה לדף הבית"
-                    activeOpacity={0.7}
-                  >
-                    <View style={homeButtonStyles.pill}>
-                      <Ionicons name="home" size={15} color={colors.text} />
-                      <Text style={homeButtonStyles.label}>בית</Text>
-                    </View>
-                  </TouchableOpacity>
+                  />
                 ),
               })}
             />
             <Stack.Screen
               name="ChangePassword"
               component={ChangePasswordScreen}
-              options={{ title: 'שינוי סיסמה 🔐' }}
+              options={backHeader('שינוי סיסמה')}
             />
             <Stack.Screen
               name="Invite"
               component={InviteScreen}
-              options={{ title: 'הוספת בן משפחה' }}
+              options={backHeader('הוספת בן משפחה')}
             />
             <Stack.Screen
               name="Chat"
               component={ChatScreen}
-              options={{ title: 'הודעות למשפחה 💬' }}
+              options={backHeader('הודעות למשפחה')}
             />
             <Stack.Screen
               name="Medications"
               component={MedicationsScreen}
-              options={{ title: 'תרופות ותוספים 💊' }}
+              options={backHeader('תרופות ותוספים')}
             />
           </>
         )}
@@ -136,18 +142,49 @@ export default function AppNavigator() {
   );
 }
 
-// הכפתור הוא שבב, לא טקסט מרחף: הרקע נותן לו גבול ברור ומסמן שהוא
-// נלחץ. השבב עצמו 32 בגובה, ועטוף במגע של 44 כדי לעמוד ביעד המגע.
-const homeButtonStyles = StyleSheet.create({
-  touch: { height: 44, justifyContent: 'center', paddingLeft: spacing.xs },
+/**
+ * שבב ניווט בכותרת.
+ *
+ * הוא יושב בקצה ימין ולא שמאל, שם ש-react-navigation שם את חץ החזרה
+ * כברירת מחדל: בעברית מתחילים לסרוק מימין, וחץ חזרה בשמאל הוא הדבר
+ * האחרון שהעין מגיעה אליו. הוא גם שבב ולא חץ עירום, כדי שייראה נלחץ.
+ */
+function HeaderChip({
+  label,
+  icon,
+  onPress,
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={homeButton.touch}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      activeOpacity={0.7}
+    >
+      <View style={homeButton.pill}>
+        <Ionicons name={icon} size={15} color={colors.sage} />
+        <Text style={homeButton.label}>{label}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// השבב עצמו 32 בגובה, ועטוף במגע של 44 כדי לעמוד ביעד המגע.
+const homeButton = StyleSheet.create({
+  touch: { height: TOUCH, justifyContent: 'center', paddingLeft: spacing.xs },
   pill: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 5,
     height: 32,
     paddingHorizontal: spacing.sm + 2,
     borderRadius: radius.full,
-    backgroundColor: colors.creamDark,
+    backgroundColor: colors.sageSoft,
   },
-  label: { fontSize: 13, fontWeight: '600', color: colors.text },
+  label: { ...type.caption, color: colors.sage, fontWeight: '700' },
 });

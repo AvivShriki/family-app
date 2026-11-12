@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
-import { colors, spacing, radius } from '../config/theme';
+import Card from '../components/Card';
+import { colors, spacing, type } from '../config/theme';
 
 /**
  * מוצג כשהמשתמש מחובר אך אין לו שיוך למשק בית (מסמך users/{uid}).
@@ -12,12 +14,17 @@ export default function NoHouseholdScreen() {
   const { logout } = useAuth();
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>🏠</Text>
-      <Text style={styles.title}>החשבון עדיין לא משויך למשפחה</Text>
-      <Text style={styles.body}>
-        צריך לשייך את החשבון הזה למשפחה לפני השימוש. פנה לאביב כדי להשלים את ההגדרה.
-      </Text>
-      <Button label="יציאה" onPress={logout} style={{ marginTop: spacing.lg }} />
+      <View style={styles.mark}>
+        <MaterialCommunityIcons name="home-heart" size={34} color={colors.sage} />
+      </View>
+      <Text style={[type.h2, styles.center]}>החשבון עדיין לא משויך למשפחה</Text>
+      <Card style={styles.card}>
+        <Text style={[type.body, styles.center]}>
+          צריך לשייך את החשבון הזה למשפחה לפני השימוש. אם קיבלתם קישור הזמנה — כדאי לפתוח אותו שוב.
+          אחרת, בקשו מבן המשפחה שהזמין אתכם קישור חדש.
+        </Text>
+      </Card>
+      <Button label="יציאה" variant="secondary" onPress={logout} style={styles.button} />
     </View>
   );
 }
@@ -28,23 +35,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
-  },
-  emoji: { fontSize: 56, marginBottom: spacing.md },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  body: {
-    fontSize: 15,
-    color: colors.textLight,
-    textAlign: 'center',
-    lineHeight: 22,
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
     padding: spacing.lg,
   },
+  mark: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: colors.sageSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  center: { textAlign: 'center' },
+  card: { marginTop: spacing.md, alignSelf: 'stretch', maxWidth: 420 },
+  button: { marginTop: spacing.lg, alignSelf: 'stretch', maxWidth: 420 },
 });

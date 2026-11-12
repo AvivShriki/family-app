@@ -1,14 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useBabyLogs } from '../context/BabyLogsContext';
 import { useMessages } from '../context/MessagesContext';
 import { useMedications } from '../context/MedicationsContext';
-import { useBabyProfile, DEFAULT_PROFILE } from '../hooks/useBabyProfile';
+import { useBabyProfile } from '../hooks/useBabyProfile';
+import { useNow } from '../hooks/useNow';
+import BabyAvatar from '../components/BabyAvatar';
+import PressScale from '../components/PressScale';
+import SectionHeader from '../components/SectionHeader';
+import StatCard from '../components/StatCard';
+import ActivityIcon from '../components/ActivityIcon';
 import { BabyLog } from '../types';
-import { colors, spacing, radius, shadow, font } from '../config/theme';
-import { getAgeText, isSameDay } from '../utils/dates';
+import { activityMeta, medIcon, MCIcon } from '../config/activity';
+import { colors, spacing, radius, shadow, type, TOUCH, CONTENT_MAX } from '../config/theme';
+import { getAgeText, isSameDay, fmtTime } from '../utils/dates';
 
 interface Props {
   navigation: any;
@@ -19,8 +27,8 @@ const MAX_TILES = 6;
 /** חלון החרטה אחרי רישום בנגיעה */
 const UNDO_MS = 4000;
 
-function greeting(): string {
-  const h = new Date().getHours();
+function greeting(now: number): string {
+  const h = new Date(now).getHours();
   if (h >= 5 && h < 12) return 'בוקר טוב';
   if (h >= 12 && h < 17) return 'צהריים טובים';
   if (h >= 17 && h < 22) return 'ערב טוב';
@@ -36,8 +44,8 @@ function shortDuration(ms: number): string {
   return `${m}ד׳`;
 }
 
-function timeAgo(ts: number): string {
-  const min = Math.round((Date.now() - ts) / 60000);
+function timeAgo(ts: number, now: number): string {
+  const min = Math.round((now - ts) / 60000);
   if (min < 1) return 'ממש עכשיו';
   if (min < 60) return `לפני ${min} דק׳`;
   const h = Math.floor(min / 60);
@@ -46,26 +54,28 @@ function timeAgo(ts: number): string {
   return d === 1 ? 'אתמול' : `לפני ${d} ימים`;
 }
 
-function lastLogText(log: BabyLog | undefined, medName?: string): string {
-  if (!log) return 'עוד אין תיעוד';
-  const ago = timeAgo(log.timestamp);
+const DIAPER_LABEL: Record<NonNullable<BabyLog['diaperType']>, string> = {
+  wet: 'שתן',
+  dirty: 'קקי',
+  both: 'שתן + קקי',
+};
+
+/** הפרטים שמוסיפים מידע לפעילות האחרונה, מעבר לשם שלה ולשעה */
+function detailOf(log: BabyLog, medName?: string): string {
   switch (log.type) {
     case 'feeding':
-      return `אכלה ${ago}${log.amountMl ? ` · ${log.amountMl} מ"ל` : ''}`;
-    case 'sleep':
-      return log.endTimestamp && log.endTimestamp <= Date.now()
-        ? `התעוררה ${timeAgo(log.endTimestamp)}`
-        : `ישנה — נרדמה ${ago}`;
+      return log.amountMl ? `${log.amountMl} מ"ל` : 'הנקה';
     case 'diaper':
-      return `חיתול הוחלף ${ago}`;
+      return log.diaperType ? DIAPER_LABEL[log.diaperType] : '';
+    case 'sleep':
+      return log.endTimestamp
+        ? `${shortDuration(log.endTimestamp - log.timestamp)} שינה`
+        : 'עוד ישנה';
     case 'medication':
-      return `${medName ?? 'תרופה'} ניתנה ${ago}`;
-    case 'vitamin':
-      return `ויטמין D ניתן ${ago}`;
-    case 'iron':
-      return `ברזל ניתן ${ago}`;
+      // שם התרופה כבר מוצג ככותרת הכרטיס — אין טעם לחזור עליו בשורת הפרטים
+      return '';
     default:
-      return `עדכון אחרון ${ago}`;
+      return log.details ?? '';
   }
 }
 
@@ -75,20 +85,20 @@ export default function HomeScreen({ navigation }: Props) {
   const { messages } = useMessages();
   const { medications, activeToday } = useMedications();
   const { profile } = useBabyProfile();
+  const insets = useSafeAreaInsets();
+  // שעון חי: "לפני 40 דק׳", מוני היום והברכה מתעדכנים בלי לרענן את המסך
+  const now = useNow();
 
   // הרישום האחרון שנוצר בנגיעה, לחלון החרטה
   const [justLogged, setJustLogged] = useState<{ tile: string; id: string } | null>(null);
 
   const todayLogs = useMemo(
-    () => babyLogs.filter((l) => isSameDay(l.timestamp, new Date())),
-    [babyLogs],
+    () => babyLogs.filter((l) => isSameDay(l.timestamp, new Date(now))),
+    [babyLogs, now],
   );
 
   const lastLog = babyLogs[babyLogs.length - 1];
-  const statusText = lastLogText(
-    lastLog,
-    medications.find((m) => m.id === lastLog?.medicationId)?.name,
-  );
+  const lastMedName = medications.find((m) => m.id === lastLog?.medicationId)?.name;
 
   // שינה פתוחה: נרשמה התחלה ועוד אין סיום
   const openSleep = [...babyLogs].reverse().find((l) => l.type === 'sleep' && !l.endTimestamp);
@@ -126,327 +136,519 @@ export default function HomeScreen({ navigation }: Props) {
   // שלושת הבסיסיים ואחריהם התרופות, עד התקרה; העודף מקופל לאריח אחד
   const medTiles = activeToday.map((m) => ({
     key: m.id,
-    emoji: m.emoji,
+    icon: medIcon(m.emoji),
     label: m.name,
     done: todayLogs.some((l) => l.type === 'medication' && l.medicationId === m.id),
   }));
   const shownMeds = medTiles.slice(0, MAX_TILES - 3);
   const overflow = medTiles.length - shownMeds.length;
 
+  const lastMessage = messages[messages.length - 1];
+  const goSettings = () => navigation.navigate('Baby', { screen: 'BabySettings' });
+  const goJournal = () => navigation.navigate('Baby', { screen: 'BabyDay' });
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* זהות — שורה אחת ולא כרטיס. נוי יודעת מי התינוקת. */}
-      <View style={styles.identity}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
-          accessibilityLabel="פרופיל התינוקת"
-          activeOpacity={0.8}
-        >
-          {profile.photoUrl ? (
-            <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarEmoji}>👶</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <View style={{ flex: 1 }}>
-          <Text style={styles.greeting} numberOfLines={1}>
-            {profile.familyName?.trim()
-              ? `${greeting()}, משפחת ${profile.familyName.trim()}`
-              : greeting()}
-          </Text>
-          <Text style={styles.identityName} numberOfLines={1}>
-            {profile.name}
-            {profile.birthDate ? ` · ${getAgeText(profile.birthDate)}` : ''}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
-          accessibilityLabel="הגדרות"
-          hitSlop={8}
-        >
-          <Ionicons name="settings-outline" size={19} color={colors.textLight} />
-        </TouchableOpacity>
-      </View>
-
-      {/* עכשיו — השאלה שהורים באמת שואלים זה את זה */}
-      <View style={styles.now}>
-        <Text style={styles.nowLabel}>עכשיו</Text>
-        <Text style={styles.nowValue}>{statusText}</Text>
-      </View>
-
-      {/* תיעוד מהיר — נגיעה אחת רושמת. זו סיבת הקיום של המסך. */}
-      <View style={styles.tiles}>
-        <Tile
-          emoji="🍼"
-          label="ארוחה"
-          state={justLogged?.tile === 'feeding' ? 'logged' : 'idle'}
-          onPress={() => quickLog('feeding', { type: 'feeding', timestamp: Date.now(), loggedBy })}
-          onUndo={undo}
-        />
-        <Tile
-          emoji="💩"
-          label="חיתול"
-          state={justLogged?.tile === 'diaper' ? 'logged' : 'idle'}
-          onPress={() => quickLog('diaper', { type: 'diaper', timestamp: Date.now(), loggedBy })}
-          onUndo={undo}
-        />
-        <Tile
-          emoji="😴"
-          label={openSleep ? 'סיום שינה' : 'שינה'}
-          state={justLogged?.tile === 'sleep' ? 'logged' : openSleep ? 'active' : 'idle'}
-          onPress={tapSleep}
-          onUndo={undo}
-        />
-
-        {shownMeds.map((t) => (
-          <Tile
-            key={t.key}
-            emoji={t.emoji}
-            label={t.label}
-            state={justLogged?.tile === t.key ? 'logged' : t.done ? 'done' : 'idle'}
-            onPress={() =>
-              quickLog(t.key, {
-                type: 'medication',
-                medicationId: t.key,
-                timestamp: Date.now(),
-                loggedBy,
-              })
-            }
-            onUndo={undo}
-          />
-        ))}
-
-        {overflow > 0 ? (
-          <Tile
-            emoji="💊"
-            label={`עוד ${overflow} ›`}
-            state="idle"
-            onPress={() => navigation.navigate('Baby', { screen: 'BabyDay' })}
-          />
-        ) : null}
-      </View>
-
-      {/* היום — מונים ומשימות בבלוק אחד */}
-      <View style={styles.block}>
-        <View style={styles.blockHead}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: spacing.xl + insets.bottom }}
+    >
+      {/* ---- כותרת: הפס היחיד בגוון המותג, והעוגן החזותי של האפליקציה ---- */}
+      <View style={[styles.band, { paddingTop: insets.top + spacing.lg }]}>
+        <View style={styles.bandRow}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Baby', { screen: 'BabyDay' })}
-            hitSlop={8}
+            onPress={goSettings}
+            accessibilityRole="button"
+            accessibilityLabel={`הפרופיל של ${profile.name}`}
+            activeOpacity={0.85}
           >
-            <Text style={styles.blockLink}>כל היומן ›</Text>
+            <BabyAvatar size={60} ring />
           </TouchableOpacity>
-          <Text style={styles.blockTitle}>היום</Text>
-        </View>
 
-        <View style={styles.statsRow}>
-          <Stat value={String(meals)} label="ארוחות" />
-          <Stat value={sleepMs > 0 ? shortDuration(sleepMs) : '—'} label="שינה" />
-          <Stat value={String(diapers)} label="חיתולים" />
+          <View style={styles.bandText}>
+            <Text style={styles.greeting} numberOfLines={1}>
+              {profile.familyName?.trim()
+                ? `${greeting(now)}, משפחת ${profile.familyName.trim()}`
+                : greeting(now)}
+            </Text>
+            <Text style={styles.babyName} numberOfLines={1}>
+              {profile.name}
+            </Text>
+            <Text style={styles.babyAge} numberOfLines={1}>
+              {getAgeText(profile.birthDate)}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.bandIcon}
+            onPress={goSettings}
+            accessibilityRole="button"
+            accessibilityLabel="הגדרות"
+          >
+            <Ionicons name="settings-outline" size={21} color={colors.white} />
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* הודעות המשפחה */}
-      <TouchableOpacity
-        style={styles.chatCard}
-        onPress={() => navigation.navigate('Chat')}
-        accessibilityLabel="הודעות למשפחה"
-        activeOpacity={0.85}
-      >
-        <Ionicons name="chatbubble-ellipses" size={20} color={colors.blueAccent} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.chatTitle}>הודעות למשפחה</Text>
-          <Text style={styles.chatPreview} numberOfLines={1}>
-            {messages[messages.length - 1]?.text ?? 'עוד אין הודעות — אפשר להשאיר אחת'}
-          </Text>
-        </View>
-        <Text style={styles.chevron}>‹</Text>
-      </TouchableOpacity>
+      <View style={styles.body}>
+        {/* ---- הפעילות האחרונה — השאלה שהורים שואלים זה את זה ---- */}
+        <LastActivity
+          log={lastLog}
+          now={now}
+          medName={lastMedName}
+          openSleep={openSleep}
+          onEndSleep={tapSleep}
+          onPress={goJournal}
+        />
 
-      {/* שירותים עתידיים — שורת טקסט, במקום שני כפתורים מתים ברבע מהמסך */}
-      <Text style={styles.soon}>
-        בקרוב: {profile.name !== DEFAULT_PROFILE.name ? `שאלה על ${profile.name}` : 'שאלות'} ושיחה
-        עם רופא
-      </Text>
+        {/* ---- תיעוד מהיר: נגיעה אחת רושמת. סיבת הקיום של המסך. ---- */}
+        <View style={styles.section}>
+          <SectionHeader title="תיעוד מהיר" />
+          <View style={styles.tiles}>
+            <Tile
+              type="feeding"
+              label="ארוחה"
+              state={justLogged?.tile === 'feeding' ? 'logged' : 'idle'}
+              onPress={() =>
+                quickLog('feeding', { type: 'feeding', timestamp: Date.now(), loggedBy })
+              }
+              onUndo={undo}
+            />
+            <Tile
+              type="diaper"
+              label="חיתול"
+              state={justLogged?.tile === 'diaper' ? 'logged' : 'idle'}
+              onPress={() =>
+                quickLog('diaper', { type: 'diaper', timestamp: Date.now(), loggedBy })
+              }
+              onUndo={undo}
+            />
+            <Tile
+              type="sleep"
+              label={openSleep ? 'סיום שינה' : 'שינה'}
+              state={justLogged?.tile === 'sleep' ? 'logged' : openSleep ? 'active' : 'idle'}
+              onPress={tapSleep}
+              onUndo={undo}
+            />
+
+            {shownMeds.map((t) => (
+              <Tile
+                key={t.key}
+                type="medication"
+                icon={t.icon}
+                label={t.label}
+                state={justLogged?.tile === t.key ? 'logged' : t.done ? 'done' : 'idle'}
+                onPress={() =>
+                  quickLog(t.key, {
+                    type: 'medication',
+                    medicationId: t.key,
+                    timestamp: Date.now(),
+                    loggedBy,
+                  })
+                }
+                onUndo={undo}
+              />
+            ))}
+
+            {overflow > 0 ? (
+              <Tile type="medication" label={`עוד ${overflow}`} state="idle" onPress={goJournal} />
+            ) : null}
+          </View>
+        </View>
+
+        {/* ---- סיכום היום ---- */}
+        <View style={styles.section}>
+          <SectionHeader title="היום" actionLabel="כל היומן" onAction={goJournal} />
+          <View style={styles.stats}>
+            <StatCard
+              icon={activityMeta('feeding').icon}
+              color={activityMeta('feeding').color}
+              surface={activityMeta('feeding').surface}
+              value={String(meals)}
+              label="ארוחות"
+            />
+            <StatCard
+              icon={activityMeta('sleep').icon}
+              color={activityMeta('sleep').color}
+              surface={activityMeta('sleep').surface}
+              value={sleepMs > 0 ? shortDuration(sleepMs) : '—'}
+              label="שינה"
+            />
+            <StatCard
+              icon={activityMeta('diaper').icon}
+              color={activityMeta('diaper').color}
+              surface={activityMeta('diaper').surface}
+              value={String(diapers)}
+              label="חיתולים"
+            />
+          </View>
+        </View>
+
+        {/* ---- עדכוני המשפחה ---- */}
+        <View style={styles.section}>
+          <SectionHeader title="המשפחה" />
+          <PressScale
+            to={0.99}
+            onPress={() => navigation.navigate('Chat')}
+            accessibilityRole="button"
+            accessibilityLabel="הודעות למשפחה"
+          >
+            <View style={styles.chat}>
+              <View style={styles.chatIcon}>
+                <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.sage} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={type.bodyStrong}>הודעות למשפחה</Text>
+                <Text style={type.small} numberOfLines={1}>
+                  {lastMessage
+                    ? `${lastMessage.senderEmail.split('@')[0]}: ${lastMessage.text}`
+                    : 'עוד אין הודעות — אפשר להשאיר אחת'}
+                </Text>
+              </View>
+              {lastMessage ? (
+                <Text style={type.caption}>{fmtTime(lastMessage.createdAt)}</Text>
+              ) : null}
+              <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+            </View>
+          </PressScale>
+        </View>
+
+        {/* ---- שירותים שעוד לא נפתחו. מסומנים כך במקום להיראות שבורים. ---- */}
+        <View style={styles.section}>
+          <SectionHeader title="בקרוב" />
+          <View style={styles.soonRow}>
+            <SoonTile icon="robot-outline" label="שאל סוכן AI" />
+            <SoonTile icon="stethoscope" label="שיחה עם רופא" />
+          </View>
+        </View>
+      </View>
     </ScrollView>
   );
 }
 
+/**
+ * כרטיס הפעילות האחרונה.
+ *
+ * כשיש שינה פתוחה הוא מתחלף: במקום "מה היה" הוא מראה "מה קורה עכשיו",
+ * ונותן לסיים את השינה בלי לרדת לאריחים.
+ */
+function LastActivity({
+  log,
+  now,
+  medName,
+  openSleep,
+  onEndSleep,
+  onPress,
+}: {
+  log: BabyLog | undefined;
+  now: number;
+  medName?: string;
+  openSleep?: BabyLog;
+  onEndSleep: () => void;
+  onPress: () => void;
+}) {
+  if (openSleep) {
+    const meta = activityMeta('sleep');
+    return (
+      <View style={[styles.last, styles.lastSleeping]}>
+        <ActivityIcon
+          icon={meta.icon}
+          color={colors.white}
+          surface="rgba(255,255,255,0.18)"
+          size={48}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sleepingLabel}>ישנה עכשיו</Text>
+          <Text style={styles.sleepingValue}>
+            {shortDuration(now - openSleep.timestamp)} · נרדמה ב-
+            {fmtTime(openSleep.timestamp)}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.endSleep}
+          onPress={onEndSleep}
+          accessibilityRole="button"
+          accessibilityLabel="סיום שינה"
+        >
+          <Text style={styles.endSleepText}>סיום</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!log) {
+    return (
+      <View style={styles.last}>
+        <ActivityIcon
+          icon="baby-carriage"
+          color={colors.sage}
+          surface={colors.sageSoft}
+          size={48}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={type.label}>הפעילות האחרונה</Text>
+          <Text style={type.h3}>עוד אין תיעוד</Text>
+          <Text style={type.small}>נגיעה באריח למטה רושמת את הראשון</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const meta = activityMeta(log.type);
+  const title = log.type === 'medication' && medName ? medName : meta.label;
+  const detail = detailOf(log, medName);
+
+  return (
+    <PressScale
+      to={0.99}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`הפעילות האחרונה: ${title}, ${timeAgo(log.timestamp, now)}. פתיחת היומן`}
+    >
+      <View style={styles.last}>
+        <ActivityIcon icon={meta.icon} color={meta.color} surface={meta.surface} size={48} />
+        <View style={{ flex: 1 }}>
+          <Text style={type.label}>הפעילות האחרונה</Text>
+          <Text style={type.h3}>{title}</Text>
+          <Text style={type.small}>
+            {timeAgo(log.timestamp, now)}
+            {detail ? ` · ${detail}` : ''}
+          </Text>
+        </View>
+        <View style={styles.lastTime}>
+          <Text style={styles.lastTimeText}>{fmtTime(log.timestamp)}</Text>
+        </View>
+      </View>
+    </PressScale>
+  );
+}
+
+/**
+ * אריח תיעוד בנגיעה אחת.
+ *
+ * ארבעה מצבים: רגיל, נרשם-כרגע (ולכן אפשר לבטל), בוצע היום (תרופה),
+ * ופעיל (שינה שנפתחה). בכל מצב הסימון הוא גם צורני וגם טקסטואלי.
+ */
 function Tile({
-  emoji,
+  type: logType,
+  icon,
   label,
   state,
   onPress,
   onUndo,
 }: {
-  emoji: string;
+  type: BabyLog['type'];
+  icon?: MCIcon;
   label: string;
   state: 'idle' | 'logged' | 'done' | 'active';
   onPress: () => void;
   onUndo?: () => void;
 }) {
+  const meta = activityMeta(logType);
+
   if (state === 'logged') {
     return (
-      <TouchableOpacity
-        style={[styles.tile, styles.tileDone]}
+      <PressScale
         onPress={onUndo}
-        accessibilityLabel={`${label} נרשם, ביטול`}
+        accessibilityRole="button"
+        // לא `${label} נרשם`: אחרי פתיחת שינה התווית כבר התחלפה ל"סיום
+        // שינה", והיה נקרא "סיום שינה נרשם"
+        accessibilityLabel="התיעוד נרשם. נגיעה מבטלת"
+
+        style={styles.tileOuter}
       >
-        <Text style={styles.tileEmoji}>✓</Text>
-        <Text style={styles.tileLabel} numberOfLines={1}>
-          נרשם · ביטול
-        </Text>
-      </TouchableOpacity>
+        <View style={[styles.tile, styles.tileLogged]}>
+          <ActivityIcon
+            icon="check"
+            color={colors.success}
+            surface={colors.successSoft}
+            size={38}
+            square
+          />
+          <Text style={styles.tileLabel} numberOfLines={1}>
+            נרשם
+          </Text>
+          <Text style={styles.tileUndo}>ביטול</Text>
+        </View>
+      </PressScale>
     );
   }
+
+  const active = state === 'active';
+  const done = state === 'done';
+
   return (
-    <TouchableOpacity
-      style={[
-        styles.tile,
-        state === 'active' && styles.tileActive,
-        state === 'done' && styles.tileDone,
-      ]}
+    <PressScale
       onPress={onPress}
-      accessibilityLabel={`תיעוד ${label}`}
-      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={done ? `${label}, ניתנה היום` : `תיעוד ${label}`}
+      style={styles.tileOuter}
     >
-      <Text style={styles.tileEmoji}>{emoji}</Text>
-      <Text style={styles.tileLabel} numberOfLines={1}>
-        {state === 'done' ? `✓ ${label}` : label}
-      </Text>
-    </TouchableOpacity>
+      <View style={[styles.tile, active && styles.tileActive, done && styles.tileDone]}>
+        <ActivityIcon
+          icon={icon ?? meta.icon}
+          color={active ? colors.white : meta.color}
+          surface={active ? 'rgba(255,255,255,0.2)' : meta.surface}
+          size={38}
+          square
+        />
+        <Text style={[styles.tileLabel, active && { color: colors.white }]} numberOfLines={1}>
+          {label}
+        </Text>
+        {done ? <Text style={styles.tileDoneMark}>בוצע היום</Text> : null}
+      </View>
+    </PressScale>
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function SoonTile({ icon, label }: { icon: MCIcon; label: string }) {
   return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={styles.soon} accessibilityLabel={`${label} — בקרוב`}>
+      {/* בלי המילה "בקרוב" על כל אריח — כותרת האזור כבר אומרת אותה,
+          וברוחב של טלפון היא דחקה את השם עצמו לשלוש נקודות */}
+      <MaterialCommunityIcons name={icon} size={20} color={colors.textMuted} />
+      <Text style={[type.smallStrong, styles.soonLabel]} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
 
-const AVATAR = 44;
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
 
-  identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+  // ---- כותרת ----
+  band: {
+    backgroundColor: colors.sage,
+    paddingHorizontal: spacing.md,
+    // הפינה התחתונה המעוגלת היא הקומפוזיציה האורגנית: הפס לא נגמר בקו
+    // חד אלא נכנס לתוך הקרם, והכרטיס שמתחתיו נכנס לתוכו
+    borderBottomLeftRadius: radius.sheet,
+    borderBottomRightRadius: radius.sheet,
+    paddingBottom: spacing.xl + spacing.md,
   },
-  avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
-  avatarPlaceholder: {
-    backgroundColor: colors.pink,
+  bandRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.md,
+    width: '100%',
+    maxWidth: CONTENT_MAX,
+    alignSelf: 'center',
+  },
+  bandText: { flex: 1, gap: 1 },
+  greeting: {
+    ...type.small,
+    color: 'rgba(255,255,255,0.88)',
+    fontWeight: '500',
+  },
+  babyName: { ...type.h1, color: colors.white },
+  babyAge: { ...type.small, color: 'rgba(255,255,255,0.82)' },
+  bandIcon: {
+    width: TOUCH,
+    height: TOUCH,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarEmoji: { fontSize: AVATAR / 2 },
-  greeting: {
-    fontSize: font.body,
-    fontWeight: font.weight.medium,
-    color: colors.textLight,
-    textAlign: 'right',
-  },
-  identityName: {
-    fontSize: font.title,
-    fontWeight: font.weight.heavy,
-    color: colors.text,
-    textAlign: 'right',
-  },
-  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
-  now: {
-    backgroundColor: colors.pink,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+  // התוכן עולה לתוך הפס, כדי שהכרטיס הראשון ייראה מונח עליו
+  body: {
+    paddingHorizontal: spacing.md,
+    marginTop: -spacing.xl,
+    width: '100%',
+    maxWidth: CONTENT_MAX,
+    alignSelf: 'center',
   },
-  // טקסט בהיר על ורוד נופל מהתקן — ההפרדה כאן היא בגודל ובמשקל
-  nowLabel: { fontSize: font.caption, color: colors.text, textAlign: 'right' },
-  nowValue: {
-    fontSize: font.title,
-    fontWeight: font.weight.bold,
-    color: colors.text,
-    textAlign: 'right',
-    marginTop: 2,
-  },
+  section: { marginTop: spacing.lg },
 
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  tile: {
-    flexGrow: 1,
-    flexBasis: '30%',
-    minWidth: 100,
-    minHeight: 76,
+  // ---- פעילות אחרונה ----
+  last: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: colors.white,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    ...shadow.raised,
+  },
+  lastSleeping: { backgroundColor: colors.sageDeep },
+  lastTime: {
+    backgroundColor: colors.cream,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  lastTimeText: { ...type.smallStrong, fontVariant: ['tabular-nums'] },
+  sleepingLabel: { ...type.label, color: 'rgba(255,255,255,0.78)' },
+  sleepingValue: { ...type.bodyStrong, color: colors.white },
+  endSleep: {
+    minHeight: TOUCH - 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endSleepText: { ...type.smallStrong, color: colors.sageDeep },
+
+  // ---- אריחים ----
+  tiles: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
+  tileOuter: { flexGrow: 1, flexBasis: '30%', minWidth: 98 },
+  tile: {
+    flex: 1,
+    minHeight: 96,
+    backgroundColor: colors.white,
+    borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
-  tileActive: { borderColor: colors.blueAccent, backgroundColor: colors.blue },
-  tileDone: { backgroundColor: colors.successSoft, borderColor: colors.success },
-  tileEmoji: { fontSize: font.titleLg },
-  tileLabel: {
-    fontSize: font.small,
-    fontWeight: font.weight.semibold,
-    color: colors.text,
-    marginTop: 2,
-  },
+  tileActive: { backgroundColor: colors.sage, borderColor: colors.sage },
+  tileLogged: { backgroundColor: colors.successSoft, borderColor: colors.success },
+  tileDone: { backgroundColor: colors.cream },
+  tileLabel: { ...type.smallStrong, textAlign: 'center' },
+  tileUndo: { ...type.caption, color: colors.success, fontWeight: '700' },
+  tileDoneMark: { ...type.caption, color: colors.success },
 
-  block: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.soft,
-  },
-  blockHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  blockTitle: { fontSize: font.bodyLg, fontWeight: font.weight.bold, color: colors.text },
-  blockLink: { fontSize: font.small, color: colors.blueAccent },
+  // ---- נתוני היום ----
+  stats: { flexDirection: 'row-reverse', gap: spacing.sm },
 
-  statsRow: { flexDirection: 'row' },
-  stat: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: font.titleLg, fontWeight: font.weight.bold, color: colors.text },
-  statLabel: { fontSize: font.caption, color: colors.textLight, marginTop: 2 },
-
-  chatCard: {
-    flexDirection: 'row',
+  // ---- צ'אט ----
+  chat: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.white,
-    borderRadius: radius.lg,
+    borderRadius: radius.card,
     padding: spacing.md,
     ...shadow.soft,
   },
-  chatTitle: {
-    fontSize: font.body,
-    fontWeight: font.weight.bold,
-    color: colors.text,
-    textAlign: 'right',
+  chatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.sageSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  chatPreview: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginTop: 2 },
-  chevron: { fontSize: font.title, color: colors.textMuted },
 
+  // ---- בקרוב ----
+  soonRow: { flexDirection: 'row-reverse', gap: spacing.sm },
   soon: {
-    fontSize: font.caption,
-    color: colors.textLight,
-    textAlign: 'center',
-    marginTop: spacing.lg,
+    flex: 1,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: TOUCH + 6,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.borderStrong,
   },
+  soonLabel: { flex: 1, color: colors.textSecondary },
 });

@@ -17,12 +17,18 @@ export function pickProfileImage(maxSize = 256): Promise<string | null> {
         canvas.width = Math.max(1, Math.round(img.width * scale));
         canvas.height = Math.max(1, Math.round(img.height * scale));
         const ctx = canvas.getContext('2d');
-        if (!ctx) { URL.revokeObjectURL(img.src); return resolve(null); }
+        if (!ctx) {
+          URL.revokeObjectURL(img.src);
+          return resolve(null);
+        }
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(img.src);
         resolve(canvas.toDataURL('image/jpeg', 0.85));
       };
-      img.onerror = () => { URL.revokeObjectURL(img.src); resolve(null); };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        resolve(null);
+      };
       img.src = URL.createObjectURL(file);
     };
     input.click();

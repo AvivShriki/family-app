@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import BottomSheet from './BottomSheet';
 import Button from './Button';
-import { colors, spacing, radius, font } from '../config/theme';
+import { colors, spacing, radius, type, TOUCH } from '../config/theme';
 
 interface Props {
   visible: boolean;
@@ -22,82 +24,81 @@ export default function AmountPickerModal({ visible, value, onSelect, onClose }:
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>בחר כמות</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.close}>✕</Text>
-            </TouchableOpacity>
-          </View>
+    <BottomSheet visible={visible} title="כמות" onClose={onClose} scroll={false}>
+      {/* הנקה — אין כמות למדוד, ולכן היא אפשרות ולא "אפס" */}
+      <TouchableOpacity
+        style={[styles.nursing, amount === '' && styles.nursingActive]}
+        onPress={() => setAmount('')}
+        accessibilityRole="button"
+        accessibilityLabel="הנקה, ללא כמות"
+        accessibilityState={{ selected: amount === '' }}
+      >
+        <MaterialCommunityIcons
+          name="mother-nurse"
+          size={20}
+          color={amount === '' ? colors.sage : colors.textMuted}
+        />
+        <Text style={[type.bodyStrong, amount !== '' && { color: colors.textSecondary }]}>
+          {'הנקה — ללא כמות'}
+        </Text>
+      </TouchableOpacity>
 
-          <Text style={styles.hint}>מ"ל</Text>
+      <Text style={[type.label, styles.unit]}>{'מ"ל'}</Text>
 
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.grid}>
-            {/* הנקה — אין כמות למדוד */}
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.grid}>
+        {AMOUNTS.map((ml) => {
+          const active = amount === ml;
+          return (
             <TouchableOpacity
-              style={[styles.option, styles.optionWide, amount === '' && styles.optionActive]}
-              onPress={() => setAmount('')}
+              key={ml}
+              style={[styles.option, active && styles.optionActive]}
+              onPress={() => setAmount(ml)}
+              accessibilityRole="button"
+              accessibilityLabel={`${ml} מיליליטר`}
+              accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.optionText, amount === '' && styles.optionTextActive]}>
-                ללא (הנקה)
-              </Text>
+              <Text style={[styles.optionText, active && styles.optionTextActive]}>{ml}</Text>
             </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
-            {AMOUNTS.map((ml) => (
-              <TouchableOpacity
-                key={ml}
-                style={[styles.option, amount === ml && styles.optionActive]}
-                onPress={() => setAmount(ml)}
-              >
-                <Text style={[styles.optionText, amount === ml && styles.optionTextActive]}>
-                  {ml}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <Button
-            label={amount ? `אישור ${amount} מ"ל` : 'אישור ללא כמות'}
-            onPress={confirm}
-            style={{ marginTop: spacing.md }}
-          />
-        </View>
-      </View>
-    </Modal>
+      <Button
+        label={amount ? `אישור ${amount} מ"ל` : 'אישור ללא כמות'}
+        onPress={confirm}
+        style={{ marginTop: spacing.md }}
+      />
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: '#0004', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.lg,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  nursing: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    gap: spacing.sm,
+    minHeight: TOUCH + 6,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
   },
-  title: { fontSize: font.title, fontWeight: font.weight.bold, color: colors.text },
-  close: { fontSize: font.title, color: colors.textMuted },
-  hint: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginBottom: spacing.xs },
-  scroll: { height: 280 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  nursingActive: { borderColor: colors.sage, backgroundColor: colors.sageSoft },
+  unit: { marginTop: spacing.md, marginBottom: spacing.xs },
+  scroll: { maxHeight: 260 },
+  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
   option: {
     width: '22%', // ארבעה בשורה
-    paddingVertical: spacing.md,
+    minHeight: TOUCH,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.md,
     backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  optionWide: { width: '100%' },
-  optionActive: { backgroundColor: colors.pinkAccent },
-  optionText: { fontSize: font.bodyLg, color: colors.text },
-  optionTextActive: { color: colors.white, fontWeight: font.weight.bold },
+  optionActive: { backgroundColor: colors.sage, borderColor: colors.sage },
+  optionText: { ...type.bodyStrong, textAlign: 'center' },
+  optionTextActive: { color: colors.white },
 });

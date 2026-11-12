@@ -8,16 +8,16 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useMessages } from '../context/MessagesContext';
 import EmptyState from '../components/EmptyState';
+import Loader from '../components/Loader';
 import { FamilyMessage } from '../types';
 import { fmtTime } from '../utils/dates';
-import { colors, spacing, radius, font, shadow } from '../config/theme';
+import { colors, spacing, radius, type, TOUCH, CONTENT_MAX } from '../config/theme';
 
 /** תאריך קצר מעל הודעה שפותחת יום חדש */
 function dayLabel(ts: number): string {
@@ -57,13 +57,7 @@ export default function ChatScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.pinkAccent} size="large" />
-      </View>
-    );
-  }
+  if (loading) return <Loader text="טוען את ההודעות" />;
 
   return (
     <KeyboardAvoidingView
@@ -77,9 +71,9 @@ export default function ChatScreen() {
       >
         {messages.length === 0 ? (
           <EmptyState
-            icon="chatbubbles-outline"
+            icon="message-text-outline"
             title="אין עדיין הודעות"
-            hint="כאן אפשר להשאיר הודעה לבן או בת הזוג, והיא תופיע להם מיד 💬"
+            hint="כאן אפשר להשאיר הודעה לבן או בת הזוג, והיא תופיע להם מיד"
           />
         ) : (
           messages.map((m, i) => (
@@ -101,6 +95,7 @@ export default function ChatScreen() {
           placeholder="הודעה למשפחה"
           placeholderTextColor={colors.textMuted}
           textAlign="right"
+          accessibilityLabel="הודעה למשפחה"
           multiline
           onSubmitEditing={onSend}
           blurOnSubmit={false}
@@ -109,9 +104,11 @@ export default function ChatScreen() {
           style={[styles.sendBtn, !draft.trim() && styles.sendDisabled]}
           onPress={onSend}
           disabled={!draft.trim() || sending}
+          accessibilityRole="button"
           accessibilityLabel="שליחה"
+          accessibilityState={{ disabled: !draft.trim() || sending }}
         >
-          <Ionicons name="send" size={18} color={colors.white} />
+          <Ionicons name="arrow-up" size={20} color={colors.white} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -129,10 +126,14 @@ function Bubble({
 }) {
   return (
     <>
-      {showDay ? <Text style={styles.day}>{dayLabel(message.createdAt)}</Text> : null}
+      {showDay ? (
+        <View style={styles.dayWrap}>
+          <Text style={styles.day}>{dayLabel(message.createdAt)}</Text>
+        </View>
+      ) : null}
       <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
         {!mine ? <Text style={styles.sender}>{senderLabel(message.senderEmail)}</Text> : null}
-        <Text style={styles.text}>{message.text}</Text>
+        <Text style={[type.body, mine ? styles.textMine : styles.textTheirs]}>{message.text}</Text>
         <Text style={[styles.time, mine && styles.timeMine]}>{fmtTime(message.createdAt)}</Text>
       </View>
     </>
@@ -141,42 +142,56 @@ function Bubble({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  centered: { flex: 1, backgroundColor: colors.cream, justifyContent: 'center' },
-  scroll: { padding: spacing.md, paddingBottom: spacing.lg },
+  scroll: {
+    padding: spacing.md,
+    paddingBottom: spacing.lg,
+    width: '100%',
+    maxWidth: CONTENT_MAX,
+    alignSelf: 'center',
+  },
 
+  dayWrap: { alignItems: 'center', marginVertical: spacing.sm },
   day: {
-    fontSize: font.caption,
-    color: colors.textLight,
-    textAlign: 'center',
-    marginVertical: spacing.sm,
+    ...type.caption,
+    backgroundColor: colors.creamDeep,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
   },
 
   bubble: {
     maxWidth: '82%',
-    borderRadius: radius.lg,
+    borderRadius: radius.card,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     marginBottom: spacing.sm,
-    ...shadow.soft,
   },
-  // ההודעות שלי בוורוד ובצד אחד, של השני בלבן ובצד השני — אותה הבחנה
-  // שכל צ'אט עושה, וכך אין צורך בשם על כל הודעה שלי
-  mine: { alignSelf: 'flex-start', backgroundColor: colors.pink },
-  theirs: { alignSelf: 'flex-end', backgroundColor: colors.white },
+  // ההודעות שלי במרווה ובצד שמאל, של השני בלבן ובימין — אותה הבחנה
+  // שכל צ'אט בעברית עושה, וכך אין צורך בשם על כל הודעה שלי
+  mine: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.sage,
+    borderBottomLeftRadius: radius.xs,
+  },
+  theirs: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomRightRadius: radius.xs,
+  },
 
-  sender: {
-    fontSize: font.caption,
-    fontWeight: font.weight.semibold,
-    color: colors.textLight,
-    textAlign: 'right',
-    marginBottom: 2,
-  },
-  text: { fontSize: font.body, color: colors.text, textAlign: 'right', lineHeight: 21 },
-  time: { fontSize: font.caption, color: colors.textLight, textAlign: 'left', marginTop: 2 },
-  timeMine: { color: colors.text },
+  sender: { ...type.caption, color: colors.sage, fontWeight: '700', marginBottom: 2 },
+  textMine: { color: colors.white },
+  textTheirs: { color: colors.text },
+  time: { ...type.caption, textAlign: 'left', marginTop: 3 },
+  timeMine: { color: 'rgba(255,255,255,0.75)' },
 
   composer: {
-    flexDirection: 'row',
+    width: '100%',
+    maxWidth: CONTENT_MAX,
+    alignSelf: 'center',
+    flexDirection: 'row-reverse',
     alignItems: 'flex-end',
     gap: spacing.sm,
     padding: spacing.sm,
@@ -187,24 +202,25 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     maxHeight: 120,
-    minHeight: 44,
+    minHeight: TOUCH,
     backgroundColor: colors.cream,
     borderRadius: radius.lg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm + 2,
     paddingBottom: spacing.sm + 2,
-    fontSize: font.body,
+    ...type.body,
     color: colors.text,
-  },
+    outlineStyle: 'none',
+  } as any,
   sendBtn: {
-    width: 44,
-    height: 44,
+    width: TOUCH,
+    height: TOUCH,
     borderRadius: radius.full,
-    backgroundColor: colors.pinkAccent,
+    backgroundColor: colors.sage,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendDisabled: { opacity: 0.45 },
+  sendDisabled: { opacity: 0.4 },
 });

@@ -23,7 +23,13 @@ const seed: Record<CollectionName, any[]> = {
       endTimestamp: setTime(10, 30),
       loggedBy: 'noy',
     },
-    { id: 'b3', type: 'medication', medicationId: 'm1', timestamp: setTime(9, 15), loggedBy: 'noy' },
+    {
+      id: 'b3',
+      type: 'medication',
+      medicationId: 'm1',
+      timestamp: setTime(9, 15),
+      loggedBy: 'noy',
+    },
     { id: 'b4', type: 'feeding', timestamp: setTime(11, 0), amountMl: 150, loggedBy: 'aviv' },
     { id: 'b5', type: 'diaper', timestamp: setTime(12, 45), diaperType: 'dirty', loggedBy: 'aviv' },
     {
@@ -34,7 +40,13 @@ const seed: Record<CollectionName, any[]> = {
       loggedBy: 'noy',
     },
     { id: 'b7', type: 'feeding', timestamp: setTime(15, 40), amountMl: 160, loggedBy: 'aviv' },
-    { id: 'b8', type: 'medication', medicationId: 'm2', timestamp: setTime(18, 40), loggedBy: 'noy' },
+    {
+      id: 'b8',
+      type: 'medication',
+      medicationId: 'm2',
+      timestamp: setTime(18, 40),
+      loggedBy: 'noy',
+    },
   ] as BabyLog[],
 };
 
