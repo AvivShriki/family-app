@@ -10,7 +10,6 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Screen from '../components/Screen';
 import Banner from '../components/Banner';
-import SectionHeader from '../components/SectionHeader';
 import { createInvite } from '../services/familySetup';
 import { colors, spacing, radius, type, TOUCH } from '../config/theme';
 
@@ -66,7 +65,6 @@ export default function InviteScreen() {
 
   return (
     <Screen>
-      <SectionHeader title="הוספת בן משפחה" />
       <Card>
         <Text style={type.body}>
           שלחו את הקישור למי שתרצו שיתעד יחד אתכם. הוא נכנס לאותו תיעוד בדיוק, ורואה את כל מה שאתם

@@ -5,7 +5,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useHousehold } from '../context/HouseholdContext';
-import { useBabyProfile } from '../hooks/useBabyProfile';
 import LoginScreen from '../screens/LoginScreen';
 import NoHouseholdScreen from '../screens/NoHouseholdScreen';
 import SignUpScreen from '../screens/SignUpScreen';
@@ -14,10 +13,12 @@ import InviteScreen from '../screens/InviteScreen';
 import InviteWelcomeScreen from '../screens/InviteWelcomeScreen';
 import ChatScreen from '../screens/ChatScreen';
 import MedicationsScreen from '../screens/baby/MedicationsScreen';
+import BabyDayScreen from '../screens/baby/BabyDayScreen';
+import BabyProfileScreen from '../screens/baby/BabyProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
-import HomeScreen from '../screens/HomeScreen';
-import BabyNavigator from '../screens/baby/BabyNavigator';
+import MainTabs from './MainTabs';
 import Loader from '../components/Loader';
+import { BabyDateProvider } from '../screens/baby/BabyDateContext';
 import { colors, spacing, radius, font, type, TOUCH } from '../config/theme';
 
 const Stack = createNativeStackNavigator();
@@ -28,7 +29,7 @@ function inviteCodeFromUrl(): string {
   return new URLSearchParams(window.location.search).get('invite')?.toUpperCase() ?? '';
 }
 
-// הכותרת על הקרם ולא על לבן: כך היא לא נקראת כמשטח נוסף מעל המסך,
+// הכותרת על הרקע ולא על לבן: כך היא לא נקראת כמשטח נוסף מעל המסך,
 // והמסך מתחיל בלי קו הפרדה אופקי.
 const headerStyle = {
   headerStyle: { backgroundColor: colors.cream },
@@ -43,104 +44,6 @@ const headerStyle = {
   headerTitleAlign: 'center' as const,
   headerBackTitle: 'חזרה',
 };
-
-/** כותרת של מסך פנימי: הכותרת במרכז, והחזרה כשבב בקצה ימין */
-const backHeader =
-  (title: string) =>
-  ({ navigation }: any) => ({
-    title,
-    headerLeft: () => null,
-    headerRight: () => (
-      <HeaderChip label="חזרה" icon="chevron-forward" onPress={() => navigation.goBack()} />
-    ),
-  });
-
-export default function AppNavigator() {
-  const inviteCode = inviteCodeFromUrl();
-  const { user, loading } = useAuth();
-  const { householdId, loading: householdLoading } = useHousehold();
-  const { profile } = useBabyProfile();
-
-  // ממתינים גם לשיוך המשפחה — בלי זה המסכים נפתחים בלי לדעת לאיזה תא לפנות
-  if (loading || (user && householdLoading)) {
-    return <Loader />;
-  }
-
-  return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={headerStyle}>
-        {!user ? (
-          <>
-            {/* מי שהגיע עם קישור הזמנה רואה קודם לאן הוזמן, ורק אז טופס */}
-            {inviteCode ? (
-              <Stack.Screen
-                name="InviteWelcome"
-                component={InviteWelcomeScreen}
-                initialParams={{ code: inviteCode }}
-                options={{ headerShown: false }}
-              />
-            ) : null}
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
-            <Stack.Screen
-              name="ForgotPassword"
-              component={ForgotPasswordScreen}
-              options={{ headerShown: false }}
-            />
-          </>
-        ) : !householdId ? (
-          <Stack.Screen
-            name="NoHousehold"
-            component={NoHouseholdScreen}
-            options={{ headerShown: false }}
-          />
-        ) : (
-          <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            {/* היציאה ממדור התינוקת: חץ ה-stack היה 30×30 ובקצה שמאל, שזה
-                הצד שאליו מסיימים לסרוק בעברית. במקומו שבב 44 עם המילה
-                "בית" בקצה ימין, ו-popToTop שמחזיר מכל טאב. */}
-            <Stack.Screen
-              name="Baby"
-              component={BabyNavigator}
-              options={({ navigation }) => ({
-                title: `מעקב ${profile.name}`,
-                headerLeft: () => null,
-                headerRight: () => (
-                  <HeaderChip
-                    label="בית"
-                    icon="home-outline"
-                    onPress={() => navigation.popToTop()}
-                  />
-                ),
-              })}
-            />
-            <Stack.Screen
-              name="ChangePassword"
-              component={ChangePasswordScreen}
-              options={backHeader('שינוי סיסמה')}
-            />
-            <Stack.Screen
-              name="Invite"
-              component={InviteScreen}
-              options={backHeader('הוספת בן משפחה')}
-            />
-            <Stack.Screen
-              name="Chat"
-              component={ChatScreen}
-              options={backHeader('הודעות למשפחה')}
-            />
-            <Stack.Screen
-              name="Medications"
-              component={MedicationsScreen}
-              options={backHeader('תרופות ותוספים')}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-}
 
 /**
  * שבב ניווט בכותרת.
@@ -161,21 +64,118 @@ function HeaderChip({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={homeButton.touch}
+      style={chip.touch}
       accessibilityRole="button"
       accessibilityLabel={label}
       activeOpacity={0.7}
     >
-      <View style={homeButton.pill}>
+      <View style={chip.pill}>
         <Ionicons name={icon} size={15} color={colors.sage} />
-        <Text style={homeButton.label}>{label}</Text>
+        <Text style={chip.label}>{label}</Text>
       </View>
     </TouchableOpacity>
   );
 }
 
+/** כותרת של מסך פנימי: הכותרת במרכז, והחזרה כשבב בקצה ימין */
+const backHeader =
+  (title: string) =>
+  ({ navigation }: any) => ({
+    title,
+    headerLeft: () => null,
+    headerRight: () => (
+      <HeaderChip label="חזרה" icon="chevron-forward" onPress={() => navigation.goBack()} />
+    ),
+  });
+
+export default function AppNavigator() {
+  const inviteCode = inviteCodeFromUrl();
+  const { user, loading } = useAuth();
+  const { householdId, loading: householdLoading } = useHousehold();
+
+  // ממתינים גם לשיוך המשפחה — בלי זה המסכים נפתחים בלי לדעת לאיזה תא לפנות
+  if (loading || (user && householdLoading)) {
+    return <Loader />;
+  }
+
+  return (
+    <NavigationContainer>
+      {/* התאריך הנבחר משותף ללוח, לציר היומי ולסיכומים — ולכן הוא עוטף
+          את כל המדור המחובר, ולא רק את הטאבים */}
+      <BabyDateProvider>
+        <Stack.Navigator screenOptions={headerStyle}>
+          {!user ? (
+            <>
+              {/* מי שהגיע עם קישור הזמנה רואה קודם לאן הוזמן, ורק אז טופס */}
+              {inviteCode ? (
+                <Stack.Screen
+                  name="InviteWelcome"
+                  component={InviteWelcomeScreen}
+                  initialParams={{ code: inviteCode }}
+                  options={{ headerShown: false }}
+                />
+              ) : null}
+              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+              <Stack.Screen
+                name="SignUp"
+                component={SignUpScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="ForgotPassword"
+                component={ForgotPasswordScreen}
+                options={{ headerShown: false }}
+              />
+            </>
+          ) : !householdId ? (
+            <Stack.Screen
+              name="NoHousehold"
+              component={NoHouseholdScreen}
+              options={{ headerShown: false }}
+            />
+          ) : (
+            <>
+              <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+              <Stack.Screen
+                name="BabyDay"
+                component={BabyDayScreen}
+                options={backHeader('הציר היומי')}
+              />
+              <Stack.Screen
+                name="BabyProfile"
+                component={BabyProfileScreen}
+                options={backHeader('פרטי התינוקת')}
+              />
+              <Stack.Screen
+                name="ChangePassword"
+                component={ChangePasswordScreen}
+                options={backHeader('שינוי סיסמה')}
+              />
+              <Stack.Screen
+                name="Invite"
+                component={InviteScreen}
+                options={backHeader('הוספת בן משפחה')}
+              />
+              <Stack.Screen
+                name="Chat"
+                component={ChatScreen}
+                options={backHeader('המשפחה שלנו')}
+              />
+              <Stack.Screen
+                name="Medications"
+                component={MedicationsScreen}
+                options={backHeader('תרופות ותוספים')}
+              />
+            </>
+          )}
+        </Stack.Navigator>
+      </BabyDateProvider>
+    </NavigationContainer>
+  );
+}
+
 // השבב עצמו 32 בגובה, ועטוף במגע של 44 כדי לעמוד ביעד המגע.
-const homeButton = StyleSheet.create({
+const chip = StyleSheet.create({
   touch: { height: TOUCH, justifyContent: 'center', paddingLeft: spacing.xs },
   pill: {
     flexDirection: 'row-reverse',

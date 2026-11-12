@@ -15,6 +15,10 @@ import SectionHeader from '../../components/SectionHeader';
 import Segmented from '../../components/Segmented';
 import ActivityIcon from '../../components/ActivityIcon';
 import BarChart, { Bar } from '../../components/BarChart';
+import TrendLine, { Point } from '../../components/TrendLine';
+import DonutRing from '../../components/DonutRing';
+import ScreenHeader from '../../components/ScreenHeader';
+import BlobBackdrop from '../../components/BlobBackdrop';
 import EmptyState from '../../components/EmptyState';
 import { useBabyDate } from './BabyDateContext';
 import { fmtTime, fmtDuration, isSameDay } from '../../utils/dates';
@@ -144,11 +148,10 @@ export default function BabySummaryScreen() {
         ? `${from.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })} – ${new Date(to.getTime() - DAY_MS).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}`
         : `${HE_MONTHS[from.getMonth()]} ${from.getFullYear()}`;
 
-  // ---- עמודות לפי יום בתוך התקופה ----
-  const dailyBars = useMemo(() => {
-    if (range === 'day') return null;
-    const days: { key: number; label: string; highlight: boolean }[] = [];
+  // ---- חלוקה ליממות בתוך התקופה: בסיס לגרפי העמודות ולגרף המגמה ----
+  const byDay = useMemo(() => {
     const total = Math.round((to.getTime() - from.getTime()) / DAY_MS);
+    const days: { key: number; label: string; highlight: boolean }[] = [];
     for (let i = 0; i < total; i++) {
       const d = new Date(from.getTime() + i * DAY_MS);
       days.push({
@@ -157,21 +160,30 @@ export default function BabySummaryScreen() {
         highlight: isSameDay(d.getTime(), new Date(now)),
       });
     }
-    const pick = (dayStart: number, fn: (l: BabyLog) => number) =>
+    const sum = (dayStart: number, fn: (l: BabyLog) => number) =>
       cur.logs
         .filter((l) => l.timestamp >= dayStart && l.timestamp < dayStart + DAY_MS)
         .reduce((s, l) => s + fn(l), 0);
 
     const build = (fn: (l: BabyLog) => number): Bar[] =>
-      days.map((d) => ({ label: d.label, value: pick(d.key, fn), highlight: d.highlight }));
+      days.map((d) => ({ label: d.label, value: sum(d.key, fn), highlight: d.highlight }));
+
+    const feedings = build((l) => (l.type === 'feeding' ? 1 : 0));
+    // המגמה מוצגת רק על ימים שכבר חלפו — יום עתידי בחודש הנוכחי הוא
+    // אפס טכני, לא ירידה
+    const elapsed = feedings.filter((_, i) => days[i].key <= now);
+    // סדר כרונולוגי: הגרף מציב את הנקודה הראשונה בימין, בדיוק כמו
+    // עמודות הימים — הזמן בעברית זורם שמאלה
+    const trend: Point[] = elapsed.map((b) => ({ label: b.label, value: b.value }));
 
     return {
-      feedings: build((l) => (l.type === 'feeding' ? 1 : 0)),
+      feedings,
       sleepHours: build((l) =>
         l.type === 'sleep' && l.endTimestamp ? (l.endTimestamp - l.timestamp) / 3600000 : 0,
       ),
       diapers: build((l) => (l.type === 'diaper' ? 1 : 0)),
       labelEvery: range === 'month' ? 5 : 1,
+      trend,
     };
   }, [cur.logs, from, to, range, now]);
 
@@ -192,6 +204,9 @@ export default function BabySummaryScreen() {
   const sleeps = cur.logs.filter((l) => l.type === 'sleep' && l.endTimestamp);
   const perDay = (n: number) => (n / cur.elapsedDays).toFixed(1).replace('.0', '');
 
+  // חלקה של השינה מתוך הזמן שחלף בתקופה — זה מה שהטבעת מראה
+  const sleepShare = cur.sleepMs / (cur.elapsedDays * 24 * 3600000);
+
   // משימות היום לפי התרופות שהמשפחה הגדירה
   const missions = activeToday.map((m) => ({
     id: m.id,
@@ -205,9 +220,16 @@ export default function BabySummaryScreen() {
   const diaperMeta = activityMeta('diaper');
 
   return (
-    <View style={styles.container}>
+    <View style={styles.root}>
+      <BlobBackdrop />
+
       {/* ---- בורר הטווח וניווט התקופה ---- */}
       <View style={styles.head}>
+        <ScreenHeader
+          title="סיכומים וסטטיסטיקות"
+          subtitle={`הדפוסים של ${profile.name} לאורך זמן`}
+          icon="chart-box-outline"
+        />
         <Segmented
           label="טווח הסיכום"
           value={range}
@@ -230,7 +252,7 @@ export default function BabySummaryScreen() {
             <Ionicons
               name="chevron-back"
               size={21}
-              color={atCurrent ? colors.border : colors.sage}
+              color={atCurrent ? colors.borderStrong : colors.sage}
             />
           </TouchableOpacity>
           <Text style={[type.bodyStrong, styles.period]} numberOfLines={1}>
@@ -256,6 +278,34 @@ export default function BabySummaryScreen() {
           />
         ) : (
           <>
+            {/* ---- כרטיס השינה: הטבעת מראה כמה מהזמן התינוקת ישנה ---- */}
+            <Card style={styles.ringCard}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <View style={styles.ringTitleRow}>
+                  <MaterialCommunityIcons name={sleepMeta.icon} size={17} color={sleepMeta.color} />
+                  <Text style={type.h3}>שעות שינה</Text>
+                </View>
+                <Text style={styles.ringValue}>
+                  {cur.sleepMs > 0 ? hoursText(cur.sleepMs) : '—'}
+                </Text>
+                <Text style={type.small}>{Math.round(sleepShare * 100)}% מהזמן שחלף בתקופה</Text>
+                {deltaText(cur.sleepMs, prev.sleepMs, unitName) ? (
+                  <Text style={[type.caption, styles.delta]}>
+                    {deltaText(cur.sleepMs, prev.sleepMs, unitName)}
+                  </Text>
+                ) : null}
+              </View>
+              <DonutRing
+                progress={sleepShare}
+                size={96}
+                width={11}
+                color={sleepMeta.color}
+                track={sleepMeta.surface}
+              >
+                <MaterialCommunityIcons name={sleepMeta.icon} size={26} color={sleepMeta.color} />
+              </DonutRing>
+            </Card>
+
             {/* ---- מונים ---- */}
             <View style={styles.statsRow}>
               <StatCard
@@ -273,19 +323,11 @@ export default function BabySummaryScreen() {
                 color={feedMeta.color}
                 surface={feedMeta.surface}
                 value={String(cur.ml)}
-                label='מ"ל סה"כ'
+                label={'מ"ל סה"כ'}
                 delta={range === 'day' ? undefined : deltaText(cur.ml, prev.ml, unitName)}
               />
             </View>
             <View style={styles.statsRow}>
-              <StatCard
-                icon={sleepMeta.icon}
-                color={sleepMeta.color}
-                surface={sleepMeta.surface}
-                value={cur.sleepMs > 0 ? hoursText(cur.sleepMs) : '—'}
-                label={range === 'day' ? 'שינה' : 'שינה סה"כ'}
-                delta={range === 'day' ? undefined : deltaText(cur.sleepMs, prev.sleepMs, unitName)}
-              />
               <StatCard
                 icon="moon-waning-crescent"
                 color={sleepMeta.color}
@@ -332,16 +374,19 @@ export default function BabySummaryScreen() {
               </View>
             ) : null}
 
-            {/* ---- גרפים יומיים, בשבוע ובחודש ---- */}
-            {dailyBars ? (
+            {/* ---- מגמה וגרפים יומיים, בשבוע ובחודש ---- */}
+            {range !== 'day' ? (
               <>
                 <View style={styles.section}>
-                  <SectionHeader title="ארוחות לפי יום" />
+                  <SectionHeader title="ארוחות ליום — מגמה" />
                   <Card>
-                    <BarChart
-                      data={dailyBars.feedings}
+                    <View style={styles.trendHead}>
+                      <Text style={styles.trendValue}>{perDay(cur.feedings)}</Text>
+                      <Text style={type.small}>ממוצע ארוחות ביום</Text>
+                    </View>
+                    <TrendLine
+                      data={byDay.trend}
                       color={feedMeta.color}
-                      labelEvery={dailyBars.labelEvery}
                       format={(v) => `${Math.round(v)} ארוחות`}
                     />
                   </Card>
@@ -351,9 +396,9 @@ export default function BabySummaryScreen() {
                   <SectionHeader title="שעות שינה לפי יום" />
                   <Card>
                     <BarChart
-                      data={dailyBars.sleepHours}
+                      data={byDay.sleepHours}
                       color={sleepMeta.color}
-                      labelEvery={dailyBars.labelEvery}
+                      labelEvery={byDay.labelEvery}
                       format={(v) => `${v.toFixed(1)} שעות`}
                     />
                   </Card>
@@ -363,9 +408,9 @@ export default function BabySummaryScreen() {
                   <SectionHeader title="חיתולים לפי יום" />
                   <Card>
                     <BarChart
-                      data={dailyBars.diapers}
+                      data={byDay.diapers}
                       color={diaperMeta.color}
-                      labelEvery={dailyBars.labelEvery}
+                      labelEvery={byDay.labelEvery}
                       format={(v) => `${Math.round(v)} חיתולים`}
                     />
                   </Card>
@@ -444,18 +489,14 @@ export default function BabySummaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
+  root: { flex: 1, backgroundColor: colors.cream },
   head: {
     width: '100%',
     maxWidth: CONTENT_MAX,
     alignSelf: 'center',
-    backgroundColor: colors.white,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.xs,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
   },
   periodBar: { flexDirection: 'row', alignItems: 'center' },
   arrow: { width: TOUCH, height: TOUCH, alignItems: 'center', justifyContent: 'center' },
@@ -467,8 +508,27 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX,
     alignSelf: 'center',
   },
+
+  ringCard: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  ringTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.xs + 2 },
+  ringValue: { ...type.display, color: colors.text },
+  delta: { color: colors.success, fontWeight: '700' },
+
   statsRow: { flexDirection: 'row-reverse', gap: spacing.sm, marginBottom: spacing.sm },
   section: { marginTop: spacing.md },
+
+  trendHead: {
+    flexDirection: 'row-reverse',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  trendValue: { ...type.h1, color: colors.text },
 
   missions: { gap: spacing.sm },
   mission: {

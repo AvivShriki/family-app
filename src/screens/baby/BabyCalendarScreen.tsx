@@ -3,12 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBabyLogs } from '../../context/BabyLogsContext';
+import { useBabyProfile } from '../../hooks/useBabyProfile';
 import { useMedications } from '../../context/MedicationsContext';
 import { BabyLog } from '../../types';
 import { activityMeta, medIcon } from '../../config/activity';
 import { colors, spacing, radius, shadow, type, TOUCH, CONTENT_MAX } from '../../config/theme';
 import Card from '../../components/Card';
 import SectionHeader from '../../components/SectionHeader';
+import ScreenHeader from '../../components/ScreenHeader';
+import BlobBackdrop from '../../components/BlobBackdrop';
 import ActivityIcon from '../../components/ActivityIcon';
 import PressScale from '../../components/PressScale';
 import { useBabyDate } from './BabyDateContext';
@@ -40,6 +43,7 @@ interface Props {
 export default function BabyCalendarScreen({ onSelectDay }: Props) {
   const { items: allLogs } = useBabyLogs();
   const { medications } = useMedications();
+  const { profile } = useBabyProfile();
   const insets = useSafeAreaInsets();
   // היום הנבחר משותף עם היומן והסיכום
   const { date: selected, setDate: setSelected } = useBabyDate();
@@ -95,195 +99,204 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
   const selectedIsInView = selected.getFullYear() === year && selected.getMonth() === month;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.scroll, { paddingBottom: 108 + insets.bottom }]}
-    >
-      {/* ---- ניווט בין חודשים. אין מה לראות בעתיד, ולכן רק קדימה ננעל. ---- */}
-      <View style={styles.monthBar}>
-        <TouchableOpacity
-          onPress={() => goMonth(1)}
-          disabled={atCurrentMonth}
-          style={styles.arrowBtn}
-          accessibilityRole="button"
-          accessibilityLabel="החודש הבא"
-          accessibilityState={{ disabled: atCurrentMonth }}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={22}
-            color={atCurrentMonth ? colors.border : colors.sage}
-          />
-        </TouchableOpacity>
+    <View style={styles.root}>
+      <BlobBackdrop />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 108 + insets.bottom }]}
+      >
+        <ScreenHeader
+          title="היומן של המשפחה"
+          subtitle={`כל מה שתועד ל${profile.name}, יום אחרי יום`}
+          icon="calendar-month-outline"
+        />
 
-        <View style={styles.monthTitleWrap}>
-          <Text style={type.h2} numberOfLines={1}>
-            {HE_MONTHS[month]} {year}
-          </Text>
-        </View>
-
-        {/* חזרה לחודש הנוכחי אחרי גלישה אחורה */}
-        {!atCurrentMonth ? (
+        {/* ---- ניווט בין חודשים. אין מה לראות בעתיד, ולכן רק קדימה ננעל. ---- */}
+        <View style={styles.monthBar}>
           <TouchableOpacity
-            style={styles.nowBtn}
-            onPress={() => setViewDate(new Date(today.getFullYear(), today.getMonth(), 1))}
+            onPress={() => goMonth(1)}
+            disabled={atCurrentMonth}
+            style={styles.arrowBtn}
             accessibilityRole="button"
-            accessibilityLabel="חזרה לחודש הנוכחי"
+            accessibilityLabel="החודש הבא"
+            accessibilityState={{ disabled: atCurrentMonth }}
           >
-            <Text style={styles.nowText}>עכשיו</Text>
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={atCurrentMonth ? colors.border : colors.sage}
+            />
           </TouchableOpacity>
-        ) : null}
 
-        <TouchableOpacity
-          onPress={() => goMonth(-1)}
-          style={styles.arrowBtn}
-          accessibilityRole="button"
-          accessibilityLabel="החודש הקודם"
-        >
-          <Ionicons name="chevron-forward" size={22} color={colors.sage} />
-        </TouchableOpacity>
-      </View>
-
-      <Card style={styles.gridCard}>
-        {/* row-reverse: יום ראשון בימין, כמו בכל לוח שנה עברי */}
-        <View style={styles.dowRow}>
-          {HE_DAYS.map((d) => (
-            <Text key={d} style={[type.caption, styles.dowText]}>
-              {d}
+          <View style={styles.monthTitleWrap}>
+            <Text style={type.h2} numberOfLines={1}>
+              {HE_MONTHS[month]} {year}
             </Text>
-          ))}
+          </View>
+
+          {/* חזרה לחודש הנוכחי אחרי גלישה אחורה */}
+          {!atCurrentMonth ? (
+            <TouchableOpacity
+              style={styles.nowBtn}
+              onPress={() => setViewDate(new Date(today.getFullYear(), today.getMonth(), 1))}
+              accessibilityRole="button"
+              accessibilityLabel="חזרה לחודש הנוכחי"
+            >
+              <Text style={styles.nowText}>עכשיו</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <TouchableOpacity
+            onPress={() => goMonth(-1)}
+            style={styles.arrowBtn}
+            accessibilityRole="button"
+            accessibilityLabel="החודש הקודם"
+          >
+            <Ionicons name="chevron-forward" size={22} color={colors.sage} />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.grid}>
-          {cells.map((day, i) => {
-            if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
-            const types = typesForDay(year, month, day);
-            const future = isFuture(day);
-            const sel = isSelectedDay(day);
-            const names = types.map((t) => activityMeta(t as BabyLog['type']).label).join(', ');
-            return (
-              <View key={day} style={styles.cell}>
-                <TouchableOpacity
-                  style={[styles.day, isToday(day) && styles.dayToday, sel && styles.daySelected]}
-                  onPress={() => !future && setSelected(new Date(year, month, day))}
-                  disabled={future}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: sel, disabled: future }}
-                  accessibilityLabel={
-                    `${day} ב${HE_MONTHS[month]}` + (names ? `, תועדו: ${names}` : ', ללא תיעוד')
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.dayNum,
-                      sel && styles.dayNumSelected,
-                      future && styles.dayNumFuture,
-                    ]}
+        <Card style={styles.gridCard}>
+          {/* row-reverse: יום ראשון בימין, כמו בכל לוח שנה עברי */}
+          <View style={styles.dowRow}>
+            {HE_DAYS.map((d) => (
+              <Text key={d} style={[type.caption, styles.dowText]}>
+                {d}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.grid}>
+            {cells.map((day, i) => {
+              if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
+              const types = typesForDay(year, month, day);
+              const future = isFuture(day);
+              const sel = isSelectedDay(day);
+              const names = types.map((t) => activityMeta(t as BabyLog['type']).label).join(', ');
+              return (
+                <View key={day} style={styles.cell}>
+                  <TouchableOpacity
+                    style={[styles.day, isToday(day) && styles.dayToday, sel && styles.daySelected]}
+                    onPress={() => !future && setSelected(new Date(year, month, day))}
+                    disabled={future}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: sel, disabled: future }}
+                    accessibilityLabel={
+                      `${day} ב${HE_MONTHS[month]}` + (names ? `, תועדו: ${names}` : ', ללא תיעוד')
+                    }
                   >
-                    {day}
-                  </Text>
-                  <View style={styles.dots}>
-                    {types.map((t, di) => (
-                      <View
-                        key={di}
-                        style={[
-                          styles.dot,
-                          {
-                            backgroundColor: sel
-                              ? colors.white
-                              : activityMeta(t as BabyLog['type']).color,
-                          },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </TouchableOpacity>
+                    <Text
+                      style={[
+                        styles.dayNum,
+                        sel && styles.dayNumSelected,
+                        future && styles.dayNumFuture,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                    <View style={styles.dots}>
+                      {types.map((t, di) => (
+                        <View
+                          key={di}
+                          style={[
+                            styles.dot,
+                            {
+                              backgroundColor: sel
+                                ? colors.white
+                                : activityMeta(t as BabyLog['type']).tint,
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        </Card>
+
+        {/* ---- מקרא: נקודה, אייקון ושם. לא צבע בלבד. ---- */}
+        <View style={styles.legend}>
+          {LEGEND.map((t) => {
+            const meta = activityMeta(t);
+            return (
+              <View key={t} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: meta.tint }]} />
+                <Text style={type.caption}>{meta.label}</Text>
               </View>
             );
           })}
         </View>
-      </Card>
 
-      {/* ---- מקרא: נקודה, אייקון ושם. לא צבע בלבד. ---- */}
-      <View style={styles.legend}>
-        {LEGEND.map((t) => {
-          const meta = activityMeta(t);
-          return (
-            <View key={t} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: meta.color }]} />
-              <Text style={type.caption}>{meta.label}</Text>
-            </View>
-          );
-        })}
-      </View>
+        {/* ---- סיכום היום הנבחר ואירועיו ---- */}
+        {selectedIsInView ? (
+          <View style={styles.section}>
+            <SectionHeader
+              title={
+                isSameDay(selected.getTime(), today)
+                  ? 'היום'
+                  : selected.toLocaleDateString('he-IL', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                    })
+              }
+              actionLabel="פתיחת היומן"
+              onAction={() => onSelectDay(selected)}
+            />
 
-      {/* ---- סיכום היום הנבחר ואירועיו ---- */}
-      {selectedIsInView ? (
-        <View style={styles.section}>
-          <SectionHeader
-            title={
-              isSameDay(selected.getTime(), today)
-                ? 'היום'
-                : selected.toLocaleDateString('he-IL', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  })
-            }
-            actionLabel="פתיחת היומן"
-            onAction={() => onSelectDay(selected)}
-          />
-
-          {dayLogs.length === 0 ? (
-            <Card flat>
-              <Text style={[type.small, { textAlign: 'center' }]}>לא תועד כלום ביום הזה</Text>
-            </Card>
-          ) : (
-            <>
-              <View style={styles.summaryRow}>
-                <Mini label="ארוחות" value={String(dayFeedings)} type="feeding" />
-                <Mini
-                  label="שינה"
-                  value={daySleepMs > 0 ? fmtDuration(daySleepMs) : '—'}
-                  type="sleep"
-                />
-                <Mini label="חיתולים" value={String(dayDiapers)} type="diaper" />
-              </View>
-
-              <Card flush style={{ marginTop: spacing.sm }}>
-                {dayLogs.map((log, i) => {
-                  const base = activityMeta(log.type);
-                  const medName = medications.find((m) => m.id === log.medicationId)?.name;
-                  const medEmoji = medications.find((m) => m.id === log.medicationId)?.emoji;
-                  return (
-                    <PressScale
-                      key={log.id}
-                      to={0.995}
-                      onPress={() => onSelectDay(selected)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${medName ?? base.label} ב-${fmtTime(log.timestamp)}. פתיחת היומן`}
-                    >
-                      <View style={[styles.eventRow, i > 0 && styles.eventDivider]}>
-                        <ActivityIcon
-                          icon={medName ? medIcon(medEmoji) : base.icon}
-                          color={base.color}
-                          surface={base.surface}
-                          size={30}
-                        />
-                        <Text style={[type.body, { flex: 1 }]} numberOfLines={1}>
-                          {medName ?? base.label}
-                        </Text>
-                        <Text style={styles.eventTime}>{fmtTime(log.timestamp)}</Text>
-                      </View>
-                    </PressScale>
-                  );
-                })}
+            {dayLogs.length === 0 ? (
+              <Card flat>
+                <Text style={[type.small, { textAlign: 'center' }]}>לא תועד כלום ביום הזה</Text>
               </Card>
-            </>
-          )}
-        </View>
-      ) : null}
-    </ScrollView>
+            ) : (
+              <>
+                <View style={styles.summaryRow}>
+                  <Mini label="ארוחות" value={String(dayFeedings)} type="feeding" />
+                  <Mini
+                    label="שינה"
+                    value={daySleepMs > 0 ? fmtDuration(daySleepMs) : '—'}
+                    type="sleep"
+                  />
+                  <Mini label="חיתולים" value={String(dayDiapers)} type="diaper" />
+                </View>
+
+                <Card flush style={{ marginTop: spacing.sm }}>
+                  {dayLogs.map((log, i) => {
+                    const base = activityMeta(log.type);
+                    const medName = medications.find((m) => m.id === log.medicationId)?.name;
+                    const medEmoji = medications.find((m) => m.id === log.medicationId)?.emoji;
+                    return (
+                      <PressScale
+                        key={log.id}
+                        to={0.995}
+                        onPress={() => onSelectDay(selected)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${medName ?? base.label} ב-${fmtTime(log.timestamp)}. פתיחת היומן`}
+                      >
+                        <View style={[styles.eventRow, i > 0 && styles.eventDivider]}>
+                          <ActivityIcon
+                            icon={medName ? medIcon(medEmoji) : base.icon}
+                            color={base.color}
+                            surface={base.surface}
+                            size={30}
+                          />
+                          <Text style={[type.body, { flex: 1 }]} numberOfLines={1}>
+                            {medName ?? base.label}
+                          </Text>
+                          <Text style={styles.eventTime}>{fmtTime(log.timestamp)}</Text>
+                        </View>
+                      </PressScale>
+                    );
+                  })}
+                </Card>
+              </>
+            )}
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -291,7 +304,7 @@ function Mini({ label, value, type: t }: { label: string; value: string; type: B
   const meta = activityMeta(t);
   return (
     <View style={styles.mini} accessibilityLabel={`${label}: ${value}`}>
-      <View style={[styles.miniDot, { backgroundColor: meta.color }]} />
+      <View style={[styles.miniDot, { backgroundColor: meta.tint }]} />
       <Text style={[type.smallStrong, styles.miniValue]}>{value}</Text>
       <Text style={type.caption}>{label}</Text>
     </View>
@@ -299,7 +312,8 @@ function Mini({ label, value, type: t }: { label: string; value: string; type: B
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
+  root: { flex: 1, backgroundColor: colors.cream },
+  container: { flex: 1 },
   scroll: {
     padding: spacing.md,
     width: '100%',

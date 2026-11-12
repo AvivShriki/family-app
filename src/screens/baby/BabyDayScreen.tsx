@@ -77,7 +77,9 @@ export default function BabyDayScreen() {
         caption={getAgeText(profile.birthDate, selectedDate)}
       />
 
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 108 + insets.bottom }]}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: spacing.xxl + insets.bottom }]}
+      >
         {missions.length > 0 ? (
           <View style={styles.missions}>
             {missions.map((m) => (
@@ -189,7 +191,7 @@ function TimelineItem({
       {/* עמוד הזמן בימין — זה הצד שממנו מתחילים לקרוא בעברית */}
       <View style={styles.timeCol}>
         <Text style={styles.timeText}>{fmtTime(log.timestamp)}</Text>
-        <View style={[styles.node, { backgroundColor: meta.color }]} />
+        <View style={[styles.node, { backgroundColor: meta.tint }]} />
         {!isLast ? <View style={styles.line} /> : null}
       </View>
 

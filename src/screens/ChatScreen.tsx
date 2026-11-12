@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,8 @@ import { FamilyMessage } from '../types';
 import { fmtTime } from '../utils/dates';
 import { colors, spacing, radius, type, TOUCH, CONTENT_MAX } from '../config/theme';
 
+const MAX_MEMBERS = 3;
+
 /** תאריך קצר מעל הודעה שפותחת יום חדש */
 function dayLabel(ts: number): string {
   const d = new Date(ts);
@@ -35,13 +37,33 @@ function senderLabel(email: string): string {
   return email.split('@')[0] || 'בן משפחה';
 }
 
-export default function ChatScreen() {
+export default function ChatScreen({ navigation }: any) {
   const { user } = useAuth();
   const { messages, loading, send } = useMessages();
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
+
+  /**
+   * מי במשפחה.
+   *
+   * רשימת החברים מוחזקת במסמך משק הבית כמזהים בלבד, ואין לנו הרשאה
+   * לקרוא את הפרופיל של אדם אחר — ולכן מי שמופיע כאן הם מי שכבר כתב
+   * הודעה, ואני. זה מה שאפשר לדעת באמת, בלי להמציא שמות.
+   */
+  const members = useMemo(() => {
+    const seen = new Map<string, string>();
+    if (user?.email) seen.set(user.uid, user.email);
+    messages.forEach((m) => {
+      if (!seen.has(m.senderUid)) seen.set(m.senderUid, m.senderEmail);
+    });
+    return [...seen.entries()].map(([uid, email]) => ({
+      uid,
+      email,
+      mine: uid === user?.uid,
+    }));
+  }, [messages, user]);
 
   const onSend = async () => {
     const text = draft.trim();
@@ -64,6 +86,42 @@ export default function ChatScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* ---- מי במשפחה ---- */}
+      <View style={styles.membersBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.membersRow}
+        >
+          {members.map((m) => (
+            <View key={m.uid} style={styles.member} accessibilityLabel={senderLabel(m.email)}>
+              <View style={[styles.avatar, m.mine && styles.avatarMine]}>
+                <Text style={[styles.initial, m.mine && { color: colors.white }]}>
+                  {senderLabel(m.email).charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.memberName} numberOfLines={1}>
+                {m.mine ? 'אני' : senderLabel(m.email)}
+              </Text>
+            </View>
+          ))}
+
+          {members.length < MAX_MEMBERS ? (
+            <TouchableOpacity
+              style={styles.member}
+              onPress={() => navigation.navigate('Invite')}
+              accessibilityRole="button"
+              accessibilityLabel="הוספת בן משפחה"
+            >
+              <View style={[styles.avatar, styles.avatarAdd]}>
+                <Ionicons name="add" size={22} color={colors.sage} />
+              </View>
+              <Text style={styles.memberName}>הוספה</Text>
+            </TouchableOpacity>
+          ) : null}
+        </ScrollView>
+      </View>
+
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.scroll}
@@ -140,15 +198,47 @@ function Bubble({
   );
 }
 
+const centered = {
+  width: '100%' as const,
+  maxWidth: CONTENT_MAX,
+  alignSelf: 'center' as const,
+};
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  scroll: {
-    padding: spacing.md,
-    paddingBottom: spacing.lg,
-    width: '100%',
-    maxWidth: CONTENT_MAX,
-    alignSelf: 'center',
+
+  membersBar: {
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
+  membersRow: {
+    ...centered,
+    flexDirection: 'row-reverse',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  member: { alignItems: 'center', gap: 3, width: 58 },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.mossSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarMine: { backgroundColor: colors.sage },
+  avatarAdd: {
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.moss,
+  },
+  initial: { ...type.bodyStrong, textAlign: 'center', color: colors.sage },
+  memberName: { ...type.caption, textAlign: 'center' },
+
+  scroll: { ...centered, padding: spacing.md, paddingBottom: spacing.lg },
 
   dayWrap: { alignItems: 'center', marginVertical: spacing.sm },
   day: {
@@ -188,9 +278,7 @@ const styles = StyleSheet.create({
   timeMine: { color: 'rgba(255,255,255,0.75)' },
 
   composer: {
-    width: '100%',
-    maxWidth: CONTENT_MAX,
-    alignSelf: 'center',
+    ...centered,
     flexDirection: 'row-reverse',
     alignItems: 'flex-end',
     gap: spacing.sm,

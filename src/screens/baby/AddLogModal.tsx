@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBabyLogs } from '../../context/BabyLogsContext';
 import { useMedications } from '../../context/MedicationsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -9,7 +9,6 @@ import { activityMeta, medIcon } from '../../config/activity';
 import { colors, spacing, radius, type, TOUCH } from '../../config/theme';
 import Button from '../../components/Button';
 import BottomSheet from '../../components/BottomSheet';
-import ActivityIcon from '../../components/ActivityIcon';
 import PressScale from '../../components/PressScale';
 import Chip from '../../components/Chip';
 import Segmented from '../../components/Segmented';
@@ -159,51 +158,61 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
         onBack={step === 'form' && !editLog ? () => setStep('pick') : undefined}
       >
         {step === 'pick' ? (
-          <View style={styles.typeGrid}>
-            {TYPES.map((t) => {
-              const m = activityMeta(t);
-              return (
-                <PressScale
-                  key={t}
-                  onPress={() => pickType(t)}
-                  accessibilityRole="button"
-                  accessibilityLabel={m.label}
-                  style={styles.typeOuter}
-                >
-                  <View style={styles.typeBtn}>
-                    <ActivityIcon icon={m.icon} color={m.color} surface={m.surface} size={44} />
-                    <Text style={[type.smallStrong, styles.typeLabel]} numberOfLines={1}>
-                      {m.label}
-                    </Text>
-                  </View>
-                </PressScale>
-              );
-            })}
-            {activeToday.map((m) => {
-              const medMeta = activityMeta('medication');
-              return (
-                <PressScale
-                  key={m.id}
-                  onPress={() => pickType('medication', m.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={m.name}
-                  style={styles.typeOuter}
-                >
-                  <View style={styles.typeBtn}>
-                    <ActivityIcon
-                      icon={medIcon(m.emoji)}
-                      color={medMeta.color}
-                      surface={medMeta.surface}
-                      size={44}
-                    />
-                    <Text style={[type.smallStrong, styles.typeLabel]} numberOfLines={1}>
-                      {m.name}
-                    </Text>
-                  </View>
-                </PressScale>
-              );
-            })}
-          </View>
+          <>
+            {/* רשת הבחירה: כל סוג במשטח בגוון שלו, כך שהעין מוצאת אותו
+                לפי הצבע עוד לפני שהיא קוראת את השם */}
+            <View style={styles.typeGrid}>
+              {TYPES.map((t) => {
+                const m = activityMeta(t);
+                return (
+                  <PressScale
+                    key={t}
+                    onPress={() => pickType(t)}
+                    accessibilityRole="button"
+                    accessibilityLabel={m.label}
+                    style={styles.typeOuter}
+                  >
+                    <View style={[styles.typeBtn, { backgroundColor: m.surface }]}>
+                      <MaterialCommunityIcons name={m.icon} size={30} color={m.color} />
+                      <Text style={[type.bodyStrong, styles.typeLabel]} numberOfLines={1}>
+                        {m.label}
+                      </Text>
+                    </View>
+                  </PressScale>
+                );
+              })}
+              {activeToday.map((m) => {
+                const medMeta = activityMeta('medication');
+                return (
+                  <PressScale
+                    key={m.id}
+                    onPress={() => pickType('medication', m.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={m.name}
+                    style={styles.typeOuter}
+                  >
+                    <View style={[styles.typeBtn, { backgroundColor: medMeta.surface }]}>
+                      <MaterialCommunityIcons
+                        name={medIcon(m.emoji)}
+                        size={30}
+                        color={medMeta.color}
+                      />
+                      <Text style={[type.bodyStrong, styles.typeLabel]} numberOfLines={1}>
+                        {m.name}
+                      </Text>
+                    </View>
+                  </PressScale>
+                );
+              })}
+            </View>
+
+            <Button
+              label="ביטול"
+              variant="secondary"
+              onPress={handleClose}
+              style={{ marginTop: spacing.md }}
+            />
+          </>
         ) : (
           <View>
             {/* שעה — תמיד */}
@@ -379,18 +388,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const styles = StyleSheet.create({
   typeGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
-  typeOuter: { flexGrow: 1, flexBasis: '28%', minWidth: 94 },
+  typeOuter: { flexGrow: 1, flexBasis: '45%', minWidth: 130 },
   typeBtn: {
     flex: 1,
-    minHeight: 104,
-    backgroundColor: colors.cream,
+    minHeight: 112,
     borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
   typeLabel: { textAlign: 'center' },
 
