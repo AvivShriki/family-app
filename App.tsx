@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
 import { HouseholdProvider } from './src/context/HouseholdContext';
 import { BabyLogsProvider } from './src/context/BabyLogsContext';
+import { MessagesProvider } from './src/context/MessagesContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
@@ -12,8 +13,10 @@ export default function App() {
       <AuthProvider>
         <HouseholdProvider>
           <BabyLogsProvider>
-            <StatusBar style="dark" />
-            <AppNavigator />
+            <MessagesProvider>
+              <StatusBar style="dark" />
+              <AppNavigator />
+            </MessagesProvider>
           </BabyLogsProvider>
         </HouseholdProvider>
       </AuthProvider>

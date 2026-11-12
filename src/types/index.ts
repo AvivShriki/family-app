@@ -11,3 +11,11 @@ export interface BabyLog {
   diaperType?: 'wet' | 'dirty' | 'both';
   loggedBy: string;
 }
+
+export interface FamilyMessage {
+  id: string;
+  text: string;
+  senderUid: string;
+  senderEmail: string;
+  createdAt: number;
+}

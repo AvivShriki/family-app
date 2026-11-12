@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useBabyLogs } from '../context/BabyLogsContext';
+import { useMessages } from '../context/MessagesContext';
 import { useBabyProfile, DEFAULT_PROFILE } from '../hooks/useBabyProfile';
 import Button from '../components/Button';
 import { BabyLog } from '../types';
@@ -67,6 +68,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { logout } = useAuth();
   const { items: babyLogs } = useBabyLogs();
   const { profile } = useBabyProfile();
+  const { messages } = useMessages();
 
   // שני הכפתורים החדשים עוד לא מחוברים לכלום. לחיצה שלא מחזירה דבר
   // מלמדת שהאפליקציה שבורה, ולכן היא מציגה הודעה קצרה במקום כלום.
@@ -98,6 +100,8 @@ export default function HomeScreen({ navigation }: Props) {
   const statusText = lastLogText(babyLogs[babyLogs.length - 1]);
   const vitaminDone = todayLogs.some((l) => l.type === 'vitamin');
   const ironDone = todayLogs.some((l) => l.type === 'iron');
+
+  const lastMessage = messages[messages.length - 1];
 
   const meals = todayLogs.filter((l) => l.type === 'feeding').length;
   const diapers = todayLogs.filter((l) => l.type === 'diaper').length;
@@ -207,6 +211,26 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.statLabel}>חיתולים היום</Text>
         </View>
       </View>
+
+      {/* הודעות המשפחה — מציג את האחרונה, כדי שהכרטיס יראה שיש בו משהו
+          ולא יהיה אייקון שצריך לנחש מה מאחוריו */}
+      <TouchableOpacity
+        style={styles.chatCard}
+        onPress={() => navigation.navigate('Chat')}
+        accessibilityLabel="הודעות למשפחה"
+        activeOpacity={0.85}
+      >
+        <View style={[styles.serviceIcon, { backgroundColor: colors.blue, marginBottom: 0 }]}>
+          <Ionicons name="chatbubbles-outline" size={20} color={colors.text} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.chatTitle}>הודעות למשפחה</Text>
+          <Text style={styles.chatPreview} numberOfLines={1}>
+            {lastMessage ? lastMessage.text : 'עוד אין הודעות — אפשר להשאיר אחת'}
+          </Text>
+        </View>
+        <Text style={styles.chevron}>‹</Text>
+      </TouchableOpacity>
 
       {/* שירותים עתידיים — מוצגים, מסומנים "בקרוב", ועוד לא מחוברים */}
       <View style={styles.servicesRow}>
@@ -360,6 +384,20 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: font.titleLg, fontWeight: font.weight.bold, color: colors.text },
   statLabel: { fontSize: font.caption, color: colors.textLight, marginTop: 2, textAlign: 'center' },
+
+  chatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    ...shadow.soft,
+  },
+  chatTitle: { fontSize: font.bodyLg, fontWeight: font.weight.bold, color: colors.text, textAlign: 'right' },
+  chatPreview: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginTop: 2 },
+  chevron: { fontSize: 22, color: colors.textLight },
 
   servicesRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
   serviceCard: {
