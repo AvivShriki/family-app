@@ -98,8 +98,12 @@ service cloud.firestore {
     }
 
     match /invites/{code} {
-      // הקוד עצמו הוא הסוד; המסמך חושף רק מזהה משפחה אטום
-      allow read: if request.auth != null;
+      // קריאה של הזמנה אחת פתוחה גם למי שעוד לא נרשם — אחרת אי אפשר
+      // לומר לו לאיזו משפחה הוזמן לפני שהוא פותח חשבון. הקוד עצמו הוא
+      // הסוד (8 תווים מתוך 31, לא ניתן לניחוש), והמסמך חושף רק שם
+      // משפחה ומזהה אטום. רשימה חסומה, כך שאי אפשר לסרוק הזמנות.
+      allow get: if true;
+      allow list: if false;
 
       allow create: if isMember(request.resource.data.householdId)
         && request.resource.data.createdBy == request.auth.uid

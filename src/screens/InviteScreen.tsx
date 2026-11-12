@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useHousehold } from '../context/HouseholdContext';
+import { useBabyProfile } from '../hooks/useBabyProfile';
 import Button from '../components/Button';
 import { createInvite } from '../services/familySetup';
 import { colors, spacing, radius, font, shadow } from '../config/theme';
@@ -20,6 +21,7 @@ function inviteLink(code: string): string {
 export default function InviteScreen() {
   const { user } = useAuth();
   const { householdId } = useHousehold();
+  const { profile } = useBabyProfile();
   const [members, setMembers] = useState<number | null>(null);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,7 +42,7 @@ export default function InviteScreen() {
     setError('');
     setLoading(true);
     try {
-      setCode(await createInvite(householdId, user.uid));
+      setCode(await createInvite(householdId, user.uid, profile.familyName));
     } catch {
       setError('יצירת ההזמנה נכשלה. נסו שוב.');
     } finally {

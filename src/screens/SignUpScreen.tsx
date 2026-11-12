@@ -45,13 +45,13 @@ function errorText(code: string) {
   }
 }
 
-export default function SignUpScreen({ navigation }: any) {
+export default function SignUpScreen({ navigation, route }: any) {
   const { signUp } = useAuth();
   const { beginSetup, refresh } = useHousehold();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [invite, setInvite] = useState(inviteFromUrl);
+  const [invite, setInvite] = useState<string>(route?.params?.code ?? inviteFromUrl());
   const [babyName, setBabyName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [familyName, setFamilyName] = useState('');

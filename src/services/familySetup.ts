@@ -74,15 +74,44 @@ export async function joinFamily(uid: string, email: string, code: string): Prom
   return householdId;
 }
 
-/** מייצר הזמנה חדשה ומחזיר את הקוד. נוצרת רק בידי חבר באותה משפחה. */
-export async function createInvite(householdId: string, uid: string): Promise<string> {
+/**
+ * מייצר הזמנה חדשה ומחזיר את הקוד. נוצרת רק בידי חבר באותה משפחה.
+ *
+ * שם המשפחה נשמר על ההזמנה עצמה בכוונה: מי שלוחץ על הקישור עדיין לא
+ * מחובר, ולכן אין לו גישה לפרופיל המשפחה — בלי זה אי אפשר לומר לו
+ * לאן הגיע לפני שהוא נרשם.
+ */
+export async function createInvite(
+  householdId: string,
+  uid: string,
+  familyName?: string,
+): Promise<string> {
   const code = generateInviteCode();
   await setDoc(doc(db, 'invites', code), {
     householdId,
     createdBy: uid,
+    familyName: familyName?.trim() || '',
     used: false,
     usedBy: null,
     expiresAt: Date.now() + INVITE_TTL_MS,
   });
   return code;
+}
+
+export interface InvitePreview {
+  familyName: string;
+  status: 'ok' | 'not-found' | 'used' | 'expired';
+}
+
+/** נקרא לפני הרשמה, בלי התחברות — ולכן קורא רק את ההזמנה עצמה. */
+export async function previewInvite(code: string): Promise<InvitePreview> {
+  const snap = await getDoc(doc(db, 'invites', code.trim().toUpperCase()));
+  if (!snap.exists()) return { familyName: '', status: 'not-found' };
+  const d = snap.data();
+  const familyName = (d.familyName as string) || '';
+  if (d.used) return { familyName, status: 'used' };
+  if (typeof d.expiresAt === 'number' && d.expiresAt <= Date.now()) {
+    return { familyName, status: 'expired' };
+  }
+  return { familyName, status: 'ok' };
 }

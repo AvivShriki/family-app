@@ -11,12 +11,19 @@ import NoHouseholdScreen from '../screens/NoHouseholdScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import InviteScreen from '../screens/InviteScreen';
+import InviteWelcomeScreen from '../screens/InviteWelcomeScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BabyNavigator from '../screens/baby/BabyNavigator';
 import { colors, spacing, radius } from '../config/theme';
 
 const Stack = createNativeStackNavigator();
+
+/** קוד הזמנה מהכתובת, אם הגיעו דרך קישור שיתוף */
+function inviteCodeFromUrl(): string {
+  if (typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get('invite')?.toUpperCase() ?? '';
+}
 
 const headerStyle = {
   headerStyle: { backgroundColor: colors.white },
@@ -27,6 +34,7 @@ const headerStyle = {
 };
 
 export default function AppNavigator() {
+  const inviteCode = inviteCodeFromUrl();
   const { user, loading } = useAuth();
   const { householdId, loading: householdLoading } = useHousehold();
   const { profile } = useBabyProfile();
@@ -45,6 +53,15 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={headerStyle}>
         {!user ? (
           <>
+            {/* מי שהגיע עם קישור הזמנה רואה קודם לאן הוזמן, ורק אז טופס */}
+            {inviteCode ? (
+              <Stack.Screen
+                name="InviteWelcome"
+                component={InviteWelcomeScreen}
+                initialParams={{ code: inviteCode }}
+                options={{ headerShown: false }}
+              />
+            ) : null}
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="SignUp"
