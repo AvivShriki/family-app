@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
   signOut,
   updatePassword,
   reauthenticateWithCredential,
@@ -56,6 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return DEMO_USER.uid;
     }
     const cred = await createUserWithEmailAndPassword(auth, email, password);
+    // מייל אימות נשלח, אבל אינו חוסם כלום: שבעת החשבונות שנוצרו בקונסולה
+    // מעולם לא אומתו, וחסימה לפי אימות הייתה נועלת אותם בחוץ.
+    sendEmailVerification(cred.user).catch((e) =>
+      console.error('שליחת מייל האימות נכשלה:', e),
+    );
     return cred.user.uid;
   };
 

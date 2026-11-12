@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import DatePickerModal from '../../components/DatePickerModal';
@@ -53,7 +61,9 @@ export default function BabySettingsScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
+    // המסך חייב להיגלל: הכרטיס לבדו ממלא מסך טלפון, והשורות שמתחתיו
+    // היו נחתכות בלי שום דרך להגיע אליהן
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>פרופיל התינוקת 🌸</Text>
 
@@ -151,12 +161,14 @@ export default function BabySettingsScreen({ navigation }: any) {
         }}
         onClose={() => setPickerOpen(false)}
       />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream, padding: spacing.md },
+  container: { flex: 1, backgroundColor: colors.cream },
+  // הריווח התחתון מפנה מקום לסרגל הטאבים ולכפתור ההוספה שמרחפים מעליו
+  content: { padding: spacing.md, paddingBottom: 120 },
   card: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,
