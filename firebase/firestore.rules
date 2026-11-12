@@ -1,13 +1,19 @@
 // חוקי האבטחה של Firestore. מתפרסמים עם:
 //   firebase deploy --only firestore:rules
 //
-// העיקרון: כל משפחה חיה בתוך households/{householdId}, והשיוך של משתמש
-// למשק בית נקבע במסמך users/{uid}. משתמש יכול לגעת אך ורק בנתונים של
-// משק הבית שלו — האכיפה היא בשרת, לא בקוד האפליקציה.
+// המודל:
+//   households/{hid}            — מסמך המשפחה. members הוא מקור האמת לחברות.
+//   households/{hid}/babyLogs   — הנתונים עצמם, וכן settings/babyProfile.
+//   users/{uid}                 — לאיזו משפחה שייך המשתמש. נכתב פעם אחת.
+//   invites/{code}              — הזמנה חד-פעמית לצירוף בן משפחה.
 //
-// שלב מעבר: השיוך עבר ממפתח אימייל למפתח מזהה-משתמש. שני המפתחות
-// נתמכים במקביל, כי למשתמש שהאתר כבר פתוח אצלו רץ עדיין הקוד הישן
-// שקורא לפי אימייל. אחרי שכולם יתרעננו, מוחקים את הנתיב הישן.
+// שתי ערובות שעליהן נשען הבידוד:
+//   1. משפחה חדשה נפתחת רק עם מזהה שהוא מזהה היוצר — אי אפשר לפתוח
+//      משפחה שכבר קיימת ואי אפשר להצביע על משפחה של אחר.
+//   2. הצטרפות למשפחה קיימת דורשת הזמנה תקפה שנוצרה בתוך אותה משפחה.
+//
+// שלב מעבר: השיוך עבר ממפתח אימייל למפתח מזהה. הנתיב הישן עדיין נתמך
+// לקריאה, עבור מי שהאתר פתוח אצלו עם הקוד הקודם.
 rules_version = '2';
 
 service cloud.firestore {
@@ -25,25 +31,95 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(userEmail());
     }
 
-    // מעדיפים את השיוך לפי מזהה; נופלים לאימייל רק כל עוד המעבר נמשך
     function householdOf() {
       return exists(uidDoc())
         ? get(uidDoc()).data.householdId
         : get(emailDoc()).data.householdId;
     }
 
-    // כל משתמש קורא רק את השיוך של עצמו, בשני המפתחות.
-    // כתיבה עדיין חסומה לחלוטין — היא תיפתח בשלב ההרשמה העצמית, ואז
-    // תחת תנאים: משפחה חדשה שמזההּ הוא מזהה היוצר, או הזמנה תקפה.
+    function membersOf(hid) {
+      return exists(/databases/$(database)/documents/households/$(hid))
+        ? get(/databases/$(database)/documents/households/$(hid)).data.members
+        : [];
+    }
+
+    function isMember(hid) {
+      return request.auth != null && request.auth.uid in membersOf(hid);
+    }
+
+    function invite(code) {
+      return get(/databases/$(database)/documents/invites/$(code)).data;
+    }
+
+    // הזמנה תקפה: קיימת, שייכת לאותה משפחה, לא נוצלה, ולא פגה.
+    // expiresAt נשמר כמספר אלפיות-שנייה ולא כחותמת זמן, ו-used הוא
+    // בוליאני מפורש ולא שדה ריק — שתי השוואות ששוברות בשקט אחרת.
+    function validInvite(code, hid) {
+      return code is string
+        && exists(/databases/$(database)/documents/invites/$(code))
+        && invite(code).householdId == hid
+        && invite(code).used == false
+        && invite(code).expiresAt > request.time.toMillis();
+    }
+
     match /users/{userId} {
       allow read: if request.auth != null
         && (request.auth.uid == userId || userEmail() == userId);
-      allow write: if false;
+
+      // נכתב פעם אחת בלבד: או פתיחת משפחה חדשה שמזההּ הוא מזהה היוצר,
+      // או הצטרפות עם הזמנה תקפה. בלי עדכון ובלי מחיקה — מי שכבר שויך
+      // לא יכול להעביר את עצמו למשפחה אחרת.
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.householdId is string
+        && (
+          request.resource.data.householdId == request.auth.uid
+          || validInvite(request.resource.data.inviteCode, request.resource.data.householdId)
+        );
+      allow update, delete: if false;
     }
 
-    // כל נתוני המשפחה: תיעוד התינוקת, הפרופיל שלה, ונתונים ישנים משומרים
+    match /households/{householdId} {
+      allow read: if isMember(householdId);
+
+      allow create: if request.auth != null
+        && householdId == request.auth.uid
+        && request.resource.data.members == [request.auth.uid]
+        && request.resource.data.createdBy == request.auth.uid;
+
+      // הצטרפות: רק הוספה של עצמך, רק עם הזמנה תקפה, ועד שלושה אנשים
+      allow update: if request.auth != null
+        && validInvite(request.resource.data.joinedWith, householdId)
+        && request.resource.data.members == resource.data.members.concat([request.auth.uid])
+        && request.resource.data.members.size() <= 3
+        && request.resource.data.createdBy == resource.data.createdBy;
+
+      allow delete: if false;
+    }
+
+    match /invites/{code} {
+      // הקוד עצמו הוא הסוד; המסמך חושף רק מזהה משפחה אטום
+      allow read: if request.auth != null;
+
+      allow create: if isMember(request.resource.data.householdId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.used == false;
+
+      // ניצול: מסמנים פעם אחת, ואי אפשר להסב את ההזמנה למשפחה אחרת
+      allow update: if request.auth != null
+        && resource.data.used == false
+        && request.resource.data.used == true
+        && request.resource.data.usedBy == request.auth.uid
+        && request.resource.data.householdId == resource.data.householdId;
+
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+    }
+
+    // הנתונים עצמם: גם השיוך וגם החברות חייבים להסכים
     match /households/{householdId}/{document=**} {
-      allow read, write: if request.auth != null && householdOf() == householdId;
+      allow read, write: if request.auth != null
+        && householdOf() == householdId
+        && isMember(householdId);
     }
   }
 }
