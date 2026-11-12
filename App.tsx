@@ -7,6 +7,9 @@ import { BabyLogsProvider } from './src/context/BabyLogsContext';
 import { MessagesProvider } from './src/context/MessagesContext';
 import { MedicationsProvider } from './src/context/MedicationsContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { registerServiceWorker } from './src/utils/registerServiceWorker';
+
+registerServiceWorker();
 
 export default function App() {
   return (

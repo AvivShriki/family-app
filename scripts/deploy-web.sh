@@ -42,6 +42,18 @@ grep -q "overscroll-behavior-x" dist/index.html || { echo "!! עצירה: הזר
 sed -i '' 's|<html lang="en">|<html lang="he">|' dist/index.html
 grep -q '<html lang="he">' dist/index.html || { echo "!! עצירה: שפת המסמך לא עודכנה" >&2; exit 1; }
 
+# תגיות האפליקציה המותקנת: קובץ ההגדרות, צבע הדפדפן, והתגיות שאייפון
+# דורש כדי להיפתח במסך מלא עם אייקון משלו
+sed -i '' 's|<link rel="icon" href="favicon.ico" />|<link rel="icon" href="favicon.ico" />\
+    <link rel="manifest" href="manifest.json" />\
+    <meta name="theme-color" content="#FFF8F0" />\
+    <meta name="mobile-web-app-capable" content="yes" />\
+    <meta name="apple-mobile-web-app-capable" content="yes" />\
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />\
+    <meta name="apple-mobile-web-app-title" content="המשפחה" />\
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />|' dist/index.html
+grep -q 'rel="manifest"' dist/index.html || { echo "!! עצירה: תגיות האפליקציה לא הוזרקו" >&2; exit 1; }
+
 # react-native-web מכבה את טבעת הפוקוס בכל אלמנט — בלעדיה אי אפשר לנווט במקלדת
 sed -i '' 's|      /\* These styles make the root element full-height \*/|      :focus-visible { outline: 3px solid #C9456B; outline-offset: 2px; }\
       /* These styles make the root element full-height */|' dist/index.html
