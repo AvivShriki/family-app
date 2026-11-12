@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   updatePassword,
   reauthenticateWithCredential,
@@ -18,6 +20,9 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  /** יוצר חשבון ומחזיר את המזהה שלו — הוא גם המזהה של המשפחה החדשה */
+  signUp: (email: string, password: string) => Promise<string>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
@@ -45,6 +50,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signUp = async (email: string, password: string): Promise<string> => {
+    if (DEMO_MODE) {
+      setUser(DEMO_USER);
+      return DEMO_USER.uid;
+    }
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    return cred.user.uid;
+  };
+
+  const resetPassword = async (email: string) => {
+    if (DEMO_MODE) return;
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const logout = async () => {
     if (DEMO_MODE) {
       setUser(null);
@@ -65,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, changePassword }}>
+    <AuthContext.Provider value={{ user, loading, login, signUp, resetPassword, logout, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

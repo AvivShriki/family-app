@@ -8,6 +8,9 @@ import { useHousehold } from '../context/HouseholdContext';
 import { useBabyProfile } from '../hooks/useBabyProfile';
 import LoginScreen from '../screens/LoginScreen';
 import NoHouseholdScreen from '../screens/NoHouseholdScreen';
+import SignUpScreen from '../screens/SignUpScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import InviteScreen from '../screens/InviteScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BabyNavigator from '../screens/baby/BabyNavigator';
@@ -41,7 +44,19 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={headerStyle}>
         {!user ? (
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="SignUp"
+              component={SignUpScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ headerShown: false }}
+            />
+          </>
         ) : !householdId ? (
           <Stack.Screen
             name="NoHousehold"
@@ -79,6 +94,11 @@ export default function AppNavigator() {
               name="ChangePassword"
               component={ChangePasswordScreen}
               options={{ title: 'שינוי סיסמה 🔐' }}
+            />
+            <Stack.Screen
+              name="Invite"
+              component={InviteScreen}
+              options={{ title: 'הוספת בן משפחה' }}
             />
           </>
         )}

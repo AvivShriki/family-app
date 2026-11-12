@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   StyleSheet,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -11,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 import { colors, spacing, radius } from '../config/theme';
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -66,7 +67,15 @@ export default function LoginScreen() {
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Button label="כניסה" onPress={handleLogin} loading={loading} style={{ marginTop: spacing.sm }} />
+
+          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} hitSlop={8}>
+            <Text style={styles.link}>שכחתי סיסמה</Text>
+          </TouchableOpacity>
         </View>
+
+        <TouchableOpacity onPress={() => navigation.navigate('SignUp')} hitSlop={8}>
+          <Text style={styles.signUp}>אין לכם חשבון? פתיחת משפחה חדשה</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -114,4 +123,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   errorText: { color: colors.danger, fontSize: 13, textAlign: 'center', marginBottom: spacing.sm },
+  link: { color: colors.blueAccent, fontSize: 13, textAlign: 'center', marginTop: spacing.md },
+  signUp: { color: colors.blueAccent, fontSize: 14, textAlign: 'center', marginTop: spacing.lg },
 });

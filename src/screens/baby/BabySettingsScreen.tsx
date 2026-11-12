@@ -123,6 +123,16 @@ export default function BabySettingsScreen({ navigation }: any) {
       {/* פעולות חשבון — כאן ולא בכותרת דף הבית, ששמורה לניווט */}
       <TouchableOpacity
         style={styles.accountRow}
+        onPress={() => navigation.navigate('Invite')}
+        accessibilityLabel="הוספת בן משפחה"
+      >
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        <Text style={styles.accountLabel}>הוספת בן משפחה</Text>
+        <Ionicons name="person-add-outline" size={18} color={colors.textLight} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.accountRow}
         onPress={() => navigation.navigate('ChangePassword')}
         accessibilityLabel="שינוי סיסמה"
       >
