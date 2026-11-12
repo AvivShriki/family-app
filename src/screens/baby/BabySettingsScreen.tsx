@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
+import { useAuth } from '../../context/AuthContext';
 import DatePickerModal from '../../components/DatePickerModal';
 import Button from '../../components/Button';
 import { pickProfileImage } from '../../utils/imagePicker';
@@ -17,6 +18,7 @@ import { colors, spacing, radius, shadow } from '../../config/theme';
 
 export default function BabySettingsScreen({ navigation }: any) {
   const { profile, save } = useBabyProfile();
+  const { logout } = useAuth();
   // עריכות המשתמש חיות בנפרד מהפרופיל; כל עוד לא נערך — מציגים את הערך מהשרת.
   // כך אין צורך לסנכרן state בתוך effect כשהפרופיל נטען.
   const [nameEdit, setNameEdit] = useState<string | null>(null);
@@ -162,6 +164,12 @@ export default function BabySettingsScreen({ navigation }: any) {
         <Ionicons name="key-outline" size={18} color={colors.textLight} />
       </TouchableOpacity>
 
+      <TouchableOpacity style={styles.accountRow} onPress={logout} accessibilityLabel="יציאה">
+        <View style={{ width: 18 }} />
+        <Text style={[styles.accountLabel, styles.logoutLabel]}>יציאה</Text>
+        <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+      </TouchableOpacity>
+
       <DatePickerModal
         visible={pickerOpen}
         value={birthDate}
@@ -242,6 +250,7 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   accountLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'right' },
+  logoutLabel: { color: colors.danger },
   dateText: { fontSize: 15, color: colors.text, textAlign: 'right' },
   datePlaceholder: { color: colors.textMuted },
   agePreview: {

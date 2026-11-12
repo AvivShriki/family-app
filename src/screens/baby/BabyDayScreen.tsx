@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  missionDone: { backgroundColor: '#F0FFF4', borderColor: colors.success },
+  missionDone: { backgroundColor: colors.successSoft, borderColor: colors.success },
   missionEmoji: { fontSize: 16 },
   missionLabel: { flex: 1, fontSize: 13, color: colors.textLight },
   missionLabelDone: { color: '#2E7D32', fontWeight: '600' },

@@ -6,7 +6,6 @@ import { useBabyLogs } from '../context/BabyLogsContext';
 import { useMessages } from '../context/MessagesContext';
 import { useMedications } from '../context/MedicationsContext';
 import { useBabyProfile, DEFAULT_PROFILE } from '../hooks/useBabyProfile';
-import Button from '../components/Button';
 import { BabyLog } from '../types';
 import { colors, spacing, radius, shadow, font } from '../config/theme';
 import { getAgeText, isSameDay } from '../utils/dates';
@@ -15,7 +14,11 @@ interface Props {
   navigation: any;
 }
 
-// ברכה לפי שעת היום — הקופי של עודד
+/** תקרת אריחי התיעוד המהיר. מעבר לזה הרשת נשפכת מתחת לקיפול. */
+const MAX_TILES = 6;
+/** חלון החרטה אחרי רישום בנגיעה */
+const UNDO_MS = 4000;
+
 function greeting(): string {
   const h = new Date().getHours();
   if (h >= 5 && h < 12) return 'בוקר טוב';
@@ -24,96 +27,71 @@ function greeting(): string {
   return 'לילה טוב';
 }
 
-// גרסה קצרה של משך זמן לאריח הסיכום — המילה "שעות" גולשת לשורה שנייה
-// ומיותרת, כי התווית מתחת כבר אומרת שמדובר בשינה.
+// "2ש׳ 30ד׳" ולא "2:30" — נקודתיים בתוך שורת מונים נקראות כשעון
 function shortDuration(ms: number): string {
   const min = Math.round(ms / 60000);
   const h = Math.floor(min / 60);
-  return h > 0 ? `${h}:${String(min % 60).padStart(2, '0')}` : `${min} דק'`;
+  const m = min % 60;
+  if (h > 0) return m > 0 ? `${h}ש׳ ${m}ד׳` : `${h}ש׳`;
+  return `${m}ד׳`;
 }
 
-// מחוץ לקומפוננטה: Date.now ישירות בגוף הרנדר נחשב קריאה לא-טהורה
 function timeAgo(ts: number): string {
   const min = Math.round((Date.now() - ts) / 60000);
   if (min < 1) return 'ממש עכשיו';
-  if (min < 60) return `לפני ${min} דק'`;
+  if (min < 60) return `לפני ${min} דק׳`;
   const h = Math.floor(min / 60);
-  if (h < 24) return `לפני ${h} שע'`;
+  if (h < 24) return `לפני ${h} שע׳`;
   const d = Math.floor(h / 24);
   return d === 1 ? 'אתמול' : `לפני ${d} ימים`;
 }
 
-// תיאור הפעולה האחרונה בשפה של הורים
 function lastLogText(log: BabyLog | undefined, medName?: string): string {
-  if (!log) return 'עוד אין תיעוד — הכול רגוע 💤';
+  if (!log) return 'עוד אין תיעוד';
   const ago = timeAgo(log.timestamp);
   switch (log.type) {
     case 'feeding':
-      return `🍼 אכלה ${ago}${log.amountMl ? ` · ${log.amountMl} מ"ל` : ''}`;
+      return `אכלה ${ago}${log.amountMl ? ` · ${log.amountMl} מ"ל` : ''}`;
     case 'sleep':
       return log.endTimestamp && log.endTimestamp <= Date.now()
-        ? `😴 התעוררה ${timeAgo(log.endTimestamp)}`
-        : `😴 נרדמה ${ago}`;
+        ? `התעוררה ${timeAgo(log.endTimestamp)}`
+        : `ישנה — נרדמה ${ago}`;
     case 'diaper':
-      return `💩 חיתול הוחלף ${ago}`;
+      return `חיתול הוחלף ${ago}`;
     case 'medication':
-      return `💊 ${medName ?? 'תרופה'} ניתנה ${ago}`;
+      return `${medName ?? 'תרופה'} ניתנה ${ago}`;
     case 'vitamin':
-      return `☀️ ויטמין D ניתן ${ago}`;
+      return `ויטמין D ניתן ${ago}`;
     case 'iron':
-      return `💧 ברזל ניתן ${ago}`;
+      return `ברזל ניתן ${ago}`;
     default:
-      return `📝 עדכון אחרון ${ago}`;
+      return `עדכון אחרון ${ago}`;
   }
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const { logout } = useAuth();
-  const { items: babyLogs } = useBabyLogs();
-  const { profile } = useBabyProfile();
+  const { user } = useAuth();
+  const { items: babyLogs, add, remove, update } = useBabyLogs();
   const { messages } = useMessages();
   const { medications, activeToday } = useMedications();
+  const { profile } = useBabyProfile();
 
-  // שני הכפתורים החדשים עוד לא מחוברים לכלום. לחיצה שלא מחזירה דבר
-  // מלמדת שהאפליקציה שבורה, ולכן היא מציגה הודעה קצרה במקום כלום.
-  const [soonFor, setSoonFor] = useState<string | null>(null);
-  const tapSoon = (what: string) => {
-    setSoonFor(what);
-    setTimeout(() => setSoonFor(null), 4000);
-  };
+  // הרישום האחרון שנוצר בנגיעה, לחלון החרטה
+  const [justLogged, setJustLogged] = useState<{ tile: string; id: string } | null>(null);
 
-  const dateLine = new Date().toLocaleDateString('he-IL', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
-
-  // "משפחת" מתווסף בקוד, אחרת כל משפחה תקליד אחרת ונקבל "משפחת משפחת שריקי"
-  const family = profile.familyName?.trim();
-  // רווח קשיח בין "משפחת" לשם, כדי שגלישה לשורה שנייה לא תפריד ביניהם
-  const greetingLine = family ? `${greeting()}, משפחת ${family}` : greeting();
-
-  const hasName = profile.name && profile.name !== DEFAULT_PROFILE.name;
-
-  // --- מצב התינוקת: פעולה אחרונה, משימות היום וסיכום היום ---
   const todayLogs = useMemo(
     () => babyLogs.filter((l) => isSameDay(l.timestamp, new Date())),
     [babyLogs],
   );
-  // הרשימה המשותפת ממוינת עולה, ולכן האחרון שתועד הוא האיבר האחרון
+
   const lastLog = babyLogs[babyLogs.length - 1];
   const statusText = lastLogText(
     lastLog,
     medications.find((m) => m.id === lastLog?.medicationId)?.name,
   );
-  // המשימות נגזרות מהתרופות שהמשפחה הגדירה, ולא מרשימה קבועה
-  const missions = activeToday.map((m) => ({
-    id: m.id,
-    label: m.name,
-    done: todayLogs.some((l) => l.type === 'medication' && l.medicationId === m.id),
-  }));
 
-  const lastMessage = messages[messages.length - 1];
+  // שינה פתוחה: נרשמה התחלה ועוד אין סיום
+  const openSleep = [...babyLogs].reverse().find((l) => l.type === 'sleep' && !l.endTimestamp);
 
   const meals = todayLogs.filter((l) => l.type === 'feeding').length;
   const diapers = todayLogs.filter((l) => l.type === 'diaper').length;
@@ -121,10 +99,70 @@ export default function HomeScreen({ navigation }: Props) {
     .filter((l) => l.type === 'sleep' && l.endTimestamp)
     .reduce((sum, l) => sum + (l.endTimestamp! - l.timestamp), 0);
 
+  const loggedBy = user?.email ?? 'demo';
+
+  const quickLog = async (tile: string, entry: Omit<BabyLog, 'id'>) => {
+    const id = await add(entry as any);
+    setJustLogged({ tile, id });
+    setTimeout(() => setJustLogged((cur) => (cur?.id === id ? null : cur)), UNDO_MS);
+  };
+
+  const undo = async () => {
+    if (!justLogged) return;
+    const { id } = justLogged;
+    setJustLogged(null);
+    await remove(id);
+  };
+
+  const tapSleep = () => {
+    if (openSleep) {
+      // סגירת שינה פתוחה היא עדכון, לא רישום חדש — ולכן גם אין מה לבטל
+      update(openSleep.id, { endTimestamp: Date.now() });
+      return;
+    }
+    quickLog('sleep', { type: 'sleep', timestamp: Date.now(), loggedBy });
+  };
+
+  // שלושת הבסיסיים ואחריהם התרופות, עד התקרה; העודף מקופל לאריח אחד
+  const medTiles = activeToday.map((m) => ({
+    key: m.id,
+    emoji: m.emoji,
+    label: m.name,
+    done: todayLogs.some((l) => l.type === 'medication' && l.medicationId === m.id),
+  }));
+  const shownMeds = medTiles.slice(0, MAX_TILES - 3);
+  const overflow = medTiles.length - shownMeds.length;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* כותרת — כפתור עגול בכל צד וברכה ממורכזת ביניהם */}
-      <View style={styles.header}>
+      {/* זהות — שורה אחת ולא כרטיס. נוי יודעת מי התינוקת. */}
+      <View style={styles.identity}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
+          accessibilityLabel="פרופיל התינוקת"
+          activeOpacity={0.8}
+        >
+          {profile.photoUrl ? (
+            <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Text style={styles.avatarEmoji}>👶</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.greeting} numberOfLines={1}>
+            {profile.familyName?.trim()
+              ? `${greeting()}, משפחת ${profile.familyName.trim()}`
+              : greeting()}
+          </Text>
+          <Text style={styles.identityName} numberOfLines={1}>
+            {profile.name}
+            {profile.birthDate ? ` · ${getAgeText(profile.birthDate)}` : ''}
+          </Text>
+        </View>
+
         <TouchableOpacity
           style={styles.iconButton}
           onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
@@ -133,268 +171,259 @@ export default function HomeScreen({ navigation }: Props) {
         >
           <Ionicons name="settings-outline" size={19} color={colors.textLight} />
         </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.greeting} numberOfLines={2}>
-            {greetingLine}
-          </Text>
-          <Text style={styles.dateLine}>{dateLine}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={logout}
-          accessibilityLabel="יציאה"
-          hitSlop={8}
-        >
-          <Ionicons name="log-out-outline" size={18} color={colors.textLight} />
-        </TouchableOpacity>
       </View>
 
-      {/* כרטיס הירו — 70% מהמשקל הוויזואלי של המסך.
-          הכרטיס עצמו אינו לחיץ: האווטאר מוביל להגדרות והכפתור ליומן,
-          כך שאין שני יעדי מגע מקוננים. */}
-      <View style={styles.hero}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
-          accessibilityLabel="עריכת פרופיל התינוקת"
-          activeOpacity={0.85}
-        >
-          <View style={styles.avatarRing}>
-            {profile.photoUrl ? (
-              <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarEmoji}>👶</Text>
-              </View>
-            )}
-            <View style={styles.cameraBadge}>
-              <Ionicons name="camera" size={14} color={colors.white} />
-            </View>
-          </View>
-        </TouchableOpacity>
+      {/* עכשיו — השאלה שהורים באמת שואלים זה את זה */}
+      <View style={styles.now}>
+        <Text style={styles.nowLabel}>עכשיו</Text>
+        <Text style={styles.nowValue}>{statusText}</Text>
+      </View>
 
-        {!profile.photoUrl ? <Text style={styles.photoHint}>לחיצה מוסיפה תמונה</Text> : null}
-
-        <Text style={styles.babyName}>{profile.name}</Text>
-        <Text style={styles.babyAge}>{getAgeText(profile.birthDate)}</Text>
-        {profile.birthDate ? (
-          <Text style={styles.babyBirth}>
-            נולדה ב-{new Date(profile.birthDate).toLocaleDateString('he-IL')}
-          </Text>
-        ) : null}
-
-        <View style={styles.statusChip}>
-          <Text style={styles.statusChipText}>{statusText}</Text>
-        </View>
-
-        {missions.length > 0 ? (
-          <View style={styles.missionsRow}>
-            {missions.map((m) => (
-              <View key={m.id} style={[styles.missionChip, m.done && styles.missionDone]}>
-                <Text style={[styles.missionText, m.done && styles.missionTextDone]}>
-                  {m.done ? `✓ ${m.label}` : `○ ${m.label} — עוד לא`}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        <Button
-          label="פתיחת היומן"
-          onPress={() => navigation.navigate('Baby', { screen: 'BabyDay' })}
-          style={{ marginTop: spacing.md, alignSelf: 'stretch' }}
+      {/* תיעוד מהיר — נגיעה אחת רושמת. זו סיבת הקיום של המסך. */}
+      <View style={styles.tiles}>
+        <Tile
+          emoji="🍼"
+          label="ארוחה"
+          state={justLogged?.tile === 'feeding' ? 'logged' : 'idle'}
+          onPress={() => quickLog('feeding', { type: 'feeding', timestamp: Date.now(), loggedBy })}
+          onUndo={undo}
         />
+        <Tile
+          emoji="💩"
+          label="חיתול"
+          state={justLogged?.tile === 'diaper' ? 'logged' : 'idle'}
+          onPress={() => quickLog('diaper', { type: 'diaper', timestamp: Date.now(), loggedBy })}
+          onUndo={undo}
+        />
+        <Tile
+          emoji="😴"
+          label={openSleep ? 'סיום שינה' : 'שינה'}
+          state={justLogged?.tile === 'sleep' ? 'logged' : openSleep ? 'active' : 'idle'}
+          onPress={tapSleep}
+          onUndo={undo}
+        />
+
+        {shownMeds.map((t) => (
+          <Tile
+            key={t.key}
+            emoji={t.emoji}
+            label={t.label}
+            state={justLogged?.tile === t.key ? 'logged' : t.done ? 'done' : 'idle'}
+            onPress={() =>
+              quickLog(t.key, {
+                type: 'medication',
+                medicationId: t.key,
+                timestamp: Date.now(),
+                loggedBy,
+              })
+            }
+            onUndo={undo}
+          />
+        ))}
+
+        {overflow > 0 ? (
+          <Tile
+            emoji="💊"
+            label={`עוד ${overflow} ›`}
+            state="idle"
+            onPress={() => navigation.navigate('Baby', { screen: 'BabyDay' })}
+          />
+        ) : null}
       </View>
 
-      {/* סיכום היום — נקרא הרבה, נלחץ מעט */}
-      <View style={styles.statsRow}>
-        <View style={styles.statTile}>
-          <Text style={styles.statValue}>{meals}</Text>
-          <Text style={styles.statLabel}>ארוחות היום</Text>
+      {/* היום — מונים ומשימות בבלוק אחד */}
+      <View style={styles.block}>
+        <View style={styles.blockHead}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Baby', { screen: 'BabyDay' })}
+            hitSlop={8}
+          >
+            <Text style={styles.blockLink}>כל היומן ›</Text>
+          </TouchableOpacity>
+          <Text style={styles.blockTitle}>היום</Text>
         </View>
-        <View style={styles.statTile}>
-          <Text style={styles.statValue}>{sleepMs > 0 ? shortDuration(sleepMs) : '—'}</Text>
-          <Text style={styles.statLabel}>שינה היום</Text>
-        </View>
-        <View style={styles.statTile}>
-          <Text style={styles.statValue}>{diapers}</Text>
-          <Text style={styles.statLabel}>חיתולים היום</Text>
+
+        <View style={styles.statsRow}>
+          <Stat value={String(meals)} label="ארוחות" />
+          <Stat value={sleepMs > 0 ? shortDuration(sleepMs) : '—'} label="שינה" />
+          <Stat value={String(diapers)} label="חיתולים" />
         </View>
       </View>
 
-      {/* הודעות המשפחה — מציג את האחרונה, כדי שהכרטיס יראה שיש בו משהו
-          ולא יהיה אייקון שצריך לנחש מה מאחוריו */}
+      {/* הודעות המשפחה */}
       <TouchableOpacity
         style={styles.chatCard}
         onPress={() => navigation.navigate('Chat')}
         accessibilityLabel="הודעות למשפחה"
         activeOpacity={0.85}
       >
-        <View style={[styles.serviceIcon, { backgroundColor: colors.blue, marginBottom: 0 }]}>
-          <Ionicons name="chatbubbles-outline" size={20} color={colors.text} />
-        </View>
+        <Ionicons name="chatbubble-ellipses" size={20} color={colors.blueAccent} />
         <View style={{ flex: 1 }}>
           <Text style={styles.chatTitle}>הודעות למשפחה</Text>
           <Text style={styles.chatPreview} numberOfLines={1}>
-            {lastMessage ? lastMessage.text : 'עוד אין הודעות — אפשר להשאיר אחת'}
+            {messages[messages.length - 1]?.text ?? 'עוד אין הודעות — אפשר להשאיר אחת'}
           </Text>
         </View>
         <Text style={styles.chevron}>‹</Text>
       </TouchableOpacity>
 
-      {/* שירותים עתידיים — מוצגים, מסומנים "בקרוב", ועוד לא מחוברים */}
-      <View style={styles.servicesRow}>
-        <TouchableOpacity
-          style={styles.serviceCard}
-          onPress={() => tapSoon('ask')}
-          accessibilityState={{ disabled: true }}
-          accessibilityHint="בקרוב"
-          activeOpacity={0.9}
-        >
-          <View style={[styles.serviceIcon, { backgroundColor: colors.pink }]}>
-            <Ionicons name="sparkles-outline" size={20} color={colors.text} />
-          </View>
-          <Text style={styles.serviceLabel}>
-            {hasName ? `שאלה על ${profile.name}` : 'יש לי שאלה'}
-          </Text>
-          <View style={styles.soonChip}>
-            <Text style={styles.soonText}>בקרוב</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.serviceCard}
-          onPress={() => tapSoon('doctor')}
-          accessibilityState={{ disabled: true }}
-          accessibilityHint="בקרוב"
-          activeOpacity={0.9}
-        >
-          <View style={[styles.serviceIcon, { backgroundColor: colors.blue }]}>
-            <Ionicons name="medkit-outline" size={20} color={colors.text} />
-          </View>
-          <Text style={styles.serviceLabel}>שיחה עם רופא</Text>
-          <View style={styles.soonChip}>
-            <Text style={styles.soonText}>בקרוב</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {soonFor ? <Text style={styles.soonNotice}>עוד לא מוכן — נעדכן כאן כשייפתח.</Text> : null}
+      {/* שירותים עתידיים — שורת טקסט, במקום שני כפתורים מתים ברבע מהמסך */}
+      <Text style={styles.soon}>
+        בקרוב: {profile.name !== DEFAULT_PROFILE.name ? `שאלה על ${profile.name}` : 'שאלות'} ושיחה
+        עם רופא
+      </Text>
     </ScrollView>
   );
 }
 
-const AVATAR = 88;
+function Tile({
+  emoji,
+  label,
+  state,
+  onPress,
+  onUndo,
+}: {
+  emoji: string;
+  label: string;
+  state: 'idle' | 'logged' | 'done' | 'active';
+  onPress: () => void;
+  onUndo?: () => void;
+}) {
+  if (state === 'logged') {
+    return (
+      <TouchableOpacity
+        style={[styles.tile, styles.tileDone]}
+        onPress={onUndo}
+        accessibilityLabel={`${label} נרשם, ביטול`}
+      >
+        <Text style={styles.tileEmoji}>✓</Text>
+        <Text style={styles.tileLabel} numberOfLines={1}>
+          נרשם · ביטול
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+  return (
+    <TouchableOpacity
+      style={[
+        styles.tile,
+        state === 'active' && styles.tileActive,
+        state === 'done' && styles.tileDone,
+      ]}
+      onPress={onPress}
+      accessibilityLabel={`תיעוד ${label}`}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.tileEmoji}>{emoji}</Text>
+      <Text style={styles.tileLabel} numberOfLines={1}>
+        {state === 'done' ? `✓ ${label}` : label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+const AVATAR = 44;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
 
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  greeting: {
-    fontSize: font.titleLg,
-    fontWeight: font.weight.heavy,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  dateLine: { fontSize: font.small, color: colors.textLight, marginTop: 2, textAlign: 'center' },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.white,
+  identity: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.soft,
-  },
-
-  hero: {
-    backgroundColor: colors.pink,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    ...shadow.soft,
-  },
-  // הטבעת הלבנה מפרידה את התמונה מהרקע הוורוד ונותנת לה את הבולטות
-  avatarRing: {
-    width: AVATAR + 6,
-    height: AVATAR + 6,
-    borderRadius: (AVATAR + 6) / 2,
-    borderWidth: 3,
-    borderColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
   avatarPlaceholder: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.pink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarEmoji: { fontSize: AVATAR / 2 },
-  cameraBadge: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.pinkAccent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.white,
+  greeting: {
+    fontSize: font.body,
+    fontWeight: font.weight.medium,
+    color: colors.textLight,
+    textAlign: 'right',
   },
-  photoHint: { fontSize: font.caption, color: colors.text, marginTop: spacing.xs },
-
-  // בתוך הכרטיס הוורוד הצבע אינו כלי היררכיה — ניגודיות של טקסט בהיר על
-  // ורוד נופלת מהתקן, ולכן ההפרדה היא בגודל ובמשקל בלבד.
-  babyName: {
-    fontSize: font.titleLg,
+  identityName: {
+    fontSize: font.title,
     fontWeight: font.weight.heavy,
     color: colors.text,
-    marginTop: spacing.md,
+    textAlign: 'right',
   },
-  babyAge: { fontSize: font.body, fontWeight: font.weight.medium, color: colors.text, marginTop: 2 },
-  babyBirth: { fontSize: font.small, color: colors.text, marginTop: 2 },
+  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
-  statusChip: {
-    backgroundColor: colors.white,
-    borderRadius: radius.full,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
+  now: {
+    backgroundColor: colors.pink,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
-  statusChipText: { fontSize: font.small, fontWeight: font.weight.semibold, color: colors.text },
+  // טקסט בהיר על ורוד נופל מהתקן — ההפרדה כאן היא בגודל ובמשקל
+  nowLabel: { fontSize: font.caption, color: colors.text, textAlign: 'right' },
+  nowValue: {
+    fontSize: font.title,
+    fontWeight: font.weight.bold,
+    color: colors.text,
+    textAlign: 'right',
+    marginTop: 2,
+  },
 
-  missionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, alignSelf: 'stretch' },
-  missionChip: {
-    flex: 1,
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  tile: {
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 100,
+    minHeight: 76,
     backgroundColor: colors.white,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.sm,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
   },
-  missionDone: { backgroundColor: '#F0FFF4', borderColor: colors.success },
-  missionText: { fontSize: font.caption, color: colors.text },
-  missionTextDone: { fontWeight: font.weight.bold },
+  tileActive: { borderColor: colors.blueAccent, backgroundColor: colors.blue },
+  tileDone: { backgroundColor: colors.successSoft, borderColor: colors.success },
+  tileEmoji: { fontSize: font.titleLg },
+  tileLabel: {
+    fontSize: font.small,
+    fontWeight: font.weight.semibold,
+    color: colors.text,
+    marginTop: 2,
+  },
 
-  statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  statTile: {
-    flex: 1,
+  block: {
     backgroundColor: colors.white,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    alignItems: 'center',
+    marginBottom: spacing.md,
     ...shadow.soft,
   },
+  blockHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  blockTitle: { fontSize: font.bodyLg, fontWeight: font.weight.bold, color: colors.text },
+  blockLink: { fontSize: font.small, color: colors.blueAccent },
+
+  statsRow: { flexDirection: 'row' },
+  stat: { flex: 1, alignItems: 'center' },
   statValue: { fontSize: font.titleLg, fontWeight: font.weight.bold, color: colors.text },
-  statLabel: { fontSize: font.caption, color: colors.textLight, marginTop: 2, textAlign: 'center' },
+  statLabel: { fontSize: font.caption, color: colors.textLight, marginTop: 2 },
 
   chatCard: {
     flexDirection: 'row',
@@ -403,51 +432,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: radius.lg,
     padding: spacing.md,
-    marginTop: spacing.md,
     ...shadow.soft,
   },
-  chatTitle: { fontSize: font.bodyLg, fontWeight: font.weight.bold, color: colors.text, textAlign: 'right' },
-  chatPreview: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginTop: 2 },
-  chevron: { fontSize: 22, color: colors.textLight },
-
-  servicesRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
-  serviceCard: {
-    flex: 1,
-    minHeight: 72,
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    alignItems: 'center',
-    ...shadow.soft,
-  },
-  serviceIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  serviceLabel: {
+  chatTitle: {
     fontSize: font.body,
     fontWeight: font.weight.bold,
     color: colors.text,
-    textAlign: 'center',
+    textAlign: 'right',
   },
-  soonChip: {
-    backgroundColor: colors.creamDark,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    marginTop: spacing.xs,
-  },
-  soonText: { fontSize: font.caption, fontWeight: font.weight.semibold, color: colors.textLight },
-  soonNotice: {
-    fontSize: font.small,
+  chatPreview: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginTop: 2 },
+  chevron: { fontSize: font.title, color: colors.textMuted },
+
+  soon: {
+    fontSize: font.caption,
     color: colors.textLight,
     textAlign: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
 });

@@ -11,6 +11,9 @@ import { Platform } from 'react-native';
 export function registerServiceWorker() {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return;
   if (!('serviceWorker' in navigator)) return;
+  // לא בפיתוח: שרת הפיתוח מגיש באנדל בשם קבוע, ורכיב הרקע היה מגיש
+  // אותו מהמטמון — כלומר קוד ישן על המסך אחרי כל שינוי.
+  if (__DEV__) return;
 
   window.addEventListener('load', () => {
     // נתיב יחסי: האתר מוגש גם משורש הדומיין וגם מתת-נתיב ב-GitHub Pages

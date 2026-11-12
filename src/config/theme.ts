@@ -1,7 +1,7 @@
 export const colors = {
   pink: '#FADADD',
   pinkDark: '#F4A7B9',
-  pinkAccent: '#E8789A',
+  pinkAccent: '#C9456B', // היה E8789A — 2.77 מול לבן; זה הכפתור הראשי של כל האפליקציה
   blue: '#BDE0FE',
   blueDark: '#A2C4F5',
   blueAccent: '#2668A8', // היה 5BA4E8 — 2.65 בלבד מול לבן
@@ -12,6 +12,7 @@ export const colors = {
   textLight: '#8B6F5E',
   textMuted: '#7A5F4E', // היה B5998A — 2.66; תוויות הטאבים וכל ה-placeholders
   success: '#A8D5B5',
+  successSoft: '#EFF8F1', // משטח מצב-בוצע; היה #F0FFF4 קשיח בשני מסכים
   danger: '#C0392B', // היה F4A7A7 — 1.92; זה צבע הודעת השגיאה בהתחברות
   border: '#EDE0D4',
 };
