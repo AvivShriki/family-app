@@ -59,7 +59,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     // מייל אימות נשלח, אבל אינו חוסם כלום: שבעת החשבונות שנוצרו בקונסולה
     // מעולם לא אומתו, וחסימה לפי אימות הייתה נועלת אותם בחוץ.
-    sendEmailVerification(cred.user).catch((e) => console.error('שליחת מייל האימות נכשלה:', e));
+    sendEmailVerification(cred.user).catch((e) =>
+      console.error('שליחת מייל האימות נכשלה:', e),
+    );
     return cred.user.uid;
   };
 
@@ -88,9 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, login, signUp, resetPassword, logout, changePassword }}
-    >
+    <AuthContext.Provider value={{ user, loading, login, signUp, resetPassword, logout, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

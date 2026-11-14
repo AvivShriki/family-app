@@ -8,11 +8,8 @@ import { MessagesProvider } from './src/context/MessagesContext';
 import { MedicationsProvider } from './src/context/MedicationsContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { registerServiceWorker } from './src/utils/registerServiceWorker';
-import { loadWebFont } from './src/utils/loadWebFont';
 
 registerServiceWorker();
-// Heebo נטענת לפני הרינדור הראשון, כדי שהטקסט לא יוחלף פונט מול העיניים
-loadWebFont();
 
 export default function App() {
   return (

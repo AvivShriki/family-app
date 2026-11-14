@@ -105,7 +105,9 @@ export function MedicationsProvider({ children }: { children: React.ReactNode })
   const activeToday = medications.filter((m) => isActiveOn(m, new Date()));
 
   return (
-    <MedicationsContext.Provider value={{ medications, activeToday, loading, add, update, remove }}>
+    <MedicationsContext.Provider
+      value={{ medications, activeToday, loading, add, update, remove }}
+    >
       {children}
     </MedicationsContext.Provider>
   );

@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useBabyLogs } from '../../context/BabyLogsContext';
 import { useMedications } from '../../context/MedicationsContext';
 import { useAuth } from '../../context/AuthContext';
 import { BabyLog } from '../../types';
-import { activityMeta, medIcon } from '../../config/activity';
-import { colors, spacing, radius, type, TOUCH } from '../../config/theme';
+import { colors, spacing, radius, font } from '../../config/theme';
 import Button from '../../components/Button';
-import BottomSheet from '../../components/BottomSheet';
-import PressScale from '../../components/PressScale';
-import Chip from '../../components/Chip';
-import Segmented from '../../components/Segmented';
-import TextField from '../../components/TextField';
 import TimePickerModal from '../../components/TimePickerModal';
 import AmountPickerModal from '../../components/AmountPickerModal';
 
@@ -20,13 +24,18 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   selectedDate: Date;
-  editLog?: BabyLog | null; // כשמוגדר, המודל עורך את הרשומה ולא יוצר חדשה
+  editLog?: BabyLog | null; // when set, the modal edits this entry instead of creating a new one
 }
 
 type LogType = BabyLog['type'];
 
 // סוגי הבסיס. התרופות והתוספים מגיעים מהרשימה של המשפחה ונוספים לרשת.
-const TYPES: LogType[] = ['feeding', 'sleep', 'diaper', 'note'];
+const TYPES: { type: LogType; emoji: string; label: string }[] = [
+  { type: 'feeding', emoji: '🍼', label: 'ארוחה' },
+  { type: 'sleep', emoji: '😴', label: 'שינה' },
+  { type: 'diaper', emoji: '💩', label: 'חיתול' },
+  { type: 'note', emoji: '📝', label: 'הערה' },
+];
 
 const DIAPER_OPTIONS = [
   { value: 'wet', label: 'שתן' },
@@ -61,7 +70,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const [step, setStep] = useState<'pick' | 'form'>(editLog ? 'form' : 'pick');
   const [selectedType, setSelectedType] = useState<LogType>(editLog?.type ?? 'feeding');
 
-  // שדות הטופס
+  // form fields
   const [startTime, setStartTime] = useState(() =>
     editLog ? hhmmFromTs(editLog.timestamp) : nowHHMM(),
   );
@@ -75,9 +84,8 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const [givenWith, setGivenWith] = useState<string[]>([]);
   // התרופה שנבחרה כשהרישום עצמו הוא נטילת תרופה
   const [medId, setMedId] = useState<string>(editLog?.medicationId ?? '');
-  const [saving, setSaving] = useState(false);
 
-  // הבוררים נפתחים מעל המגירה. הם מורכבים רק כשפתוחים, כדי שכל פתיחה
+  // בוררים נפתחים מעל המודל. הם מורכבים רק כשפתוחים, כדי שכל פתיחה
   // תתחיל מהערך הנוכחי של השדה ולא מזה שנבחר בפעם הקודמת.
   const [startPickerVisible, setStartPickerVisible] = useState(false);
   const [endPickerVisible, setEndPickerVisible] = useState(false);
@@ -99,326 +107,416 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     onClose();
   };
 
-  const pickType = (t: LogType, medicationId = '') => {
-    setSelectedType(t);
+  const pickType = (type: LogType, medicationId = '') => {
+    setSelectedType(type);
     setMedId(medicationId);
     setStep('form');
   };
 
   const handleSave = async () => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const ts = parseTime(startTime, selectedDate);
-      const entry: Omit<BabyLog, 'id'> = {
-        type: selectedType,
-        timestamp: ts,
-        loggedBy: user?.email ?? 'demo',
-      };
-      if (selectedType === 'feeding') entry.amountMl = parseInt(amountMl) || 0;
-      if (selectedType === 'sleep' && endTime)
-        entry.endTimestamp = parseTime(endTime, selectedDate);
-      if (selectedType === 'diaper') entry.diaperType = diaperType as any;
-      if (selectedType === 'medication' && medId) entry.medicationId = medId;
-      if (note) entry.details = note;
+    const ts = parseTime(startTime, selectedDate);
+    const entry: Omit<BabyLog, 'id'> = {
+      type: selectedType,
+      timestamp: ts,
+      loggedBy: user?.email ?? 'demo',
+    };
+    if (selectedType === 'feeding') entry.amountMl = parseInt(amountMl) || 0;
+    if (selectedType === 'sleep' && endTime) entry.endTimestamp = parseTime(endTime, selectedDate);
+    if (selectedType === 'diaper') entry.diaperType = diaperType as any;
+    if (selectedType === 'medication' && medId) entry.medicationId = medId;
+    if (note) entry.details = note;
 
-      if (editLog) {
-        await update(editLog.id, entry);
-      } else {
-        await add(entry as any);
-        // תרופות ניתנות לרוב יחד עם הארוחה — נרשמות לצידה באותה שעה
-        for (const id of givenWith) {
-          await add({
-            type: 'medication',
-            medicationId: id,
-            timestamp: ts,
-            loggedBy: entry.loggedBy,
-          } as any);
-        }
+    if (editLog) {
+      await update(editLog.id, entry);
+    } else {
+      await add(entry as any);
+      // תרופות ניתנות לרוב יחד עם הארוחה — נרשמות לצידה באותה שעה
+      for (const id of givenWith) {
+        await add({
+          type: 'medication',
+          medicationId: id,
+          timestamp: ts,
+          loggedBy: entry.loggedBy,
+        } as any);
       }
-      handleClose();
-    } finally {
-      setSaving(false);
     }
+    handleClose();
   };
 
   const selectedMed = medications.find((m) => m.id === medId);
-  const meta = activityMeta(selectedType);
-  const title =
-    step === 'pick'
-      ? 'מה לתעד?'
-      : `${editLog ? 'עריכת ' : ''}${selectedMed ? selectedMed.name : meta.label}`;
+  const typeMeta = selectedMed
+    ? { type: 'medication' as LogType, emoji: selectedMed.emoji, label: selectedMed.name }
+    : (TYPES.find((t) => t.type === selectedType) ?? TYPES[TYPES.length - 1]);
 
   return (
     <>
-      <BottomSheet
-        visible={visible}
-        title={title}
-        onClose={handleClose}
-        onBack={step === 'form' && !editLog ? () => setStep('pick') : undefined}
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {step === 'pick' ? (
-          <>
-            {/* רשת הבחירה: כל סוג במשטח בגוון שלו, כך שהעין מוצאת אותו
-                לפי הצבע עוד לפני שהיא קוראת את השם */}
-            <View style={styles.typeGrid}>
-              {TYPES.map((t) => {
-                const m = activityMeta(t);
-                return (
-                  <PressScale
-                    key={t}
-                    onPress={() => pickType(t)}
-                    accessibilityRole="button"
-                    accessibilityLabel={m.label}
-                    style={styles.typeOuter}
-                  >
-                    <View style={[styles.typeBtn, { backgroundColor: m.surface }]}>
-                      <MaterialCommunityIcons name={m.icon} size={30} color={m.color} />
-                      <Text style={[type.bodyStrong, styles.typeLabel]} numberOfLines={1}>
-                        {m.label}
-                      </Text>
-                    </View>
-                  </PressScale>
-                );
-              })}
-              {activeToday.map((m) => {
-                const medMeta = activityMeta('medication');
-                return (
-                  <PressScale
-                    key={m.id}
-                    onPress={() => pickType('medication', m.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={m.name}
-                    style={styles.typeOuter}
-                  >
-                    <View style={[styles.typeBtn, { backgroundColor: medMeta.surface }]}>
-                      <MaterialCommunityIcons
-                        name={medIcon(m.emoji)}
-                        size={30}
-                        color={medMeta.color}
-                      />
-                      <Text style={[type.bodyStrong, styles.typeLabel]} numberOfLines={1}>
-                        {m.name}
-                      </Text>
-                    </View>
-                  </PressScale>
-                );
-              })}
-            </View>
-
-            <Button
-              label="ביטול"
-              variant="secondary"
+        <View style={styles.sheet}>
+          {/* Header */}
+          <View style={styles.header}>
+            {step === 'form' && !editLog ? (
+              <TouchableOpacity onPress={() => setStep('pick')} style={styles.backBtn}>
+                <Text style={styles.backText}>‹ חזרה</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 60 }} />
+            )}
+            <Text style={styles.title}>
+              {step === 'pick'
+                ? 'הוסף אירוע'
+                : `${editLog ? 'עריכת ' : ''}${typeMeta.emoji} ${typeMeta.label}`}
+            </Text>
+            <TouchableOpacity
               onPress={handleClose}
-              style={{ marginTop: spacing.md }}
-            />
-          </>
-        ) : (
-          <View>
-            {/* שעה — תמיד */}
-            <Field label={selectedType === 'sleep' ? 'שעת כניסה לשינה' : 'שעה'}>
-              <PickerField
-                icon="time-outline"
-                text={startTime}
-                onPress={() => setStartPickerVisible(true)}
-                accessibilityLabel={`שעה ${startTime}, לשינוי`}
-              />
-            </Field>
-
-            {/* שעת התעוררות */}
-            {selectedType === 'sleep' ? (
-              <Field label="שעת התעוררות">
-                <PickerField
-                  icon="time-outline"
-                  text={endTime}
-                  placeholder="עוד ישנה — אפשר להשלים אחר כך"
-                  onPress={() => setEndPickerVisible(true)}
-                  accessibilityLabel="שעת התעוררות, לבחירה"
-                />
-              </Field>
-            ) : null}
-
-            {/* כמות */}
-            {selectedType === 'feeding' ? (
-              <Field label="כמות">
-                <PickerField
-                  icon="water-outline"
-                  text={amountMl ? `${amountMl} מ"ל` : ''}
-                  placeholder="בחירת כמות, או הנקה"
-                  onPress={() => setAmountPickerVisible(true)}
-                  accessibilityLabel="כמות, לבחירה"
-                />
-              </Field>
-            ) : null}
-
-            {/* תרופות שניתנו יחד עם הארוחה */}
-            {selectedType === 'feeding' && !editLog && activeToday.length > 0 ? (
-              <Field label="ניתנו גם בארוחה הזו">
-                <View style={styles.chipRow}>
-                  {activeToday.map((m) => (
-                    <Chip
-                      key={m.id}
-                      label={m.name}
-                      icon={medIcon(m.emoji)}
-                      mode="check"
-                      selected={givenWith.includes(m.id)}
-                      onPress={() =>
-                        setGivenWith((prev) =>
-                          prev.includes(m.id) ? prev.filter((x) => x !== m.id) : [...prev, m.id],
-                        )
-                      }
-                    />
-                  ))}
-                </View>
-              </Field>
-            ) : null}
-
-            {/* מינון התרופה, כשהוגדר לה כזה */}
-            {selectedType === 'medication' && selectedMed?.dose ? (
-              <Field label="מינון">
-                <View style={styles.doseBox}>
-                  <Text style={type.bodyStrong}>{selectedMed.dose}</Text>
-                </View>
-              </Field>
-            ) : null}
-
-            {/* סוג חיתול */}
-            {selectedType === 'diaper' ? (
-              <Field label="סוג">
-                <Segmented
-                  label="סוג החיתול"
-                  options={DIAPER_OPTIONS as { value: string; label: string }[]}
-                  value={diaperType}
-                  onChange={setDiaperType}
-                />
-              </Field>
-            ) : null}
-
-            <TextField
-              label="הערה (לא חובה)"
-              value={note}
-              onChangeText={setNote}
-              placeholder="משהו ששווה לזכור מהרישום הזה"
-              multiline
-              numberOfLines={3}
-            />
-
-            {/* המונח קבוע: שמירה. הכותרת כבר אומרת אם זו עריכה. */}
-            <Button
-              label="שמירה"
-              onPress={handleSave}
-              loading={saving}
-              style={{ marginTop: spacing.sm }}
-            />
+              style={styles.closeBtn}
+              accessibilityLabel="סגירה"
+            >
+              <Text style={styles.closeText}>✕</Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </BottomSheet>
 
-      {/* הבוררים הם אחים של המגירה, לא ילדים שלה — מודל בתוך מודל
-          לא נפרס נכון ב-react-native-web. */}
-      {startPickerVisible ? (
-        <TimePickerModal
-          visible
-          value={startTime}
-          minuteStep={5}
-          onSelect={setStartTime}
-          onClose={() => setStartPickerVisible(false)}
-        />
-      ) : null}
-      {endPickerVisible ? (
-        <TimePickerModal
-          visible
-          value={endTime || startTime}
-          minuteStep={5}
-          onSelect={setEndTime}
-          onClose={() => setEndPickerVisible(false)}
-        />
-      ) : null}
-      {amountPickerVisible ? (
-        <AmountPickerModal
-          visible
-          value={amountMl}
-          onSelect={setAmountMl}
-          onClose={() => setAmountPickerVisible(false)}
-        />
-      ) : null}
+          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+            {step === 'pick' ? (
+              /* Type picker grid */
+              <View style={styles.typeGrid}>
+                {TYPES.map((t) => (
+                  <TouchableOpacity
+                    key={t.type}
+                    style={styles.typeBtn}
+                    onPress={() => pickType(t.type)}
+                  >
+                    <Text style={styles.typeEmoji}>{t.emoji}</Text>
+                    <Text style={styles.typeLabel}>{t.label}</Text>
+                  </TouchableOpacity>
+                ))}
+                {activeToday.map((m) => (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.typeBtn}
+                    onPress={() => pickType('medication', m.id)}
+                  >
+                    <Text style={styles.typeEmoji}>{m.emoji}</Text>
+                    <Text style={styles.typeLabel}>{m.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              /* Form fields */
+              <View>
+                {/* Start time — always shown */}
+                <Field label={selectedType === 'sleep' ? 'שעת כניסה לשינה' : 'שעה'}>
+                  <PickerField
+                    icon="time-outline"
+                    text={startTime}
+                    onPress={() => setStartPickerVisible(true)}
+                  />
+                </Field>
+
+                {/* Sleep end time */}
+                {selectedType === 'sleep' && (
+                  <Field label="שעת התעוררות">
+                    <PickerField
+                      icon="time-outline"
+                      text={endTime}
+                      placeholder="בחר שעה"
+                      onPress={() => setEndPickerVisible(true)}
+                    />
+                  </Field>
+                )}
+
+                {/* Feeding amount */}
+                {selectedType === 'feeding' && (
+                  <Field label="כמות">
+                    <PickerField
+                      icon="water-outline"
+                      text={amountMl ? `${amountMl} מ"ל` : ''}
+                      placeholder="בחר כמות (או הנקה)"
+                      onPress={() => setAmountPickerVisible(true)}
+                    />
+                  </Field>
+                )}
+
+                {/* תרופות שניתנו יחד עם הארוחה */}
+                {selectedType === 'feeding' && !editLog && activeToday.length > 0 && (
+                  <Field label="ניתנו גם בארוחה זו">
+                    <View style={styles.checkRow}>
+                      {activeToday.map((m) => (
+                        <CheckChip
+                          key={m.id}
+                          emoji={m.emoji}
+                          label={m.name}
+                          checked={givenWith.includes(m.id)}
+                          onPress={() =>
+                            setGivenWith((prev) =>
+                              prev.includes(m.id)
+                                ? prev.filter((x) => x !== m.id)
+                                : [...prev, m.id],
+                            )
+                          }
+                        />
+                      ))}
+                    </View>
+                  </Field>
+                )}
+
+                {/* מינון התרופה, כשהוגדר לה כזה */}
+                {selectedType === 'medication' && selectedMed?.dose ? (
+                  <Field label="מינון">
+                    <Text style={styles.doseText}>{selectedMed.dose}</Text>
+                  </Field>
+                ) : null}
+
+                {/* Diaper type */}
+                {selectedType === 'diaper' && (
+                  <Field label="סוג">
+                    <View style={styles.optionRow}>
+                      {DIAPER_OPTIONS.map((o) => (
+                        <TouchableOpacity
+                          key={o.value}
+                          style={[styles.optionBtn, diaperType === o.value && styles.optionActive]}
+                          onPress={() => setDiaperType(o.value)}
+                        >
+                          <Text
+                            style={[
+                              styles.optionText,
+                              diaperType === o.value && styles.optionTextActive,
+                            ]}
+                          >
+                            {o.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </Field>
+                )}
+
+                {/* Note — always optional */}
+                <Field label="הערה (לא חובה)">
+                  <TextInput
+                    style={[styles.input, styles.inputMulti]}
+                    value={note}
+                    onChangeText={setNote}
+                    placeholder="הוסף הערה..."
+                    placeholderTextColor={colors.textMuted}
+                    multiline
+                    textAlign="right"
+                  />
+                </Field>
+
+                {/* Glossary: persisting is always "שמירה" — the title already says עריכת */}
+                <Button label="שמירה" onPress={handleSave} style={{ marginTop: spacing.md }} />
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+
+    {/* הבוררים הם אחים של המודל, לא ילדים שלו — מודל בתוך מודל
+        לא נפרס נכון ב-react-native-web. */}
+    {startPickerVisible && (
+      <TimePickerModal
+        visible
+        value={startTime}
+        minuteStep={5}
+        onSelect={setStartTime}
+        onClose={() => setStartPickerVisible(false)}
+      />
+    )}
+    {endPickerVisible && (
+      <TimePickerModal
+        visible
+        value={endTime || startTime}
+        minuteStep={5}
+        onSelect={setEndTime}
+        onClose={() => setEndPickerVisible(false)}
+      />
+    )}
+    {amountPickerVisible && (
+      <AmountPickerModal
+        visible
+        value={amountMl}
+        onSelect={setAmountMl}
+        onClose={() => setAmountPickerVisible(false)}
+      />
+    )}
     </>
   );
 }
 
-/** שדה שנפתח לבורר. נראה כמו שדה קלט כדי שיהיה ברור שהוא נלחץ. */
 function PickerField({
   icon,
   text,
   placeholder,
   onPress,
-  accessibilityLabel,
 }: {
   icon: 'time-outline' | 'water-outline';
   text: string;
   placeholder?: string;
   onPress: () => void;
-  accessibilityLabel: string;
 }) {
   return (
-    <TouchableOpacity
-      style={styles.pickerField}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      activeOpacity={0.75}
-    >
-      <Ionicons name={icon} size={19} color={colors.sage} />
-      <Text style={[type.bodyStrong, styles.pickerText, !text && styles.placeholder]}>
+    <TouchableOpacity style={styles.pickerField} onPress={onPress}>
+      <Ionicons name={icon} size={18} color={colors.textMuted} />
+      <Text style={[styles.pickerFieldText, !text && styles.pickerFieldPlaceholder]}>
         {text || placeholder}
       </Text>
-      <Ionicons name="chevron-down" size={17} color={colors.textMuted} />
     </TouchableOpacity>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <View style={styles.field}>
-      <Text style={type.label}>{label}</Text>
+    <View style={styles.fieldWrap}>
+      <Text style={styles.fieldLabel}>{label}</Text>
       {children}
     </View>
   );
 }
 
+function CheckChip({
+  emoji,
+  label,
+  checked,
+  onPress,
+}: {
+  emoji: string;
+  label: string;
+  checked: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.checkChip, checked && styles.checkChipActive]}
+      onPress={onPress}
+    >
+      <View style={[styles.checkbox, checked && styles.checkboxActive]}>
+        {checked && <Text style={styles.checkmark}>✓</Text>}
+      </View>
+      <Text style={styles.checkEmoji}>{emoji}</Text>
+      <Text style={[styles.checkLabel, checked && styles.checkLabelActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
-  typeGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
-  typeOuter: { flexGrow: 1, flexBasis: '45%', minWidth: 130 },
-  typeBtn: {
+  overlay: {
     flex: 1,
-    minHeight: 112,
-    borderRadius: radius.card,
+    backgroundColor: '#0005',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    maxHeight: '85%',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backBtn: { width: 60 },
+  backText: { fontSize: 16, color: colors.pinkAccent, fontWeight: '600' },
+  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  doseText: { fontSize: font.body, color: colors.text, textAlign: 'right' },
+  closeBtn: { width: 60, height: 44, alignItems: 'flex-end', justifyContent: 'center' },
+  closeText: { fontSize: 18, color: colors.textMuted },
+
+  body: { padding: spacing.lg, paddingBottom: 40 },
+
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  typeBtn: {
+    width: '30%',
+    aspectRatio: 1,
+    backgroundColor: colors.cream,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  typeLabel: { textAlign: 'center' },
+  typeEmoji: { fontSize: 30, marginBottom: spacing.xs },
+  typeLabel: { fontSize: 13, color: colors.text, fontWeight: '500' },
 
-  field: { marginBottom: spacing.md, gap: spacing.xs },
+  fieldWrap: { marginBottom: spacing.md },
+  fieldLabel: {
+    fontSize: 13,
+    color: colors.textLight,
+    marginBottom: spacing.xs,
+    textAlign: 'right',
+  },
+  input: {
+    backgroundColor: colors.cream,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  inputMulti: { height: 72, textAlignVertical: 'top' },
+
   pickerField: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: colors.cream,
     borderRadius: radius.md,
-    borderWidth: 1.5,
+    padding: spacing.md,
+    borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    minHeight: TOUCH + 6,
   },
-  pickerText: { flex: 1 },
-  placeholder: { ...type.body, color: colors.textMuted },
-  doseBox: {
-    backgroundColor: colors.mossSoft,
+  pickerFieldText: { fontSize: font.bodyLg, color: colors.text },
+  pickerFieldPlaceholder: { color: colors.textMuted },
+
+  optionRow: { flexDirection: 'row', gap: spacing.sm },
+  optionBtn: {
+    flex: 1,
+    padding: spacing.sm,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    backgroundColor: colors.cream,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  chipRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
+  optionActive: { backgroundColor: colors.pinkAccent, borderColor: colors.pinkAccent },
+  optionText: { fontSize: 14, color: colors.textLight, fontWeight: '500' },
+  optionTextActive: { color: colors.white, fontWeight: '700' },
+
+  checkRow: { flexDirection: 'row', gap: spacing.sm },
+  checkChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  checkChipActive: { backgroundColor: '#FFF8E1', borderColor: colors.pinkAccent },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: { backgroundColor: colors.pinkAccent, borderColor: colors.pinkAccent },
+  checkmark: { color: colors.white, fontWeight: '700', fontSize: 12 },
+  checkEmoji: { fontSize: 15 },
+  checkLabel: { fontSize: 13, color: colors.textLight, fontWeight: '500' },
+  checkLabelActive: { color: colors.text, fontWeight: '700' },
+
 });

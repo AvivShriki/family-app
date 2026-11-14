@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
-import Card from '../components/Card';
-import Loader from '../components/Loader';
 import { previewInvite, InvitePreview } from '../services/familySetup';
-import { colors, spacing, radius, type, TOUCH, CONTENT_MAX } from '../config/theme';
+import { colors, spacing, radius, font, shadow } from '../config/theme';
 
 /**
  * המסך הראשון שרואה מי שלוחץ על קישור הזמנה.
@@ -28,7 +26,13 @@ export default function InviteWelcomeScreen({ navigation, route }: any) {
     };
   }, [code]);
 
-  if (!preview) return <Loader text="בודקים את ההזמנה" />;
+  if (!preview) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator color={colors.pinkAccent} size="large" />
+      </View>
+    );
+  }
 
   if (preview.status !== 'ok') {
     const message = {
@@ -39,21 +43,17 @@ export default function InviteWelcomeScreen({ navigation, route }: any) {
 
     return (
       <View style={styles.centered}>
-        <View style={styles.mark}>
-          <Ionicons name="link-outline" size={32} color={colors.terracottaDeep} />
-        </View>
-        <Text style={[type.h2, styles.center]}>הקישור כבר לא פעיל</Text>
-        <Card style={styles.card}>
-          <Text style={[type.body, styles.center]}>{message}</Text>
-          <Text style={[type.body, styles.center, { marginTop: spacing.sm }]}>
-            בקשו מבן המשפחה שהזמין אתכם ליצור קישור חדש — זה לוקח לו שנייה.
-          </Text>
-        </Card>
+        <Text style={styles.emoji}>🔗</Text>
+        <Text style={styles.title}>הקישור כבר לא פעיל</Text>
+        <Text style={styles.body}>{message}</Text>
+        <Text style={styles.body}>
+          בקשו מבן המשפחה שהזמין אתכם ליצור קישור חדש — זה לוקח לו שנייה.
+        </Text>
         <Button
           label="למסך הכניסה"
-          variant="secondary"
           onPress={() => navigation.navigate('Login')}
-          style={styles.button}
+          variant="secondary"
+          style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
         />
       </View>
     );
@@ -62,121 +62,99 @@ export default function InviteWelcomeScreen({ navigation, route }: any) {
   const family = preview.familyName ? `משפחת ${preview.familyName}` : 'המשפחה';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* ---- הפתיח: לאן הוזמנת, בשם המשפחה שהזמינה ---- */}
-      <View style={styles.hero}>
-        <View style={styles.heroMark}>
-          <MaterialCommunityIcons name="baby-face-outline" size={32} color={colors.white} />
+    <View style={styles.container}>
+      <View style={styles.inner}>
+        <Text style={styles.emoji}>🌸</Text>
+        <Text style={styles.title}>ברוכים הבאים ל{family}</Text>
+        <Text style={styles.lead}>הוזמנתם להצטרף לתיעוד המשותף של {family}.</Text>
+
+        <View style={styles.card}>
+          <Row icon="book-outline" text="תראו את התיעוד של התינוק או התינוקת — ארוחות, שינה וחיתולים" />
+          <Row icon="create-outline" text="תוכלו לתעד בעצמכם, וכל מי שבמשפחה יראה את זה מיד" />
+          <Row icon="lock-closed-outline" text="רק מי שבמשפחה רואה את הנתונים. אף משפחה אחרת לא." />
         </View>
-        <Text style={[type.caption, styles.heroEyebrow]}>הוזמנתם להצטרף</Text>
-        <Text style={styles.heroTitle}>ברוכים הבאים ל{family}</Text>
-        <Text style={styles.heroLead}>
-          תיעוד משותף של התינוק או התינוקת — ארוחות, שינה, חיתולים ותרופות.
+
+        <Text style={styles.cta}>
+          כדי להצטרף צריך לפתוח חשבון — זה לוקח חצי דקה, ואין צורך בקוד:
+          הוא כבר שמור בקישור שלחצתם עליו.
         </Text>
+
+        <Button
+          label="הרשמה והצטרפות"
+          onPress={() => navigation.navigate('SignUp', { code })}
+          style={{ alignSelf: 'stretch' }}
+        />
+
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} hitSlop={8}>
+          <Text style={styles.link}>כבר יש לכם חשבון? לכניסה</Text>
+        </TouchableOpacity>
       </View>
-
-      <Card style={styles.list}>
-        <Row icon="notebook-outline" text={`תראו את כל התיעוד של ${family}`} />
-        <Row icon="pencil-outline" text="תוכלו לתעד בעצמכם, וכל מי שבמשפחה יראה את זה מיד" />
-        <Row icon="lock-outline" text="רק מי שבמשפחה רואה את הנתונים. אף משפחה אחרת לא." />
-      </Card>
-
-      <Text style={[type.body, styles.cta]}>
-        כדי להצטרף צריך לפתוח חשבון — זה לוקח חצי דקה, ואין צורך בקוד: הוא כבר שמור בקישור שלחצתם
-        עליו.
-      </Text>
-
-      <Button label="הרשמה והצטרפות" onPress={() => navigation.navigate('SignUp', { code })} />
-
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Login')}
-        style={styles.linkBtn}
-        accessibilityRole="button"
-      >
-        <Text style={styles.link}>כבר יש לכם חשבון? לכניסה</Text>
-      </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 }
 
 function Row({ icon, text }: { icon: any; text: string }) {
   return (
     <View style={styles.row}>
-      <View style={styles.rowIcon}>
-        <MaterialCommunityIcons name={icon} size={19} color={colors.sage} />
-      </View>
-      <Text style={[type.body, styles.rowText]}>{text}</Text>
+      <Ionicons name={icon} size={20} color={colors.pinkAccent} />
+      <Text style={styles.rowText}>{text}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    width: '100%',
-    maxWidth: CONTENT_MAX,
-    alignSelf: 'center',
-  },
-
-  hero: {
-    backgroundColor: colors.sage,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  heroMark: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  heroEyebrow: { color: 'rgba(255,255,255,0.8)', textAlign: 'center' },
-  heroTitle: { ...type.h1, color: colors.white, textAlign: 'center', marginTop: 2 },
-  heroLead: {
-    ...type.body,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
-
-  list: { gap: spacing.md, marginBottom: spacing.md },
-  row: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: spacing.sm },
-  rowIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.sageSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowText: { flex: 1, color: colors.text, paddingTop: spacing.xs },
-
-  cta: { textAlign: 'center', marginBottom: spacing.md },
+  inner: { flex: 1, justifyContent: 'center', padding: spacing.lg },
   centered: {
     flex: 1,
     backgroundColor: colors.cream,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.xl,
   },
-  mark: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: colors.terracottaSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  emoji: { fontSize: 52, textAlign: 'center', marginBottom: spacing.sm },
+  title: {
+    fontSize: font.titleLg,
+    fontWeight: font.weight.heavy,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  lead: {
+    fontSize: font.bodyLg,
+    color: colors.textLight,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+    lineHeight: 23,
+  },
+  body: {
+    fontSize: font.body,
+    color: colors.textLight,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginTop: spacing.xs,
+  },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+    ...shadow.soft,
+  },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  rowText: { flex: 1, fontSize: font.body, color: colors.text, textAlign: 'right', lineHeight: 21 },
+  cta: {
+    fontSize: font.small,
+    color: colors.textLight,
+    textAlign: 'center',
+    lineHeight: 19,
     marginBottom: spacing.md,
   },
-  center: { textAlign: 'center' },
-  card: { marginTop: spacing.md, alignSelf: 'stretch', maxWidth: 420 },
-  button: { marginTop: spacing.lg, alignSelf: 'stretch', maxWidth: 420 },
-  linkBtn: { minHeight: TOUCH, justifyContent: 'center', marginTop: spacing.sm },
-  link: { ...type.smallStrong, color: colors.sage, textAlign: 'center' },
+  link: {
+    fontSize: font.small,
+    color: colors.blueAccent,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
 });

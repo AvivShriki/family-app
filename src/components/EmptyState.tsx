@@ -1,15 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, spacing, type } from '../config/theme';
-import { MCIcon } from '../config/activity';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, font } from '../config/theme';
 
-/**
- * מצב ריק: מדליון רך, משפט שמסביר למה המסך ריק, ורמז שמוביל לפעולה
- * שתמלא אותו. מצב ריק בלי רמז משאיר את המשתמש בלי מושג מה לעשות.
- */
+// Shared empty-state: a soft icon medallion, a warm title, and an optional
+// hint that points the user at the action that fills the screen.
 interface Props {
-  icon: MCIcon;
+  icon: keyof typeof Ionicons.glyphMap;
   title: string;
   hint?: string;
 }
@@ -18,25 +15,24 @@ export default function EmptyState({ icon, title, hint }: Props) {
   return (
     <View style={styles.wrap}>
       <View style={styles.medallion}>
-        <MaterialCommunityIcons name={icon} size={34} color={colors.sage} />
+        <Ionicons name={icon} size={34} color={colors.pinkAccent} />
       </View>
-      <Text style={[type.h3, styles.center]}>{title}</Text>
-      {hint ? <Text style={[type.body, styles.center, styles.hint]}>{hint}</Text> : null}
+      <Text style={styles.title}>{title}</Text>
+      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.lg },
+  wrap: { alignItems: 'center', marginTop: spacing.xxl, paddingHorizontal: spacing.xl },
   medallion: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: colors.sageSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: colors.pink, alignItems: 'center', justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  center: { textAlign: 'center' },
-  hint: { marginTop: spacing.xs, maxWidth: 300 },
+  title: {
+    fontSize: font.bodyLg, fontWeight: font.weight.semibold,
+    color: colors.text, textAlign: 'center', marginBottom: spacing.xs,
+  },
+  hint: { fontSize: font.small, color: colors.textMuted, textAlign: 'center' },
 });

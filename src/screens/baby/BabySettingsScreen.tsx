@@ -1,130 +1,277 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
 import { useAuth } from '../../context/AuthContext';
-import ListRow from '../../components/ListRow';
-import Screen from '../../components/Screen';
-import SectionHeader from '../../components/SectionHeader';
-import BlobBackdrop from '../../components/BlobBackdrop';
-import { colors, spacing, radius, type, shadow } from '../../config/theme';
+import DatePickerModal from '../../components/DatePickerModal';
+import Button from '../../components/Button';
+import { pickProfileImage } from '../../utils/imagePicker';
+import { colors, spacing, radius, shadow } from '../../config/theme';
 
-/**
- * הפרופיל — נקודת הכניסה לכל מה שמגדירים.
- *
- * קודם זה היה מסך הגדרות שהתחיל בטופס ארוך, והשורות שמתחתיו נדחקו
- * מתחת לקיפול. עכשיו הוא מתחיל במי שהאפליקציה עוסקת בה, ומתחתיה
- * רשימת יעדים קצרה. הטופס עצמו עבר למסך משלו.
- */
 export default function BabySettingsScreen({ navigation }: any) {
-  const { profile } = useBabyProfile();
-  const { user, logout } = useAuth();
+  const { profile, save } = useBabyProfile();
+  const { logout } = useAuth();
+  // עריכות המשתמש חיות בנפרד מהפרופיל; כל עוד לא נערך — מציגים את הערך מהשרת.
+  // כך אין צורך לסנכרן state בתוך effect כשהפרופיל נטען.
+  const [nameEdit, setNameEdit] = useState<string | null>(null);
+  const [birthDateEdit, setBirthDateEdit] = useState<string | null>(null);
+  const [familyNameEdit, setFamilyNameEdit] = useState<string | null>(null);
+  // undefined = לא נגעו בתמונה, null = הוסרה, string = תמונה חדשה שנבחרה
+  const [photoEdit, setPhotoEdit] = useState<string | null | undefined>(undefined);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+
+  const name = nameEdit ?? profile.name;
+  const birthDate = birthDateEdit ?? profile.birthDate;
+  const familyName = familyNameEdit ?? profile.familyName ?? '';
+  const photoUrl = photoEdit === undefined ? profile.photoUrl : photoEdit ?? undefined;
+
+  const dirty =
+    name.trim() !== profile.name ||
+    birthDate !== profile.birthDate ||
+    familyName.trim() !== (profile.familyName ?? '') ||
+    photoUrl !== profile.photoUrl;
+  // תאריך הלידה אינו חובה לשמירה: בלעדיו מוצג "תאריך לידה טרם הוגדר",
+  // ואין סיבה שהוא יחסום הגדרה של שם המשפחה או של שם התינוקת.
+  const valid = name.trim().length > 0;
+
+  const onPickPhoto = async () => {
+    const dataUrl = await pickProfileImage();
+    if (dataUrl) {
+      setPhotoEdit(dataUrl);
+      setStatus('idle');
+    }
+  };
+
+  const onSave = async () => {
+    try {
+      await save({ name: name.trim(), birthDate, photoUrl, familyName: familyName.trim() });
+      setPhotoEdit(undefined); // מסונכרן מחדש מהפרופיל השמור
+      setFamilyNameEdit(null);
+      setStatus('saved');
+    } catch {
+      setStatus('error');
+    }
+  };
 
   return (
-    <View style={styles.root}>
-      <BlobBackdrop />
-      <Screen tabBar>
-        {/* ---- כרטיס הזהות ---- */}
-        <TouchableOpacity
-          style={styles.hero}
-          onPress={() => navigation.navigate('BabyProfile')}
-          accessibilityRole="button"
-          accessibilityLabel={`עריכת הפרטים של ${profile.name}`}
-          activeOpacity={0.85}
-        >
-          {profile.photoUrl ? (
-            <Image source={{ uri: profile.photoUrl }} style={styles.photo} />
-          ) : (
-            <View style={[styles.photo, styles.photoPlaceholder]}>
-              <MaterialCommunityIcons name="baby-face-outline" size={54} color={colors.sage} />
+    // המסך חייב להיגלל: הכרטיס לבדו ממלא מסך טלפון, והשורות שמתחתיו
+    // היו נחתכות בלי שום דרך להגיע אליהן
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>פרופיל התינוקת 🌸</Text>
+
+        {/* תמונת פרופיל — מוצגת בכל האפליקציה */}
+        <View style={styles.photoSection}>
+          <TouchableOpacity onPress={onPickPhoto} activeOpacity={0.8}>
+            {photoUrl ? (
+              <Image source={{ uri: photoUrl }} style={styles.photo} />
+            ) : (
+              <View style={[styles.photo, styles.photoPlaceholder]}>
+                <Text style={styles.photoEmoji}>👶</Text>
+              </View>
+            )}
+            <View style={styles.photoBadge}>
+              <Ionicons name="camera" size={14} color={colors.white} />
             </View>
-          )}
-          <Text style={[type.h1, styles.center]} numberOfLines={1}>
-            {profile.name}
+          </TouchableOpacity>
+          <Text style={styles.photoHint}>
+            {photoUrl ? 'לחיצה על התמונה מחליפה אותה' : 'לחיצה מוסיפה תמונת פרופיל 📷'}
           </Text>
-          <Text style={[type.small, styles.center]}>{getAgeText(profile.birthDate)}</Text>
-          {profile.familyName?.trim() ? (
-            <View style={styles.familyTag}>
-              <Text style={styles.familyTagText}>משפחת {profile.familyName.trim()}</Text>
-            </View>
+          {photoUrl ? (
+            <TouchableOpacity onPress={() => { setPhotoEdit(null); setStatus('idle'); }} hitSlop={8}>
+              <Text style={styles.photoRemove}>הסרת התמונה</Text>
+            </TouchableOpacity>
           ) : null}
+        </View>
+
+        <Text style={styles.label}>שם</Text>
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={(t) => {
+            setNameEdit(t);
+            setStatus('idle');
+          }}
+          placeholder="שם התינוקת"
+          placeholderTextColor={colors.textMuted}
+        />
+
+        <Text style={styles.label}>תאריך לידה</Text>
+        <TouchableOpacity style={styles.input} onPress={() => setPickerOpen(true)}>
+          {/* משפחה חדשה מגיעה בלי תאריך; בלי הבדיקה הזו מוצג "Invalid Date" */}
+          <Text style={[styles.dateText, !birthDate && styles.datePlaceholder]}>
+            {birthDate ? new Date(birthDate).toLocaleDateString('he-IL') : 'בחירת תאריך'}
+          </Text>
         </TouchableOpacity>
+        <Text style={styles.agePreview}>{getAgeText(birthDate)}</Text>
 
-        <View style={styles.section}>
-          <SectionHeader title="התינוקת" />
-          <ListRow
-            icon="create-outline"
-            label="עריכת פרטי התינוקת"
-            hint="שם, תאריך לידה, תמונה ושם המשפחה"
-            onPress={() => navigation.navigate('BabyProfile')}
-          />
-          <ListRow
-            icon="medkit-outline"
-            label="תרופות ותוספים"
-            hint="מה שמוגדר כאן מופיע בתיעוד ובמשימות היום"
-            onPress={() => navigation.navigate('Medications')}
-          />
-        </View>
+        <Text style={styles.label}>שם המשפחה</Text>
+        <TextInput
+          style={styles.input}
+          value={familyName}
+          onChangeText={(t) => {
+            setFamilyNameEdit(t);
+            setStatus('idle');
+          }}
+          placeholder="לברכה בדף הבית, למשל: שריקי"
+          placeholderTextColor={colors.textMuted}
+        />
 
-        <View style={styles.section}>
-          <SectionHeader title="המשפחה" />
-          <ListRow
-            icon="chatbubble-ellipses-outline"
-            label="הודעות המשפחה"
-            hint="הודעות בין בני הבית"
-            onPress={() => navigation.navigate('Chat')}
-          />
-          <ListRow
-            icon="person-add-outline"
-            label="הוספת בן משפחה"
-            hint="עד שלושה אנשים באותה משפחה"
-            onPress={() => navigation.navigate('Invite')}
-          />
-        </View>
+        <Button label="שמירה" onPress={onSave} disabled={!dirty || !valid} />
 
-        <View style={styles.section}>
-          <SectionHeader title="החשבון" />
-          <ListRow
-            icon="key-outline"
-            label="שינוי סיסמה"
-            hint={user?.email ?? undefined}
-            onPress={() => navigation.navigate('ChangePassword')}
-          />
-          <ListRow icon="log-out-outline" label="יציאה" onPress={logout} tone="danger" action />
-        </View>
-      </Screen>
-    </View>
+        {status === 'saved' && <Text style={styles.saved}>נשמר! הפרופיל של {profile.name} מעודכן 🌸</Text>}
+        {status === 'error' && <Text style={styles.error}>השמירה לא הצליחה — בדקו את החיבור ונסו שוב</Text>}
+      </View>
+
+      <TouchableOpacity
+        style={styles.accountRow}
+        onPress={() => navigation.navigate('Medications')}
+        accessibilityLabel="תרופות ותוספים"
+      >
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        <Text style={styles.accountLabel}>תרופות ותוספים</Text>
+        <Ionicons name="medkit-outline" size={18} color={colors.textLight} />
+      </TouchableOpacity>
+
+      {/* פעולות חשבון — כאן ולא בכותרת דף הבית, ששמורה לניווט */}
+      <TouchableOpacity
+        style={styles.accountRow}
+        onPress={() => navigation.navigate('Invite')}
+        accessibilityLabel="הוספת בן משפחה"
+      >
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        <Text style={styles.accountLabel}>הוספת בן משפחה</Text>
+        <Ionicons name="person-add-outline" size={18} color={colors.textLight} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.accountRow}
+        onPress={() => navigation.navigate('ChangePassword')}
+        accessibilityLabel="שינוי סיסמה"
+      >
+        {/* ב-RTL האייקון המוביל יושב בימין והחץ סוגר בשמאל */}
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        <Text style={styles.accountLabel}>שינוי סיסמה</Text>
+        <Ionicons name="key-outline" size={18} color={colors.textLight} />
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.accountRow} onPress={logout} accessibilityLabel="יציאה">
+        <View style={{ width: 18 }} />
+        <Text style={[styles.accountLabel, styles.logoutLabel]}>יציאה</Text>
+        <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+      </TouchableOpacity>
+
+      <DatePickerModal
+        visible={pickerOpen}
+        value={birthDate}
+        onSelect={(d) => {
+          setBirthDateEdit(d);
+          setStatus('idle');
+        }}
+        onClose={() => setPickerOpen(false)}
+      />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.cream },
-  hero: {
-    alignItems: 'center',
+  container: { flex: 1, backgroundColor: colors.cream },
+  // הריווח התחתון מפנה מקום לסרגל הטאבים ולכפתור ההוספה שמרחפים מעליו
+  content: { padding: spacing.md, paddingBottom: 120 },
+  card: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
+    padding: spacing.lg,
     ...shadow.soft,
   },
-  photo: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    backgroundColor: colors.mossSoft,
-    marginBottom: spacing.sm,
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.md,
+    textAlign: 'right',
   },
+  photoSection: { alignItems: 'center', marginBottom: spacing.lg },
+  photo: { width: 92, height: 92, borderRadius: 46, backgroundColor: colors.pink },
   photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  center: { textAlign: 'center' },
-  familyTag: {
-    marginTop: spacing.xs,
-    backgroundColor: colors.sageSoft,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 1,
+  photoEmoji: { fontSize: 44 },
+  photoBadge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.pinkAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
   },
-  familyTagText: { ...type.caption, color: colors.sage, fontWeight: '700' },
-
-  section: { marginTop: spacing.lg },
+  photoHint: { fontSize: 12, color: colors.textMuted, marginTop: spacing.sm },
+  photoRemove: { fontSize: 12, color: colors.danger, fontWeight: '600', marginTop: spacing.xs },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textLight,
+    marginBottom: spacing.xs,
+    textAlign: 'right',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: 15,
+    color: colors.text,
+    textAlign: 'right',
+    backgroundColor: colors.cream,
+    marginBottom: spacing.md,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    minHeight: 56,
+    marginTop: spacing.md,
+    ...shadow.soft,
+  },
+  accountLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'right' },
+  logoutLabel: { color: colors.danger },
+  dateText: { fontSize: 15, color: colors.text, textAlign: 'right' },
+  datePlaceholder: { color: colors.textMuted },
+  agePreview: {
+    fontSize: 13,
+    color: colors.textMuted,
+    textAlign: 'right',
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+  },
+  saved: {
+    fontSize: 14,
+    color: colors.success,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
+  error: {
+    fontSize: 14,
+    color: colors.danger,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
 });

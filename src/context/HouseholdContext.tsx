@@ -37,7 +37,9 @@ const DEMO_HOUSEHOLD = 'demo';
 
 export function HouseholdProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [householdId, setHouseholdId] = useState<string | null>(DEMO_MODE ? DEMO_HOUSEHOLD : null);
+  const [householdId, setHouseholdId] = useState<string | null>(
+    DEMO_MODE ? DEMO_HOUSEHOLD : null,
+  );
   const [loading, setLoading] = useState(!DEMO_MODE);
   const [error, setError] = useState<HouseholdContextType['error']>(null);
   // כל עוד ההרשמה באמצע, אין טעם לקרוא — המסמך עוד לא נכתב

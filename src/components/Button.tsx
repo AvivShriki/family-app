@@ -1,100 +1,62 @@
 import React from 'react';
-import { Text, StyleSheet, ActivityIndicator, View, ViewStyle, StyleProp } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import PressScale from './PressScale';
-import { colors, spacing, radius, type, TOUCH, shadow } from '../config/theme';
+import { Text, TouchableOpacity, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
+import { colors, spacing, radius, font } from '../config/theme';
 
-/**
- * הכפתור היחיד של האפליקציה. מסך לא מגדיר לעצמו סגנון כפתור.
- *
- * primary   — הפעולה המובילה במסך. מרווה מלאה, טקסט לבן (5.8 ניגודיות).
- * secondary — פעולה חלופית. קרם עמוק עם קו, לא "כפתור שני בצבע אחר".
- * ghost     — פעולה שלישית, בלי משטח בכלל.
- * danger    — מחיקה. אדום מלא, כדי שלא תילחץ בטעות.
- */
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+// The one primary-action button for the whole app. Variants cover every
+// button role we have; screens must not define their own button styles.
+type Variant = 'primary' | 'secondary' | 'danger';
 
 interface Props {
   label: string;
   onPress: () => void;
   variant?: Variant;
-  icon?: keyof typeof Ionicons.glyphMap;
   disabled?: boolean;
   loading?: boolean;
-  /** כפתור צר יותר, לשורות ולכרטיסים */
-  compact?: boolean;
-  style?: StyleProp<ViewStyle>; // פריסה בלבד (flex, מרווחים) — לא צבעים
+  style?: ViewStyle; // layout-only overrides (flex, margins) — not colors
 }
 
-const BG: Record<Variant, string> = {
-  primary: colors.sage,
-  secondary: colors.creamDeep,
-  ghost: 'transparent',
+const VARIANT_BG: Record<Variant, string> = {
+  primary: colors.pinkAccent,
+  secondary: colors.creamDark,
   danger: colors.danger,
 };
 
-const FG: Record<Variant, string> = {
+const VARIANT_TEXT: Record<Variant, string> = {
   primary: colors.white,
-  secondary: colors.text,
-  ghost: colors.sage,
+  secondary: colors.textLight,
   danger: colors.white,
 };
 
-export default function Button({
-  label,
-  onPress,
-  variant = 'primary',
-  icon,
-  disabled,
-  loading,
-  compact,
-  style,
-}: Props) {
-  const blocked = disabled || loading;
+export default function Button({ label, onPress, variant = 'primary', disabled, loading, style }: Props) {
   return (
-    <PressScale
-      style={style}
-      to={0.98}
+    <TouchableOpacity
+      style={[
+        styles.base,
+        { backgroundColor: VARIANT_BG[variant] },
+        disabled && styles.disabled,
+        style,
+      ]}
       onPress={onPress}
-      disabled={blocked}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!blocked, busy: !!loading }}
+      disabled={disabled || loading}
+      activeOpacity={0.8}
     >
-      <View
-        style={[
-          styles.base,
-          compact && styles.compact,
-          { backgroundColor: BG[variant] },
-          variant === 'secondary' && styles.bordered,
-          variant === 'primary' && shadow.soft,
-          blocked && styles.disabled,
-        ]}
-      >
-        {loading ? (
-          <ActivityIndicator color={FG[variant]} size="small" />
-        ) : (
-          <>
-            {icon ? <Ionicons name={icon} size={18} color={FG[variant]} /> : null}
-            <Text style={[type.button, { color: FG[variant] }]}>{label}</Text>
-          </>
-        )}
-      </View>
-    </PressScale>
+      {loading ? (
+        <ActivityIndicator color={VARIANT_TEXT[variant]} />
+      ) : (
+        <Text style={[styles.label, { color: VARIANT_TEXT[variant] }]}>{label}</Text>
+      )}
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    flexDirection: 'row-reverse',
+    borderRadius: radius.full,
+    padding: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    minHeight: TOUCH + 4,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.full,
+    minHeight: 48, // comfortable touch target
   },
-  compact: { minHeight: TOUCH, paddingHorizontal: spacing.md },
-  bordered: { borderWidth: 1, borderColor: colors.borderStrong },
   disabled: { opacity: 0.45 },
+  label: { fontSize: font.bodyLg, fontWeight: font.weight.bold },
 });

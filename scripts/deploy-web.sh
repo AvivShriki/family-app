@@ -46,7 +46,7 @@ grep -q '<html lang="he">' dist/index.html || { echo "!! עצירה: שפת המ
 # דורש כדי להיפתח במסך מלא עם אייקון משלו
 sed -i '' 's|<link rel="icon" href="favicon.ico" />|<link rel="icon" href="favicon.ico" />\
     <link rel="manifest" href="manifest.json" />\
-    <meta name="theme-color" content="#FAF7F4" />\
+    <meta name="theme-color" content="#FFF8F0" />\
     <meta name="mobile-web-app-capable" content="yes" />\
     <meta name="apple-mobile-web-app-capable" content="yes" />\
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />\
@@ -55,7 +55,7 @@ sed -i '' 's|<link rel="icon" href="favicon.ico" />|<link rel="icon" href="favic
 grep -q 'rel="manifest"' dist/index.html || { echo "!! עצירה: תגיות האפליקציה לא הוזרקו" >&2; exit 1; }
 
 # react-native-web מכבה את טבעת הפוקוס בכל אלמנט — בלעדיה אי אפשר לנווט במקלדת
-sed -i '' 's|      /\* These styles make the root element full-height \*/|      :focus-visible { outline: 3px solid #557968; outline-offset: 2px; }\
+sed -i '' 's|      /\* These styles make the root element full-height \*/|      :focus-visible { outline: 3px solid #C9456B; outline-offset: 2px; }\
       /* These styles make the root element full-height */|' dist/index.html
 grep -q "focus-visible" dist/index.html || { echo "!! עצירה: הזרקת מצב הפוקוס נכשלה" >&2; exit 1; }
 

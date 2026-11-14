@@ -15,11 +15,9 @@ export function fmtDuration(ms: number): string {
 
 export function isSameDay(ts: number, date: Date): boolean {
   const d = new Date(ts);
-  return (
-    d.getFullYear() === date.getFullYear() &&
+  return d.getFullYear() === date.getFullYear() &&
     d.getMonth() === date.getMonth() &&
-    d.getDate() === date.getDate()
-  );
+    d.getDate() === date.getDate();
 }
 
 // Clamp to the month's actual last day (e.g. birth day 31 in a 30-day month)
@@ -39,11 +37,7 @@ export function getAgeText(birthDate: string, ref = new Date()) {
   // If the birth day-of-month hasn't been reached yet this month, that month isn't complete
   if (ref.getDate() < birth.getDate()) months -= 1;
 
-  const anniversary = monthAnniversary(
-    ref.getFullYear(),
-    ref.getMonth() - (ref.getDate() < birth.getDate() ? 1 : 0),
-    birth.getDate(),
-  );
+  const anniversary = monthAnniversary(ref.getFullYear(), ref.getMonth() - (ref.getDate() < birth.getDate() ? 1 : 0), birth.getDate());
   // floor, not round — mid-day must not count as an extra day
   const days = Math.max(0, Math.floor((ref.getTime() - anniversary.getTime()) / 86400000));
   return `בת ${months} חודשים ו-${days} ימים`;

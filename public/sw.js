@@ -6,7 +6,7 @@
 //   רכיבי רקע.
 //   קובצי הקוד נושאים חתימה בשם הקובץ, ולכן אפשר להגיש אותם מהמטמון
 //   בלי חשש: שינוי בקוד משנה את השם.
-const CACHE = 'family-app-v3';
+const CACHE = 'family-app-v1';
 const SHELL = ['./', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

@@ -1,21 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMedications, isActiveOn } from '../../context/MedicationsContext';
 import Button from '../../components/Button';
-import Card from '../../components/Card';
-import Screen from '../../components/Screen';
-import Chip from '../../components/Chip';
-import TextField from '../../components/TextField';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePickerModal from '../../components/DatePickerModal';
 import TimePickerModal from '../../components/TimePickerModal';
 import EmptyState from '../../components/EmptyState';
-import ActivityIcon from '../../components/ActivityIcon';
-import SectionHeader from '../../components/SectionHeader';
 import { Medication } from '../../types';
-import { activityMeta, medIcon, MED_ICON_CHOICES } from '../../config/activity';
-import { colors, spacing, radius, type, TOUCH } from '../../config/theme';
+import { colors, spacing, radius, font, shadow } from '../../config/theme';
+
+const EMOJIS = ['💊', '☀️', '💧', '🍼', '🧴', '🌿', '💉', '🩹'];
 
 const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString('he-IL') : '');
 
@@ -38,66 +33,52 @@ export default function MedicationsScreen() {
     );
   }
 
-  const meta = activityMeta('medication');
-
   return (
-    <Screen>
-      <Text style={[type.body, styles.intro]}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.intro}>
         מה שמוגדר כאן מופיע ביומן, בבחירת תיעוד חדש, וכמשימה יומית בדף הבית.
       </Text>
 
       {medications.length === 0 ? (
         <EmptyState
-          icon="pill"
+          icon="medkit-outline"
           title="עוד לא הוגדרו תרופות או תוספים"
-          hint="אפשר להוסיף ויטמין, תוסף, או תרופה שניתנת לתקופה מוגבלת"
+          hint="אפשר להוסיף ויטמין, תוסף, או תרופה שניתנת לתקופה מוגבלת 💊"
         />
       ) : (
         medications.map((m) => {
           const activeNow = isActiveOn(m, new Date());
           return (
-            // העריכה והמחיקה הם שני כפתורים אחים בתוך שורה, ולא כפתור
-            // מחיקה בתוך כפתור עריכה: כפתור מקונן הוא HTML לא תקין,
-            // וקורא מסך מכריז עליו פעמיים
-            <View key={m.id} style={[styles.row, styles.rowOuter]}>
-              <TouchableOpacity
-                style={styles.rowMain}
-                onPress={() => setEditing(m)}
-                accessibilityRole="button"
-                accessibilityLabel={`עריכת ${m.name}`}
-                activeOpacity={0.75}
-              >
-                <ActivityIcon
-                  icon={medIcon(m.emoji)}
-                  color={meta.color}
-                  surface={meta.surface}
-                  size={40}
-                />
-                <View style={styles.rowBody}>
-                  <Text style={type.bodyStrong}>{m.name}</Text>
-                  <Text style={type.small} numberOfLines={2}>
-                    {describe(m)}
-                  </Text>
-                </View>
-                {!activeNow ? <Text style={styles.inactive}>לא פעילה</Text> : null}
-              </TouchableOpacity>
-
+            <TouchableOpacity
+              key={m.id}
+              style={styles.row}
+              onPress={() => setEditing(m)}
+              accessibilityLabel={`עריכת ${m.name}`}
+            >
               <TouchableOpacity
                 onPress={() => setDeleteTarget(m)}
-                accessibilityRole="button"
+                hitSlop={8}
                 accessibilityLabel={`מחיקת ${m.name}`}
                 style={styles.deleteBtn}
               >
                 <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
               </TouchableOpacity>
-            </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name}>
+                  {m.emoji} {m.name}
+                </Text>
+                <Text style={styles.meta}>{describe(m)}</Text>
+              </View>
+
+              {!activeNow ? <Text style={styles.inactive}>לא פעילה</Text> : null}
+            </TouchableOpacity>
           );
         })
       )}
 
       <Button
         label="הוספת תרופה או תוסף"
-        icon="add"
         onPress={() => setEditing('new')}
         style={{ marginTop: spacing.md }}
       />
@@ -105,14 +86,14 @@ export default function MedicationsScreen() {
       <ConfirmModal
         visible={!!deleteTarget}
         title="מחיקת תרופה"
-        message={`${deleteTarget?.name} תוסר מהרשימה. התיעוד הקיים יישאר ביומן.`}
+        message={`למחוק את ${deleteTarget?.name}? התיעוד הקיים יישאר ביומן.`}
         onConfirm={() => {
           if (deleteTarget) remove(deleteTarget.id);
           setDeleteTarget(null);
         }}
         onCancel={() => setDeleteTarget(null)}
       />
-    </Screen>
+    </ScrollView>
   );
 }
 
@@ -137,7 +118,6 @@ function MedicationForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(medication?.name ?? '');
-  // השדה נקרא emoji מטעמי תאימות לנתונים שכבר נשמרו; מה שנראה הוא אייקון
   const [emoji, setEmoji] = useState(medication?.emoji ?? '💊');
   const [dose, setDose] = useState(medication?.dose ?? '');
   const [times, setTimes] = useState<string[]>(medication?.times ?? []);
@@ -154,119 +134,92 @@ function MedicationForm({
   };
 
   return (
-    <Screen>
-      <SectionHeader title={medication ? 'עריכת תרופה' : 'תרופה או תוסף חדש'} />
-      <Card>
-        <TextField
-          label="שם"
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.card}>
+        <Text style={styles.label}>שם</Text>
+        <TextInput
+          style={styles.input}
           value={name}
           onChangeText={setName}
-          // בלי אותיות לטיניות בתוך משפט עברי: "ויטמין D" הקפיץ את ה-D
-          // לאמצע השורה בגלל סדר הכיווניות הדו-כיווני
-          placeholder="ויטמין, אנטיביוטיקה, טיפות ברזל"
+          textAlign="right"
+          placeholder="ויטמין D, אנטיביוטיקה, טיפות ברזל"
+          placeholderTextColor={colors.textMuted}
         />
 
-        <View style={styles.fieldWrap}>
-          <Text style={type.label}>אייקון</Text>
-          <View style={styles.iconRow}>
-            {MED_ICON_CHOICES.map((c) => {
-              const active = emoji === c.key;
-              return (
-                <TouchableOpacity
-                  key={c.key}
-                  onPress={() => setEmoji(c.key)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`אייקון ${c.icon}`}
-                  accessibilityState={{ selected: active }}
-                  style={[styles.iconBtn, active && styles.iconBtnActive]}
-                >
-                  <ActivityIcon
-                    icon={c.icon}
-                    color={active ? colors.sage : colors.textMuted}
-                    surface="transparent"
-                    size={30}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+        <Text style={styles.label}>אייקון</Text>
+        <View style={styles.emojiRow}>
+          {EMOJIS.map((e) => (
+            <TouchableOpacity
+              key={e}
+              style={[styles.emojiBtn, emoji === e && styles.emojiActive]}
+              onPress={() => setEmoji(e)}
+              accessibilityLabel={`אייקון ${e}`}
+            >
+              <Text style={styles.emojiText}>{e}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        <TextField
-          label="מינון"
+        <Text style={styles.label}>מינון</Text>
+        <TextInput
+          style={styles.input}
           value={dose}
           onChangeText={setDose}
-          placeholder='טיפה אחת, חצי כדור, 5 מ"ל'
+          textAlign="right"
+          placeholder='0.5 מ"ל, טיפה אחת, חצי כדור'
+          placeholderTextColor={colors.textMuted}
         />
 
-        <View style={styles.fieldWrap}>
-          <Text style={type.label}>שעות</Text>
-          <View style={styles.timesRow}>
-            {times.map((t) => (
-              <Chip
-                key={t}
-                label={t}
-                mode="remove"
-                onPress={() => setTimes(times.filter((x) => x !== t))}
-              />
-            ))}
-            <Button
-              label="הוספת שעה"
-              icon="add"
-              variant="secondary"
-              compact
-              onPress={() => setPicker('time')}
-            />
-          </View>
-          <Text style={type.small}>
-            השעות נשמרות ומוצגות כאן. התראה בפועל עדיין לא נתמכת — היא תחובר בהמשך.
-          </Text>
-        </View>
-
-        <View style={styles.fieldWrap}>
-          <Text style={type.label}>תאריך התחלה</Text>
-          <DateField
-            value={startDate ? fmtDate(startDate) : ''}
-            placeholder="מהיום"
-            onPress={() => setPicker('start')}
-            label="תאריך התחלה"
-          />
-        </View>
-
-        <View style={styles.fieldWrap}>
-          <Text style={type.label}>תאריך סיום</Text>
-          <DateField
-            value={endDate ? fmtDate(endDate) : ''}
-            placeholder="ללא סיום"
-            onPress={() => setPicker('end')}
-            label="תאריך סיום"
-          />
-          {endDate ? (
+        <Text style={styles.label}>שעות</Text>
+        <View style={styles.timesRow}>
+          {times.map((t) => (
             <TouchableOpacity
-              onPress={() => setEndDate('')}
-              style={styles.clearBtn}
-              accessibilityRole="button"
-              accessibilityLabel="ביטול תאריך הסיום"
+              key={t}
+              style={styles.timeChip}
+              onPress={() => setTimes(times.filter((x) => x !== t))}
+              accessibilityLabel={`הסרת ${t}`}
             >
-              <Text style={styles.clearText}>ביטול תאריך הסיום</Text>
+              <Text style={styles.timeChipText}>{t} ✕</Text>
             </TouchableOpacity>
-          ) : null}
+          ))}
+          <TouchableOpacity style={styles.addTime} onPress={() => setPicker('time')}>
+            <Text style={styles.addTimeText}>+ שעה</Text>
+          </TouchableOpacity>
         </View>
+        <Text style={styles.note}>
+          השעות נשמרות ויוצגו כאן. התראה בפועל עדיין לא נתמכת — היא תחובר בהמשך.
+        </Text>
+
+        <Text style={styles.label}>תאריך התחלה</Text>
+        <TouchableOpacity style={styles.input} onPress={() => setPicker('start')}>
+          <Text style={[styles.dateText, !startDate && styles.placeholder]}>
+            {startDate ? fmtDate(startDate) : 'מהיום'}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={styles.label}>תאריך סיום</Text>
+        <TouchableOpacity style={styles.input} onPress={() => setPicker('end')}>
+          <Text style={[styles.dateText, !endDate && styles.placeholder]}>
+            {endDate ? fmtDate(endDate) : 'ללא סיום'}
+          </Text>
+        </TouchableOpacity>
+        {endDate ? (
+          <TouchableOpacity onPress={() => setEndDate('')} hitSlop={8}>
+            <Text style={styles.clear}>ביטול תאריך הסיום</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <Button
           label="שמירה"
           onPress={submit}
           disabled={!name.trim()}
           loading={saving}
-          style={{ marginTop: spacing.sm }}
+          style={{ marginTop: spacing.md }}
         />
-        <Button
-          label="ביטול"
-          variant="ghost"
-          onPress={onCancel}
-          style={{ marginTop: spacing.xs }}
-        />
-      </Card>
+        <TouchableOpacity onPress={onCancel} hitSlop={8}>
+          <Text style={styles.cancel}>ביטול</Text>
+        </TouchableOpacity>
+      </View>
 
       <DatePickerModal
         visible={picker === 'start' || picker === 'end'}
@@ -283,102 +236,106 @@ function MedicationForm({
           onClose={() => setPicker(null)}
         />
       ) : null}
-    </Screen>
-  );
-}
-
-function DateField({
-  value,
-  placeholder,
-  onPress,
-  label,
-}: {
-  value: string;
-  placeholder: string;
-  onPress: () => void;
-  label: string;
-}) {
-  return (
-    <TouchableOpacity
-      style={styles.picker}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${label}, לבחירה`}
-    >
-      <Ionicons name="calendar-outline" size={19} color={colors.sage} />
-      <Text style={[type.bodyStrong, styles.pickerText, !value && styles.placeholder]}>
-        {value || placeholder}
-      </Text>
-      <Ionicons name="chevron-down" size={17} color={colors.textMuted} />
-    </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  intro: { marginBottom: spacing.md },
-
-  rowOuter: { marginBottom: spacing.sm },
-  rowMain: {
-    flex: 1,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: spacing.md,
-    minHeight: TOUCH,
+  container: { flex: 1, backgroundColor: colors.cream },
+  content: { padding: spacing.md, paddingBottom: 120 },
+  intro: {
+    fontSize: font.small,
+    color: colors.textLight,
+    textAlign: 'right',
+    marginBottom: spacing.md,
+    lineHeight: 19,
   },
   row: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     backgroundColor: colors.white,
-    borderRadius: radius.card,
+    borderRadius: radius.lg,
     padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...shadow.soft,
+  },
+  deleteBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  name: { fontSize: font.bodyLg, fontWeight: font.weight.bold, color: colors.text, textAlign: 'right' },
+  meta: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginTop: 2 },
+  inactive: { fontSize: font.caption, color: colors.textMuted },
+
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadow.soft,
+  },
+  label: {
+    fontSize: font.small,
+    fontWeight: font.weight.semibold,
+    color: colors.textLight,
+    textAlign: 'right',
+    marginBottom: spacing.xs,
+  },
+  input: {
+    backgroundColor: colors.cream,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    fontSize: font.body,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  dateText: { fontSize: font.body, color: colors.text, textAlign: 'right' },
+  placeholder: { color: colors.textMuted },
+  clear: {
+    fontSize: font.small,
+    color: colors.blueAccent,
+    textAlign: 'right',
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+  },
+
+  emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  emojiBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.cream,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
   },
-  rowBody: { flex: 1, gap: 1 },
-  inactive: { ...type.caption, color: colors.textMuted },
-  deleteBtn: {
-    width: TOUCH,
-    height: TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -spacing.sm,
-  },
+  emojiActive: { borderColor: colors.pinkAccent, backgroundColor: colors.pink },
+  emojiText: { fontSize: 20 },
 
-  fieldWrap: { marginBottom: spacing.md, gap: spacing.xs },
-  iconRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
-  iconBtn: {
-    width: TOUCH,
-    height: TOUCH,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.cream,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBtnActive: { borderColor: colors.sage, backgroundColor: colors.sageSoft },
-
-  timesRow: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    alignItems: 'center',
-  },
-
-  picker: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.cream,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+  timesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xs },
+  timeChip: {
+    backgroundColor: colors.pink,
+    borderRadius: radius.full,
     paddingHorizontal: spacing.md,
-    minHeight: TOUCH + 6,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  pickerText: { flex: 1 },
-  placeholder: { ...type.body, color: colors.textMuted },
-  clearBtn: { minHeight: TOUCH - 12, justifyContent: 'center' },
-  clearText: { ...type.caption, color: colors.danger, fontWeight: '700' },
+  timeChipText: { fontSize: font.small, color: colors.text, fontWeight: font.weight.semibold },
+  addTime: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  addTimeText: { fontSize: font.small, color: colors.textLight },
+  note: {
+    fontSize: font.caption,
+    color: colors.textLight,
+    textAlign: 'right',
+    marginBottom: spacing.md,
+    lineHeight: 17,
+  },
+  cancel: { fontSize: font.small, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
 });

@@ -2,20 +2,15 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
-import Card from '../components/Card';
-import TextField from '../components/TextField';
-import Banner from '../components/Banner';
-import BrandMark from '../components/BrandMark';
-import { colors, spacing, type, TOUCH, CONTENT_MAX } from '../config/theme';
+import { colors, spacing, radius, font, shadow } from '../config/theme';
 
 export default function ForgotPasswordScreen({ navigation }: any) {
   const { resetPassword } = useAuth();
@@ -53,13 +48,11 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   if (sent) {
     return (
       <View style={styles.centered}>
-        <View style={styles.doneMark}>
-          <MaterialCommunityIcons name="email-check-outline" size={34} color={colors.sage} />
-        </View>
-        <Text style={[type.h2, styles.center]}>שלחנו מייל</Text>
-        <Text style={[type.body, styles.center, styles.body]}>
-          אם יש חשבון עם הכתובת הזו, מחכה בה עכשיו קישור לבחירת סיסמה חדשה. כדאי להציץ גם בתיקיית
-          הספאם.
+        <Text style={styles.emoji}>📬</Text>
+        <Text style={styles.title}>שלחנו מייל</Text>
+        <Text style={styles.body}>
+          אם יש חשבון עם הכתובת הזו, מחכה בה עכשיו קישור לבחירת סיסמה חדשה.
+          כדאי להציץ גם בתיקיית הספאם.
         </Text>
         <Button
           label="חזרה לכניסה"
@@ -75,12 +68,14 @@ export default function ForgotPasswordScreen({ navigation }: any) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <BrandMark title="שכחתם סיסמה" subtitle="נשלח אליכם קישור לבחירת סיסמה חדשה" />
+      <View style={styles.inner}>
+        <Text style={styles.emoji}>🔑</Text>
+        <Text style={styles.title}>שכחתם סיסמה</Text>
+        <Text style={styles.body}>נשלח אליכם קישור לבחירת סיסמה חדשה.</Text>
 
-        <Card>
-          <TextField
-            label="אימייל"
+        <View style={styles.card}>
+          <TextInput
+            style={styles.input}
             value={email}
             onChangeText={(v) => {
               setEmail(v);
@@ -88,53 +83,72 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             }}
             keyboardType="email-address"
             autoCapitalize="none"
-            autoComplete="email"
+            textAlign="right"
             placeholder="האימייל שלכם"
+            placeholderTextColor={colors.textMuted}
           />
-          {error ? <Banner tone="error" text={error} /> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
           <Button label="שליחת קישור" onPress={onSend} loading={loading} />
-        </Card>
+        </View>
 
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Login')}
-          style={styles.linkBtn}
-          accessibilityRole="button"
-        >
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} hitSlop={8}>
           <Text style={styles.link}>חזרה לכניסה</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing.lg,
-    width: '100%',
-    maxWidth: CONTENT_MAX,
-    alignSelf: 'center',
-  },
+  inner: { flex: 1, justifyContent: 'center', padding: spacing.lg },
   centered: {
     flex: 1,
     backgroundColor: colors.cream,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.xl,
   },
-  doneMark: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: colors.sageSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  emoji: { fontSize: 48, textAlign: 'center', marginBottom: spacing.sm },
+  title: {
+    fontSize: font.titleLg,
+    fontWeight: font.weight.heavy,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  body: {
+    fontSize: font.body,
+    color: colors.textLight,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.lg,
+  },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadow.soft,
+  },
+  input: {
+    backgroundColor: colors.cream,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    fontSize: font.body,
+    color: colors.text,
     marginBottom: spacing.md,
   },
-  center: { textAlign: 'center' },
-  body: { marginTop: spacing.xs, maxWidth: 340 },
-  linkBtn: { minHeight: TOUCH, justifyContent: 'center', marginTop: spacing.sm },
-  link: { ...type.smallStrong, color: colors.sage, textAlign: 'center' },
+  error: {
+    fontSize: font.small,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  link: {
+    fontSize: font.small,
+    color: colors.blueAccent,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
 });

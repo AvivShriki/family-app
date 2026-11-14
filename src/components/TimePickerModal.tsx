@@ -1,22 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import BottomSheet from './BottomSheet';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import Button from './Button';
-import { colors, spacing, radius, type, font } from '../config/theme';
+import { colors, spacing, radius } from '../config/theme';
 
 interface Props {
   visible: boolean;
-  value: string; // 'HH:MM' או ''
+  value: string; // 'HH:MM' or ''
   onSelect: (timeStr: string) => void;
   onClose: () => void;
-  /** רזולוציית הדקות. תיעוד תינוקת דורש 5. */
+  /** רזולוציית הדקות. אירועים ביומן מסתפקים ב-15; תיעוד תינוקת דורש 5. */
   minuteStep?: 5 | 15;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 
-const OPTION_HEIGHT = 44; // חייב להתאים ל-styles.option
-const COLUMN_HEIGHT = 190;
+const OPTION_HEIGHT = 44; // גובה שורה + מרווח — חייב להתאים ל-styles.option
+const COLUMN_HEIGHT = 180;
 
 function minuteOptions(step: number) {
   return Array.from({ length: 60 / step }, (_, i) => String(i * step).padStart(2, '0'));
@@ -39,12 +38,13 @@ function ScrollColumn({
 }) {
   const ref = useRef<ScrollView>(null);
 
-  // גובה פריט קבוע מאפשר לחשב את ההיסט במדויק, בלי להסתמך על מדידת
-  // תוכן — שמגיעה מאוחר מדי ב-react-native-web.
+  // גובה פריט קבוע (OPTION_HEIGHT) מאפשר לחשב את ההיסט במדויק, בלי להסתמך
+  // על מדידת תוכן — שמגיעה מאוחר מדי ב-react-native-web.
   useEffect(() => {
     const index = options.indexOf(selected);
     if (index <= 0) return;
     const id = setTimeout(() => {
+      // מרכוז יחסי של הערך הנבחר בתוך החלון הנראה
       const y = Math.max(0, index * OPTION_HEIGHT - COLUMN_HEIGHT / 2 + OPTION_HEIGHT / 2);
       ref.current?.scrollTo({ y, animated: false });
     }, 50);
@@ -54,26 +54,20 @@ function ScrollColumn({
 
   return (
     <View style={styles.column}>
-      <Text style={[type.label, styles.colLabel]}>{label}</Text>
-      <View style={styles.colFrame}>
-        <ScrollView ref={ref} style={styles.colScroll} showsVerticalScrollIndicator={false}>
-          {options.map((opt) => {
-            const active = selected === opt;
-            return (
-              <TouchableOpacity
-                key={opt}
-                style={[styles.option, active && styles.optionActive]}
-                onPress={() => onSelect(opt)}
-                accessibilityRole="button"
-                accessibilityLabel={`${label} ${opt}`}
-                accessibilityState={{ selected: active }}
-              >
-                <Text style={[styles.optionText, active && styles.optionTextActive]}>{opt}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+      <Text style={styles.colLabel}>{label}</Text>
+      <ScrollView ref={ref} style={styles.colScroll}>
+        {options.map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            style={[styles.option, selected === opt && styles.optionActive]}
+            onPress={() => onSelect(opt)}
+          >
+            <Text style={[styles.optionText, selected === opt && styles.optionTextActive]}>
+              {opt}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -88,9 +82,9 @@ export default function TimePickerModal({
   const MINUTES = minuteOptions(minuteStep);
   const [initialHour, initialMinute] = value ? value.split(':') : ['09', '00'];
   const [hour, setHour] = useState(initialHour);
-  // שעה קיימת יכולה ליפול בין הצעדים (למשל 07:47) — מעגלים לקרובה
-  const [minute, setMinute] = useState(() =>
-    MINUTES.reduce((best, m) =>
+  // שעה קיימת יכולה ליפול בין הצעדים (למשל 07:47) — מעגלים לאפשרות הקרובה
+  const [minute, setMinute] = useState(
+    () => MINUTES.reduce((best, m) =>
       Math.abs(Number(m) - Number(initialMinute)) < Math.abs(Number(best) - Number(initialMinute))
         ? m
         : best,
@@ -103,69 +97,65 @@ export default function TimePickerModal({
   };
 
   return (
-    <BottomSheet visible={visible} title="בחירת שעה" onClose={onClose} scroll={false}>
-      <View style={styles.preview}>
-        <Text style={styles.previewText}>
-          {hour}:{minute}
-        </Text>
-      </View>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.sheet}>
+          <View style={styles.header}>
+            <Text style={styles.title}>בחר שעה</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={styles.close}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-      <View style={styles.columns}>
-        <ScrollColumn label="שעה" options={HOURS} selected={hour} onSelect={setHour} />
-        <ScrollColumn label="דקות" options={MINUTES} selected={minute} onSelect={setMinute} />
-      </View>
+          <View style={styles.columns}>
+            <ScrollColumn label="שעה" options={HOURS} selected={hour} onSelect={setHour} />
+            <Text style={styles.colon}>:</Text>
+            <ScrollColumn label="דקות" options={MINUTES} selected={minute} onSelect={setMinute} />
+          </View>
 
-      <Button label="אישור" onPress={confirm} />
-    </BottomSheet>
+          <Button label={`אישור ${hour}:${minute}`} onPress={confirm} />
+        </View>
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  preview: {
-    alignSelf: 'center',
-    backgroundColor: colors.sageSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+  overlay: { flex: 1, backgroundColor: '#0004', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.lg,
+    paddingBottom: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.md,
   },
-  previewText: {
-    ...type.display,
-    textAlign: 'center',
-    color: colors.sage,
-    // ספרות באותו רוחב — אחרת השעה "קופצת" בכל גלילה
-    fontVariant: ['tabular-nums'],
-  },
+  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  close: { fontSize: 18, color: colors.textMuted },
   columns: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.md,
+    alignItems: 'flex-start',
+    gap: spacing.lg,
     marginBottom: spacing.lg,
   },
-  column: { flex: 1, maxWidth: 140, alignItems: 'stretch' },
-  colLabel: { textAlign: 'center', marginBottom: spacing.xs },
-  colFrame: {
-    backgroundColor: colors.cream,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  colScroll: { height: COLUMN_HEIGHT },
+  column: { alignItems: 'center' },
+  colLabel: { fontSize: 12, color: colors.textLight, marginBottom: spacing.xs },
+  colScroll: { height: COLUMN_HEIGHT, width: 70 },
   option: {
     height: OPTION_HEIGHT - 4,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: radius.sm,
-    marginHorizontal: spacing.xs,
+    borderRadius: radius.md,
     marginBottom: 4,
   },
-  optionActive: { backgroundColor: colors.sage },
-  optionText: {
-    fontFamily: font.family,
-    fontSize: font.size.bodyLg,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  optionTextActive: { color: colors.white, fontWeight: font.weight.bold },
+  optionActive: { backgroundColor: colors.pinkAccent },
+  optionText: { fontSize: 16, color: colors.text },
+  optionTextActive: { color: colors.white, fontWeight: '700' },
+  colon: { fontSize: 20, fontWeight: '700', color: colors.text, marginTop: 40 },
 });

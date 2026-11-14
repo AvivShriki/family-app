@@ -2,26 +2,21 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useHousehold } from '../context/HouseholdContext';
 import Button from '../components/Button';
-import Card from '../components/Card';
-import TextField from '../components/TextField';
-import Banner from '../components/Banner';
-import BrandMark from '../components/BrandMark';
 import DatePickerModal from '../components/DatePickerModal';
 import { createFamily, joinFamily } from '../services/familySetup';
-import { colors, spacing, radius, type, TOUCH, CONTENT_MAX } from '../config/theme';
+import { colors, spacing, radius, font, shadow } from '../config/theme';
 
 const MIN_PASSWORD = 6;
-const MAX_MEMBERS = 3;
 
 /** קוד הזמנה שהגיע מקישור, כדי שמי שלוחץ עליו לא יצטרך להקליד כלום */
 function inviteFromUrl(): string {
@@ -118,95 +113,92 @@ export default function SignUpScreen({ navigation, route }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <BrandMark
-          title={joining ? 'הצטרפות למשפחה' : 'פתיחת משפחה חדשה'}
-          subtitle={
-            joining
-              ? 'יש לכם הזמנה — תיכנסו לתיעוד המשותף של המשפחה'
-              : `ההרשמה פותחת משפחה משלכם. אפשר לצרף אליה עוד ${MAX_MEMBERS - 1} אנשים.`
-          }
-        />
+        <Text style={styles.emoji}>🌸</Text>
+        <Text style={styles.title}>{joining ? 'הצטרפות למשפחה' : 'פתיחת משפחה חדשה'}</Text>
+        <Text style={styles.subtitle}>
+          {joining
+            ? 'יש לכם הזמנה — תיכנסו לתיעוד המשותף של המשפחה'
+            : 'ההרשמה פותחת משפחה משלכם. אפשר יהיה לצרף אליה עוד שניים.'}
+        </Text>
 
-        <Card>
-          <TextField
-            label="אימייל"
+        <View style={styles.card}>
+          <Text style={styles.label}>אימייל</Text>
+          <TextInput
+            style={styles.input}
             value={email}
             onChangeText={edit(setEmail)}
             keyboardType="email-address"
             autoCapitalize="none"
-            autoComplete="email"
+            textAlign="right"
             placeholder="האימייל שלכם"
+            placeholderTextColor={colors.textMuted}
           />
 
-          <TextField
-            label="סיסמה"
+          <Text style={styles.label}>סיסמה</Text>
+          <TextInput
+            style={styles.input}
             value={password}
             onChangeText={edit(setPassword)}
-            password
+            secureTextEntry
             autoCapitalize="none"
-            autoComplete="new-password"
+            textAlign="right"
             placeholder={`לפחות ${MIN_PASSWORD} תווים`}
+            placeholderTextColor={colors.textMuted}
           />
 
-          <TextField
-            label="קוד הזמנה"
+          <Text style={styles.label}>קוד הזמנה</Text>
+          <TextInput
+            style={styles.input}
             value={invite}
             onChangeText={(v) => edit(setInvite)(v.toUpperCase())}
             autoCapitalize="characters"
+            textAlign="right"
             placeholder="רק אם בן משפחה הזמין אתכם"
-            hint={joining ? 'הקוד זוהה — אתם מצטרפים למשפחה קיימת' : undefined}
+            placeholderTextColor={colors.textMuted}
           />
 
           {!joining ? (
             <>
-              <TextField
-                label="שם התינוק או התינוקת"
+              <Text style={styles.label}>שם התינוק או התינוקת</Text>
+              <TextInput
+                style={styles.input}
                 value={babyName}
                 onChangeText={edit(setBabyName)}
+                textAlign="right"
                 placeholder="אפשר לשנות אחר כך"
+                placeholderTextColor={colors.textMuted}
               />
 
-              <View style={styles.fieldWrap}>
-                <Text style={type.label}>תאריך לידה</Text>
-                <TouchableOpacity
-                  style={styles.picker}
-                  onPress={() => setPickerOpen(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="תאריך לידה, לבחירה"
-                >
-                  <Ionicons name="calendar-outline" size={19} color={colors.sage} />
-                  <Text
-                    style={[type.bodyStrong, styles.pickerText, !birthDate && styles.placeholder]}
-                  >
-                    {birthDate ? new Date(birthDate).toLocaleDateString('he-IL') : 'בחירת תאריך'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={17} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.label}>תאריך לידה</Text>
+              <TouchableOpacity style={styles.input} onPress={() => setPickerOpen(true)}>
+                <Text style={[styles.dateText, !birthDate && styles.datePlaceholder]}>
+                  {birthDate ? new Date(birthDate).toLocaleDateString('he-IL') : 'בחירת תאריך'}
+                </Text>
+              </TouchableOpacity>
 
-              <TextField
-                label="שם המשפחה"
+              <Text style={styles.label}>שם המשפחה</Text>
+              <TextInput
+                style={styles.input}
                 value={familyName}
                 onChangeText={edit(setFamilyName)}
+                textAlign="right"
                 placeholder="לברכה בדף הבית"
+                placeholderTextColor={colors.textMuted}
               />
             </>
           ) : null}
 
-          {error ? <Banner tone="error" text={error} /> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Button
             label={joining ? 'הצטרפות' : 'פתיחת המשפחה'}
             onPress={onSubmit}
             loading={loading}
+            style={{ marginTop: spacing.sm }}
           />
-        </Card>
+        </View>
 
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Login')}
-          style={styles.linkBtn}
-          accessibilityRole="button"
-        >
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} hitSlop={8}>
           <Text style={styles.link}>כבר יש לכם חשבון? לכניסה</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -223,27 +215,57 @@ export default function SignUpScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    width: '100%',
-    maxWidth: CONTENT_MAX,
-    alignSelf: 'center',
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  emoji: { fontSize: 48, textAlign: 'center' },
+  title: {
+    fontSize: font.titleLg,
+    fontWeight: font.weight.heavy,
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
-  fieldWrap: { marginBottom: spacing.md, gap: spacing.xs },
-  picker: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: spacing.sm,
+  subtitle: {
+    fontSize: font.small,
+    color: colors.textLight,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 19,
+  },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadow.soft,
+  },
+  label: {
+    fontSize: font.small,
+    fontWeight: font.weight.semibold,
+    color: colors.textLight,
+    textAlign: 'right',
+    marginBottom: spacing.xs,
+  },
+  input: {
     backgroundColor: colors.cream,
     borderRadius: radius.md,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    minHeight: TOUCH + 6,
+    padding: spacing.md,
+    fontSize: font.body,
+    color: colors.text,
+    marginBottom: spacing.md,
   },
-  pickerText: { flex: 1 },
-  placeholder: { ...type.body, color: colors.textMuted },
-  linkBtn: { minHeight: TOUCH, justifyContent: 'center', marginTop: spacing.sm },
-  link: { ...type.smallStrong, color: colors.sage, textAlign: 'center' },
+  dateText: { fontSize: font.body, color: colors.text, textAlign: 'right' },
+  datePlaceholder: { color: colors.textMuted },
+  error: {
+    fontSize: font.small,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  link: {
+    fontSize: font.small,
+    color: colors.blueAccent,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
 });
