@@ -100,6 +100,7 @@ export default function HomeScreen({ navigation }: Props) {
     .reduce((sum, l) => sum + (l.endTimestamp! - l.timestamp), 0);
 
   const loggedBy = user?.email ?? 'demo';
+  const goJournal = () => navigation.navigate('Baby', { screen: 'BabyDay' });
 
   const quickLog = async (tile: string, entry: Omit<BabyLog, 'id'>) => {
     const id = await add(entry as any);
@@ -173,11 +174,22 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* עכשיו — השאלה שהורים באמת שואלים זה את זה */}
-      <View style={styles.now}>
-        <Text style={styles.nowLabel}>עכשיו</Text>
-        <Text style={styles.nowValue}>{statusText}</Text>
-      </View>
+      {/* עכשיו — השאלה שהורים באמת שואלים זה את זה.
+          הגוש כולו נלחץ ופותח את היומן: הוא מתאר את הרישום האחרון,
+          והמקום לראות את כל השאר הוא שם. */}
+      <TouchableOpacity
+        style={styles.now}
+        onPress={goJournal}
+        accessibilityRole="button"
+        accessibilityLabel={`${statusText}. פתיחת היומן`}
+        activeOpacity={0.85}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.nowLabel}>עכשיו</Text>
+          <Text style={styles.nowValue}>{statusText}</Text>
+        </View>
+        <Text style={styles.nowChevron}>‹</Text>
+      </TouchableOpacity>
 
       {/* תיעוד מהיר — נגיעה אחת רושמת. זו סיבת הקיום של המסך. */}
       <View style={styles.tiles}>
@@ -222,25 +234,29 @@ export default function HomeScreen({ navigation }: Props) {
         ))}
 
         {overflow > 0 ? (
-          <Tile
-            emoji="💊"
-            label={`עוד ${overflow} ›`}
-            state="idle"
-            onPress={() => navigation.navigate('Baby', { screen: 'BabyDay' })}
-          />
+          <Tile emoji="💊" label={`עוד ${overflow} ›`} state="idle" onPress={goJournal} />
         ) : null}
       </View>
 
-      {/* היום — מונים ומשימות בבלוק אחד */}
-      <View style={styles.block}>
+      {/* היום — מונים, וגם הכניסה הראשית ליומן.
+          הקישור היה טקסט של 13 פיקסל בפינה; עכשיו הכרטיס כולו הוא
+          שטח הלחיצה, והשבב הוא סימון חזותי בלבד ולא כפתור בתוך כפתור. */}
+      <TouchableOpacity
+        style={styles.block}
+        onPress={goJournal}
+        accessibilityRole="button"
+        accessibilityLabel="סיכום היום. פתיחת היומן המלא"
+        activeOpacity={0.85}
+      >
         <View style={styles.blockHead}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Baby', { screen: 'BabyDay' })}
-            hitSlop={8}
-          >
-            <Text style={styles.blockLink}>כל היומן ›</Text>
-          </TouchableOpacity>
-          <Text style={styles.blockTitle}>היום</Text>
+          <View style={styles.journalChip}>
+            <Text style={styles.journalChipText}>פתיחת היומן</Text>
+            <Ionicons name="chevron-back" size={13} color={colors.blueAccent} />
+          </View>
+          <View style={styles.blockTitleRow}>
+            <Ionicons name="book-outline" size={17} color={colors.text} />
+            <Text style={styles.blockTitle}>היום</Text>
+          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -248,7 +264,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Stat value={sleepMs > 0 ? shortDuration(sleepMs) : '—'} label="שינה" />
           <Stat value={String(diapers)} label="חיתולים" />
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* הודעות המשפחה */}
       <TouchableOpacity
@@ -365,11 +381,15 @@ const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
   now: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: colors.pink,
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
   },
+  nowChevron: { fontSize: font.titleLg, color: colors.text },
   // טקסט בהיר על ורוד נופל מהתקן — ההפרדה כאן היא בגודל ובמשקל
   nowLabel: { fontSize: font.caption, color: colors.text, textAlign: 'right' },
   nowValue: {
@@ -417,8 +437,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
+  blockTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.xs + 2 },
   blockTitle: { fontSize: font.bodyLg, fontWeight: font.weight.bold, color: colors.text },
-  blockLink: { fontSize: font.small, color: colors.blueAccent },
+  // סימון חזותי של יעד, לא כפתור: שטח הלחיצה הוא הכרטיס כולו
+  journalChip: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: colors.cream,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 1,
+  },
+  journalChipText: {
+    fontSize: font.small,
+    fontWeight: font.weight.semibold,
+    color: colors.blueAccent,
+  },
 
   statsRow: { flexDirection: 'row' },
   stat: { flex: 1, alignItems: 'center' },
