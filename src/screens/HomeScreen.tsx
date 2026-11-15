@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBabyLogs } from '../context/BabyLogsContext';
 import { useMessages } from '../context/MessagesContext';
 import { useMedications } from '../context/MedicationsContext';
-import { useBabyProfile, DEFAULT_PROFILE } from '../hooks/useBabyProfile';
+import { useBabyProfile } from '../hooks/useBabyProfile';
 import { BabyLog } from '../types';
 import { getAgeText, isSameDay, fmtTime } from '../utils/dates';
 
@@ -15,24 +15,17 @@ import HomeSkeleton from './home/Skeleton';
 import HomeHeader from './home/HomeHeader';
 import SummaryCards, { CardDef } from './home/SummaryCards';
 import RecentActivity from './home/RecentActivity';
-import InsightCards from './home/InsightCards';
+import ComingSoon from './home/ComingSoon';
 import SoftIcon from './home/SoftIcon';
 import { shortDuration } from './home/activity';
-import { Day } from './home/MiniBars';
+import HomeTabBar, { TAB_BAR_HEIGHT } from './home/HomeTabBar';
 
 interface Props {
   navigation: any;
 }
 
-const DAY_MS = 86400000;
 /** כמה פעילויות אחרונות להציג. מעבר לזה המסך הופך ליומן שני. */
 const RECENT = 5;
-/** אורך חלון ההשוואה בכרטיס "מצב כללי" */
-const AVG_DAYS = 7;
-/** כמה ימים בגרף "מבט חודשי" */
-const MONTH_DAYS = 30;
-/** מתחת לזה אין באמת ממוצע, רק רעש */
-const MIN_DAYS_FOR_AVG = 3;
 
 function greeting(h: number): string {
   if (h >= 5 && h < 12) return 'בוקר טוב';
@@ -40,8 +33,6 @@ function greeting(h: number): string {
   if (h >= 17 && h < 22) return 'ערב טוב';
   return 'לילה טוב';
 }
-
-const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
 /** שם השולח לפי האימייל — אין לנו שמות משתמשים */
 const senderName = (email: string) => email.split('@')[0] || 'בן משפחה';
@@ -77,50 +68,13 @@ export default function HomeScreen({ navigation }: Props) {
 
   const recent = useMemo(() => babyLogs.slice(-RECENT).reverse(), [babyLogs]);
 
-  /** ממוצע הארוחות ביום בשבוע שקדם להיום — רק אם יש מספיק ימים מתועדים */
-  const average = useMemo(() => {
-    const todayStart = startOfDay(now);
-    const buckets: number[] = [];
-    for (let i = 1; i <= AVG_DAYS; i++) {
-      const from = todayStart - i * DAY_MS;
-      const dayLogs = babyLogs.filter((l) => l.timestamp >= from && l.timestamp < from + DAY_MS);
-      if (dayLogs.length > 0) buckets.push(dayLogs.filter((l) => l.type === 'feeding').length);
-    }
-    if (buckets.length < MIN_DAYS_FOR_AVG) return null;
-    const avg = buckets.reduce((a, b) => a + b, 0) / buckets.length;
-    return Math.round(avg * 10) / 10;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [babyLogs]);
-
-  /** ארוחות ליום לאורך החודש האחרון */
-  const month = useMemo<Day[]>(() => {
-    const todayStart = startOfDay(now);
-    const days: Day[] = [];
-    for (let i = MONTH_DAYS - 1; i >= 0; i--) {
-      const from = todayStart - i * DAY_MS;
-      const d = new Date(from);
-      days.push({
-        label: d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long' }),
-        value: babyLogs.filter(
-          (l) => l.type === 'feeding' && l.timestamp >= from && l.timestamp < from + DAY_MS,
-        ).length,
-        today: i === 0,
-      });
-    }
-    return days;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [babyLogs]);
-
-  const hasMonth = useMemo(
-    () => babyLogs.some((l) => l.timestamp < startOfDay(now)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [babyLogs],
-  );
-
   // ---- ניווט: אותם יעדים שהיו, בלי שינוי ----
   const goJournal = () => navigation.navigate('Baby', { screen: 'BabyDay' });
   const goSummary = () => navigation.navigate('Baby', { screen: 'BabySummary' });
   const goSettings = () => navigation.navigate('Baby', { screen: 'BabySettings' });
+  const goMonth = () => navigation.navigate('Baby', { screen: 'BabyCalendar' });
+  // פתיחת חלון התיעוד ישירות, דרך הציר היומי שמחזיק אותו
+  const goAdd = () => navigation.navigate('Baby', { screen: 'BabyDay', params: { openAdd: true } });
 
   const medName = (id?: string) => medications.find((m) => m.id === id)?.name;
   const lastMessage = messages[messages.length - 1];
@@ -172,90 +126,86 @@ export default function HomeScreen({ navigation }: Props) {
   ];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {loading ? (
-        <HomeSkeleton />
-      ) : (
-        <>
-          <HomeHeader
-            name={profile.name}
-            greeting={greeting(now.getHours())}
-            familyName={profile.familyName?.trim() || undefined}
-            ageText={getAgeText(profile.birthDate)}
-            dateText={now.toLocaleDateString('he-IL', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            })}
-            photoUrl={profile.photoUrl}
-            onPressProfile={goSettings}
-            onPressSettings={goSettings}
-          />
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content}>
+        {loading ? (
+          <HomeSkeleton />
+        ) : (
+          <>
+            <HomeHeader
+              name={profile.name}
+              greeting={greeting(now.getHours())}
+              familyName={profile.familyName?.trim() || undefined}
+              ageText={getAgeText(profile.birthDate)}
+              dateText={now.toLocaleDateString('he-IL', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+              })}
+              photoUrl={profile.photoUrl}
+              onPressProfile={goSettings}
+              onPressSettings={goSettings}
+            />
 
-          <SummaryCards cards={cards} />
+            <SummaryCards cards={cards} />
 
-          <RecentActivity
-            logs={recent}
-            medName={medName}
-            onPressAll={goJournal}
-            onPressLog={(_log: BabyLog) => goJournal()}
-          />
+            <RecentActivity
+              logs={recent}
+              medName={medName}
+              onPressAll={goJournal}
+              onPressLog={(_log: BabyLog) => goJournal()}
+            />
 
-          <InsightCards
-            todayCount={stats.feedings}
-            average={average}
-            month={month}
-            hasMonth={hasMonth}
-            onPressSummary={goSummary}
-          />
+            <ComingSoon delay={620} />
 
-          {/* ---- הודעות המשפחה — פיצ'ר קיים, נשאר במקומו ---- */}
-          <Reveal delay={760}>
-            <Press
-              onPress={() => navigation.navigate('Chat')}
-              accessibilityRole="button"
-              accessibilityLabel="הודעות למשפחה"
-              to={0.99}
-            >
-              <View style={styles.chat}>
-                <SoftIcon
-                  icon="message-text-outline"
-                  tint={c.lavenderDeep}
-                  surface={c.lavender}
-                  size={44}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={t.cardTitle}>הודעות למשפחה</Text>
-                  {lastMessage ? (
-                    <>
+            {/* ---- הודעות המשפחה — פיצ'ר קיים, נשאר במקומו ---- */}
+            <Reveal delay={760}>
+              <Press
+                onPress={() => navigation.navigate('Chat')}
+                accessibilityRole="button"
+                accessibilityLabel="הודעות למשפחה"
+                to={0.99}
+              >
+                <View style={styles.chat}>
+                  <SoftIcon
+                    icon="message-text-outline"
+                    tint={c.lavenderDeep}
+                    surface={c.lavender}
+                    size={44}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={t.cardTitle}>הודעות למשפחה</Text>
+                    {lastMessage ? (
+                      <>
+                        <Text style={t.body} numberOfLines={2}>
+                          {lastMessage.text}
+                        </Text>
+                        <Text style={t.caption}>
+                          {senderName(lastMessage.senderEmail)} · {fmtTime(lastMessage.createdAt)}
+                        </Text>
+                      </>
+                    ) : (
                       <Text style={t.body} numberOfLines={2}>
-                        {lastMessage.text}
+                        עוד אין הודעות — אפשר להשאיר אחת
                       </Text>
-                      <Text style={t.caption}>
-                        {senderName(lastMessage.senderEmail)} · {fmtTime(lastMessage.createdAt)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={t.body} numberOfLines={2}>
-                      עוד אין הודעות — אפשר להשאיר אחת
-                    </Text>
-                  )}
+                    )}
+                  </View>
+                  <Ionicons name="chevron-back" size={18} color={c.textMuted} />
                 </View>
-                <Ionicons name="chevron-back" size={18} color={c.textMuted} />
-              </View>
-            </Press>
-          </Reveal>
+              </Press>
+            </Reveal>
+          </>
+        )}
+      </ScrollView>
 
-          {/* שירותים עתידיים — שורת טקסט, ולא כפתורים שלא מובילים לשום מקום */}
-          <Reveal delay={820}>
-            <Text style={[t.caption, styles.soon]}>
-              בקרוב: {profile.name !== DEFAULT_PROFILE.name ? `שאלה על ${profile.name}` : 'שאלות'}{' '}
-              ושיחה עם רופא
-            </Text>
-          </Reveal>
-        </>
-      )}
-    </ScrollView>
+      <HomeTabBar
+        onMonth={goMonth}
+        onJournal={goJournal}
+        onAdd={goAdd}
+        onSummary={goSummary}
+        onSettings={goSettings}
+      />
+    </View>
   );
 }
 
@@ -264,8 +214,8 @@ const styles = StyleSheet.create({
   content: {
     padding: space.lg,
     paddingTop: space.xl,
-    // מרווח תחתון נדיב: המסך נגלל מתחת לשוליים הבטוחים של הטלפון
-    paddingBottom: 56,
+    // מרווח תחתון בגובה הסרגל: בלעדיו הכרטיס האחרון מסתתר מתחתיו
+    paddingBottom: TAB_BAR_HEIGHT + space.xl,
     width: '100%',
     maxWidth: MAX_W,
     alignSelf: 'center',
