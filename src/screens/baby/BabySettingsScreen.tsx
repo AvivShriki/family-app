@@ -28,11 +28,13 @@ export default function BabySettingsScreen({ navigation }: any) {
   const [photoEdit, setPhotoEdit] = useState<string | null | undefined>(undefined);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  // שגיאת בחירת תמונה מוצגת ליד התמונה עצמה, ולא ליד כפתור השמירה
+  const [photoError, setPhotoError] = useState('');
 
   const name = nameEdit ?? profile.name;
   const birthDate = birthDateEdit ?? profile.birthDate;
   const familyName = familyNameEdit ?? profile.familyName ?? '';
-  const photoUrl = photoEdit === undefined ? profile.photoUrl : photoEdit ?? undefined;
+  const photoUrl = photoEdit === undefined ? profile.photoUrl : (photoEdit ?? undefined);
 
   const dirty =
     name.trim() !== profile.name ||
@@ -44,10 +46,15 @@ export default function BabySettingsScreen({ navigation }: any) {
   const valid = name.trim().length > 0;
 
   const onPickPhoto = async () => {
-    const dataUrl = await pickProfileImage();
-    if (dataUrl) {
-      setPhotoEdit(dataUrl);
+    setPhotoError('');
+    const result = await pickProfileImage();
+    // ביטול הוא לא כישלון ולא אומרים עליו כלום; שגיאה אמיתית כן
+    // נאמרת, כי קודם היא פשוט לא עשתה כלום והמסך נראה תקוע.
+    if (result.status === 'ok') {
+      setPhotoEdit(result.dataUrl);
       setStatus('idle');
+    } else if (result.status === 'error') {
+      setPhotoError(result.message);
     }
   };
 
@@ -71,7 +78,12 @@ export default function BabySettingsScreen({ navigation }: any) {
 
         {/* תמונת פרופיל — מוצגת בכל האפליקציה */}
         <View style={styles.photoSection}>
-          <TouchableOpacity onPress={onPickPhoto} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={onPickPhoto}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={photoUrl ? 'החלפת תמונת הפרופיל' : 'הוספת תמונת פרופיל'}
+          >
             {photoUrl ? (
               <Image source={{ uri: photoUrl }} style={styles.photo} />
             ) : (
@@ -87,9 +99,23 @@ export default function BabySettingsScreen({ navigation }: any) {
             {photoUrl ? 'לחיצה על התמונה מחליפה אותה' : 'לחיצה מוסיפה תמונת פרופיל 📷'}
           </Text>
           {photoUrl ? (
-            <TouchableOpacity onPress={() => { setPhotoEdit(null); setStatus('idle'); }} hitSlop={8}>
+            <TouchableOpacity
+              onPress={() => {
+                setPhotoEdit(null);
+                setPhotoError('');
+                setStatus('idle');
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="הסרת התמונה"
+            >
               <Text style={styles.photoRemove}>הסרת התמונה</Text>
             </TouchableOpacity>
+          ) : null}
+          {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+          {/* התמונה רק נבחרה — בלי השורה הזו נדמה שהיא כבר נשמרה */}
+          {photoEdit !== undefined && !photoError ? (
+            <Text style={styles.photoPending}>{'התמונה תישמר בלחיצה על "שמירה"'}</Text>
           ) : null}
         </View>
 
@@ -128,8 +154,12 @@ export default function BabySettingsScreen({ navigation }: any) {
 
         <Button label="שמירה" onPress={onSave} disabled={!dirty || !valid} />
 
-        {status === 'saved' && <Text style={styles.saved}>נשמר! הפרופיל של {profile.name} מעודכן 🌸</Text>}
-        {status === 'error' && <Text style={styles.error}>השמירה לא הצליחה — בדקו את החיבור ונסו שוב</Text>}
+        {status === 'saved' && (
+          <Text style={styles.saved}>נשמר! הפרופיל של {profile.name} מעודכן 🌸</Text>
+        )}
+        {status === 'error' && (
+          <Text style={styles.error}>השמירה לא הצליחה — בדקו את החיבור ונסו שוב</Text>
+        )}
       </View>
 
       <TouchableOpacity
@@ -219,6 +249,21 @@ const styles = StyleSheet.create({
   },
   photoHint: { fontSize: 12, color: colors.textMuted, marginTop: spacing.sm },
   photoRemove: { fontSize: 12, color: colors.danger, fontWeight: '600', marginTop: spacing.xs },
+  photoError: {
+    fontSize: 12,
+    color: colors.danger,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+    lineHeight: 17,
+  },
+  photoPending: {
+    fontSize: 12,
+    color: colors.blueAccent,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
   label: {
     fontSize: 13,
     fontWeight: '600',
@@ -249,7 +294,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     ...shadow.soft,
   },
-  accountLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'right' },
+  accountLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'right',
+  },
   logoutLabel: { color: colors.danger },
   dateText: { fontSize: 15, color: colors.text, textAlign: 'right' },
   datePlaceholder: { color: colors.textMuted },
