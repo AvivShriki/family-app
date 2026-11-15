@@ -1,23 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
 import { useBabyLogs } from '../context/BabyLogsContext';
 import { useMessages } from '../context/MessagesContext';
 import { useMedications } from '../context/MedicationsContext';
 import { useBabyProfile, DEFAULT_PROFILE } from '../hooks/useBabyProfile';
 import { BabyLog } from '../types';
 import { colors, spacing, radius, shadow, font } from '../config/theme';
-import { getAgeText, isSameDay } from '../utils/dates';
+import { getAgeText, isSameDay, fmtTime } from '../utils/dates';
 
 interface Props {
   navigation: any;
 }
-
-/** תקרת אריחי התיעוד המהיר. מעבר לזה הרשת נשפכת מתחת לקיפול. */
-const MAX_TILES = 6;
-/** חלון החרטה אחרי רישום בנגיעה */
-const UNDO_MS = 4000;
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -69,15 +63,14 @@ function lastLogText(log: BabyLog | undefined, medName?: string): string {
   }
 }
 
-export default function HomeScreen({ navigation }: Props) {
-  const { user } = useAuth();
-  const { items: babyLogs, add, remove, update } = useBabyLogs();
-  const { messages } = useMessages();
-  const { medications, activeToday } = useMedications();
-  const { profile } = useBabyProfile();
+/** שם השולח לפי האימייל — אין לנו שמות משתמשים */
+const senderName = (email: string) => email.split('@')[0] || 'בן משפחה';
 
-  // הרישום האחרון שנוצר בנגיעה, לחלון החרטה
-  const [justLogged, setJustLogged] = useState<{ tile: string; id: string } | null>(null);
+export default function HomeScreen({ navigation }: Props) {
+  const { items: babyLogs } = useBabyLogs();
+  const { messages } = useMessages();
+  const { medications } = useMedications();
+  const { profile } = useBabyProfile();
 
   const todayLogs = useMemo(
     () => babyLogs.filter((l) => isSameDay(l.timestamp, new Date())),
@@ -90,197 +83,147 @@ export default function HomeScreen({ navigation }: Props) {
     medications.find((m) => m.id === lastLog?.medicationId)?.name,
   );
 
-  // שינה פתוחה: נרשמה התחלה ועוד אין סיום
-  const openSleep = [...babyLogs].reverse().find((l) => l.type === 'sleep' && !l.endTimestamp);
-
   const meals = todayLogs.filter((l) => l.type === 'feeding').length;
   const diapers = todayLogs.filter((l) => l.type === 'diaper').length;
   const sleepMs = todayLogs
     .filter((l) => l.type === 'sleep' && l.endTimestamp)
     .reduce((sum, l) => sum + (l.endTimestamp! - l.timestamp), 0);
 
-  const loggedBy = user?.email ?? 'demo';
+  const familyName = profile.familyName?.trim();
+  const lastMessage = messages[messages.length - 1];
+
+  const goSettings = () => navigation.navigate('Baby', { screen: 'BabySettings' });
   const goJournal = () => navigation.navigate('Baby', { screen: 'BabyDay' });
-
-  const quickLog = async (tile: string, entry: Omit<BabyLog, 'id'>) => {
-    const id = await add(entry as any);
-    setJustLogged({ tile, id });
-    setTimeout(() => setJustLogged((cur) => (cur?.id === id ? null : cur)), UNDO_MS);
-  };
-
-  const undo = async () => {
-    if (!justLogged) return;
-    const { id } = justLogged;
-    setJustLogged(null);
-    await remove(id);
-  };
-
-  const tapSleep = () => {
-    if (openSleep) {
-      // סגירת שינה פתוחה היא עדכון, לא רישום חדש — ולכן גם אין מה לבטל
-      update(openSleep.id, { endTimestamp: Date.now() });
-      return;
-    }
-    quickLog('sleep', { type: 'sleep', timestamp: Date.now(), loggedBy });
-  };
-
-  // שלושת הבסיסיים ואחריהם התרופות, עד התקרה; העודף מקופל לאריח אחד
-  const medTiles = activeToday.map((m) => ({
-    key: m.id,
-    emoji: m.emoji,
-    label: m.name,
-    done: todayLogs.some((l) => l.type === 'medication' && l.medicationId === m.id),
-  }));
-  const shownMeds = medTiles.slice(0, MAX_TILES - 3);
-  const overflow = medTiles.length - shownMeds.length;
+  // פתיחת חלון התיעוד ישירות, דרך הציר היומי שמחזיק אותו
+  const goAdd = () => navigation.navigate('Baby', { screen: 'BabyDay', params: { openAdd: true } });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* זהות — שורה אחת ולא כרטיס. נוי יודעת מי התינוקת. */}
-      <View style={styles.identity}>
+      {/* ---- כותרת: הברכה והתמונה, כל אחת בצד שלה ומרווח שווה ביניהן ---- */}
+      <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
-          accessibilityLabel="פרופיל התינוקת"
-          activeOpacity={0.8}
+          style={styles.gear}
+          onPress={goSettings}
+          accessibilityRole="button"
+          accessibilityLabel="הגדרות"
         >
-          {profile.photoUrl ? (
-            <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarEmoji}>👶</Text>
-            </View>
-          )}
+          <Ionicons name="settings-outline" size={20} color={colors.textLight} />
         </TouchableOpacity>
 
-        <View style={{ flex: 1 }}>
-          <Text style={styles.greeting} numberOfLines={1}>
-            {profile.familyName?.trim()
-              ? `${greeting()}, משפחת ${profile.familyName.trim()}`
-              : greeting()}
-          </Text>
-          <Text style={styles.identityName} numberOfLines={1}>
+        <View style={styles.headerText}>
+          {familyName ? (
+            <>
+              <Text style={styles.greetingSmall} numberOfLines={1}>
+                {greeting()},
+              </Text>
+              <Text style={styles.familyName} numberOfLines={2}>
+                משפחת {familyName}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.familyName} numberOfLines={1}>
+              {greeting()}
+            </Text>
+          )}
+          <Text style={styles.babyLine} numberOfLines={1}>
             {profile.name}
             {profile.birthDate ? ` · ${getAgeText(profile.birthDate)}` : ''}
           </Text>
         </View>
 
         <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation.navigate('Baby', { screen: 'BabySettings' })}
-          accessibilityLabel="הגדרות"
-          hitSlop={8}
+          onPress={goSettings}
+          accessibilityRole="button"
+          accessibilityLabel={`הפרופיל של ${profile.name}`}
+          activeOpacity={0.85}
         >
-          <Ionicons name="settings-outline" size={19} color={colors.textLight} />
+          {profile.photoUrl ? (
+            <Image source={{ uri: profile.photoUrl }} style={styles.photo} />
+          ) : (
+            <View style={[styles.photo, styles.photoPlaceholder]}>
+              <Text style={styles.photoEmoji}>👶</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* עכשיו — השאלה שהורים באמת שואלים זה את זה.
-          הגוש כולו נלחץ ופותח את היומן: הוא מתאר את הרישום האחרון,
-          והמקום לראות את כל השאר הוא שם. */}
-      <TouchableOpacity
-        style={styles.now}
-        onPress={goJournal}
-        accessibilityRole="button"
-        accessibilityLabel={`${statusText}. פתיחת היומן`}
-        activeOpacity={0.85}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={styles.nowLabel}>עכשיו</Text>
-          <Text style={styles.nowValue}>{statusText}</Text>
-        </View>
-        <Text style={styles.nowChevron}>‹</Text>
-      </TouchableOpacity>
+      {/* ---- היומן — הסקשן הראשי של המסך ---- */}
+      <Text style={styles.sectionTitle}>היומן</Text>
+      <View style={styles.card}>
+        {/* הכרטיס עצמו הוא שטח הלחיצה; כפתור התיעוד הוא אח שלו ולא
+            ילד, כי כפתור בתוך כפתור הוא HTML לא תקין */}
+        <TouchableOpacity
+          onPress={goJournal}
+          accessibilityRole="button"
+          accessibilityLabel={`היומן של ${profile.name}. ${statusText}`}
+          activeOpacity={0.85}
+        >
+          <View style={styles.cardHead}>
+            <View style={styles.medallion}>
+              <Ionicons name="book-outline" size={22} color={colors.pinkAccent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>היומן של {profile.name}</Text>
+              <Text style={styles.cardStatus} numberOfLines={1}>
+                {statusText}
+              </Text>
+            </View>
+            <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
+          </View>
 
-      {/* תיעוד מהיר — נגיעה אחת רושמת. זו סיבת הקיום של המסך. */}
-      <View style={styles.tiles}>
-        <Tile
-          emoji="🍼"
-          label="ארוחה"
-          state={justLogged?.tile === 'feeding' ? 'logged' : 'idle'}
-          onPress={() => quickLog('feeding', { type: 'feeding', timestamp: Date.now(), loggedBy })}
-          onUndo={undo}
-        />
-        <Tile
-          emoji="💩"
-          label="חיתול"
-          state={justLogged?.tile === 'diaper' ? 'logged' : 'idle'}
-          onPress={() => quickLog('diaper', { type: 'diaper', timestamp: Date.now(), loggedBy })}
-          onUndo={undo}
-        />
-        <Tile
-          emoji="😴"
-          label={openSleep ? 'סיום שינה' : 'שינה'}
-          state={justLogged?.tile === 'sleep' ? 'logged' : openSleep ? 'active' : 'idle'}
-          onPress={tapSleep}
-          onUndo={undo}
-        />
+          <View style={styles.divider} />
 
-        {shownMeds.map((t) => (
-          <Tile
-            key={t.key}
-            emoji={t.emoji}
-            label={t.label}
-            state={justLogged?.tile === t.key ? 'logged' : t.done ? 'done' : 'idle'}
-            onPress={() =>
-              quickLog(t.key, {
-                type: 'medication',
-                medicationId: t.key,
-                timestamp: Date.now(),
-                loggedBy,
-              })
-            }
-            onUndo={undo}
-          />
-        ))}
+          <View style={styles.statsRow}>
+            <Stat value={String(meals)} label="ארוחות" />
+            <View style={styles.statDivider} />
+            <Stat value={sleepMs > 0 ? shortDuration(sleepMs) : '—'} label="שינה" />
+            <View style={styles.statDivider} />
+            <Stat value={String(diapers)} label="חיתולים" />
+          </View>
+        </TouchableOpacity>
 
-        {overflow > 0 ? (
-          <Tile emoji="💊" label={`עוד ${overflow} ›`} state="idle" onPress={goJournal} />
-        ) : null}
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={goAdd}
+          accessibilityRole="button"
+          accessibilityLabel="תיעוד חדש"
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={20} color={colors.white} />
+          <Text style={styles.addButtonText}>תיעוד חדש</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* היום — מונים, וגם הכניסה הראשית ליומן.
-          הקישור היה טקסט של 13 פיקסל בפינה; עכשיו הכרטיס כולו הוא
-          שטח הלחיצה, והשבב הוא סימון חזותי בלבד ולא כפתור בתוך כפתור. */}
-      <TouchableOpacity
-        style={styles.block}
-        onPress={goJournal}
-        accessibilityRole="button"
-        accessibilityLabel="סיכום היום. פתיחת היומן המלא"
-        activeOpacity={0.85}
-      >
-        <View style={styles.blockHead}>
-          <View style={styles.journalChip}>
-            <Text style={styles.journalChipText}>פתיחת היומן</Text>
-            <Ionicons name="chevron-back" size={13} color={colors.blueAccent} />
-          </View>
-          <View style={styles.blockTitleRow}>
-            <Ionicons name="book-outline" size={17} color={colors.text} />
-            <Text style={styles.blockTitle}>היום</Text>
-          </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <Stat value={String(meals)} label="ארוחות" />
-          <Stat value={sleepMs > 0 ? shortDuration(sleepMs) : '—'} label="שינה" />
-          <Stat value={String(diapers)} label="חיתולים" />
-        </View>
-      </TouchableOpacity>
-
-      {/* הודעות המשפחה */}
+      {/* ---- המשפחה ---- */}
+      <Text style={styles.sectionTitle}>המשפחה</Text>
       <TouchableOpacity
         style={styles.chatCard}
         onPress={() => navigation.navigate('Chat')}
+        accessibilityRole="button"
         accessibilityLabel="הודעות למשפחה"
         activeOpacity={0.85}
       >
-        <Ionicons name="chatbubble-ellipses" size={20} color={colors.blueAccent} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.chatTitle}>הודעות למשפחה</Text>
-          <Text style={styles.chatPreview} numberOfLines={1}>
-            {messages[messages.length - 1]?.text ?? 'עוד אין הודעות — אפשר להשאיר אחת'}
-          </Text>
+        <View style={[styles.medallion, styles.medallionBlue]}>
+          <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.blueAccent} />
         </View>
-        <Text style={styles.chevron}>‹</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardTitle}>הודעות למשפחה</Text>
+          {lastMessage ? (
+            <>
+              <Text style={styles.chatPreview} numberOfLines={2}>
+                {lastMessage.text}
+              </Text>
+              <Text style={styles.chatMeta}>
+                {senderName(lastMessage.senderEmail)} · {fmtTime(lastMessage.createdAt)}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.chatPreview} numberOfLines={2}>
+              עוד אין הודעות — אפשר להשאיר אחת
+            </Text>
+          )}
+        </View>
+        <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
       </TouchableOpacity>
 
       {/* שירותים עתידיים — שורת טקסט, במקום שני כפתורים מתים ברבע מהמסך */}
@@ -292,196 +235,172 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-function Tile({
-  emoji,
-  label,
-  state,
-  onPress,
-  onUndo,
-}: {
-  emoji: string;
-  label: string;
-  state: 'idle' | 'logged' | 'done' | 'active';
-  onPress: () => void;
-  onUndo?: () => void;
-}) {
-  if (state === 'logged') {
-    return (
-      <TouchableOpacity
-        style={[styles.tile, styles.tileDone]}
-        onPress={onUndo}
-        accessibilityLabel={`${label} נרשם, ביטול`}
-      >
-        <Text style={styles.tileEmoji}>✓</Text>
-        <Text style={styles.tileLabel} numberOfLines={1}>
-          נרשם · ביטול
-        </Text>
-      </TouchableOpacity>
-    );
-  }
-  return (
-    <TouchableOpacity
-      style={[
-        styles.tile,
-        state === 'active' && styles.tileActive,
-        state === 'done' && styles.tileDone,
-      ]}
-      onPress={onPress}
-      accessibilityLabel={`תיעוד ${label}`}
-      activeOpacity={0.8}
-    >
-      <Text style={styles.tileEmoji}>{emoji}</Text>
-      <Text style={styles.tileLabel} numberOfLines={1}>
-        {state === 'done' ? `✓ ${label}` : label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
+    <View style={styles.stat} accessibilityLabel={`${label}: ${value}`}>
+      <Text style={styles.statValue} numberOfLines={1}>
+        {value}
+      </Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
-const AVATAR = 44;
+const PHOTO = 104;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  // תקרת רוחב: בדפדפן שולחני הכרטיסים נמתחו לרוחב המסך כולו ושורת
+  // טקסט אחת חצתה אותו מקצה לקצה. הפריסה נשארת זהה, רק ממורכזת.
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+  },
 
-  identity: {
+  // ---- כותרת ----
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
-  avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
-  avatarPlaceholder: {
-    backgroundColor: colors.pink,
+  gear: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadow.soft,
   },
-  avatarEmoji: { fontSize: AVATAR / 2 },
-  greeting: {
+  headerText: { flex: 1, gap: 2 },
+  greetingSmall: {
     fontSize: font.body,
     fontWeight: font.weight.medium,
     color: colors.textLight,
     textAlign: 'right',
   },
-  identityName: {
-    fontSize: font.title,
+  familyName: {
+    fontSize: font.titleLg,
     fontWeight: font.weight.heavy,
     color: colors.text,
     textAlign: 'right',
   },
-  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-
-  now: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+  babyLine: {
+    fontSize: font.small,
+    color: colors.textLight,
+    textAlign: 'right',
+  },
+  // הטבעת הלבנה מפרידה את התמונה מהרקע הקרם ונותנת לה מקום משלה
+  photo: {
+    width: PHOTO,
+    height: PHOTO,
+    borderRadius: PHOTO / 2,
     backgroundColor: colors.pink,
+    borderWidth: 4,
+    borderColor: colors.white,
+    ...shadow.soft,
+  },
+  photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  photoEmoji: { fontSize: PHOTO / 2 },
+
+  // ---- אזורים ----
+  sectionTitle: {
+    fontSize: font.small,
+    fontWeight: font.weight.bold,
+    color: colors.textLight,
+    textAlign: 'right',
+    marginBottom: spacing.sm,
+  },
+
+  card: {
+    backgroundColor: colors.white,
     borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xl,
+    ...shadow.soft,
   },
-  nowChevron: { fontSize: font.titleLg, color: colors.text },
-  // טקסט בהיר על ורוד נופל מהתקן — ההפרדה כאן היא בגודל ובמשקל
-  nowLabel: { fontSize: font.caption, color: colors.text, textAlign: 'right' },
-  nowValue: {
-    fontSize: font.title,
+  cardHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.md },
+  medallion: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.pink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medallionBlue: { backgroundColor: colors.blue },
+  cardTitle: {
+    fontSize: font.bodyLg,
     fontWeight: font.weight.bold,
     color: colors.text,
+    textAlign: 'right',
+  },
+  cardStatus: {
+    fontSize: font.small,
+    color: colors.textLight,
     textAlign: 'right',
     marginTop: 2,
   },
 
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  tile: {
-    flexGrow: 1,
-    flexBasis: '30%',
-    minWidth: 100,
-    minHeight: 76,
-    backgroundColor: colors.white,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
   },
-  tileActive: { borderColor: colors.blueAccent, backgroundColor: colors.blue },
-  tileDone: { backgroundColor: colors.successSoft, borderColor: colors.success },
-  tileEmoji: { fontSize: font.titleLg },
-  tileLabel: {
-    fontSize: font.small,
-    fontWeight: font.weight.semibold,
-    color: colors.text,
-    marginTop: 2,
-  },
-
-  block: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.soft,
-  },
-  blockHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  blockTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.xs + 2 },
-  blockTitle: { fontSize: font.bodyLg, fontWeight: font.weight.bold, color: colors.text },
-  // סימון חזותי של יעד, לא כפתור: שטח הלחיצה הוא הכרטיס כולו
-  journalChip: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: colors.cream,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 1,
-  },
-  journalChipText: {
-    fontSize: font.small,
-    fontWeight: font.weight.semibold,
-    color: colors.blueAccent,
-  },
-
-  statsRow: { flexDirection: 'row' },
+  statsRow: { flexDirection: 'row-reverse', alignItems: 'center' },
+  statDivider: { width: 1, height: 28, backgroundColor: colors.border },
   stat: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: font.titleLg, fontWeight: font.weight.bold, color: colors.text },
+  statValue: {
+    fontSize: font.titleLg,
+    fontWeight: font.weight.heavy,
+    color: colors.text,
+    textAlign: 'center',
+  },
   statLabel: { fontSize: font.caption, color: colors.textLight, marginTop: 2 },
 
+  addButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs + 2,
+    minHeight: 48,
+    borderRadius: radius.full,
+    backgroundColor: colors.pinkAccent,
+    marginTop: spacing.md,
+  },
+  addButtonText: {
+    fontSize: font.bodyLg,
+    fontWeight: font.weight.bold,
+    color: colors.white,
+  },
+
   chatCard: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.white,
     borderRadius: radius.lg,
     padding: spacing.md,
+    minHeight: 92,
     ...shadow.soft,
   },
-  chatTitle: {
+  chatPreview: {
     fontSize: font.body,
-    fontWeight: font.weight.bold,
-    color: colors.text,
+    color: colors.textLight,
     textAlign: 'right',
+    marginTop: 2,
+    lineHeight: 20,
   },
-  chatPreview: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginTop: 2 },
-  chevron: { fontSize: font.title, color: colors.textMuted },
+  chatMeta: { fontSize: font.caption, color: colors.textMuted, textAlign: 'right', marginTop: 3 },
 
   soon: {
     fontSize: font.caption,
     color: colors.textLight,
     textAlign: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
   },
 });
