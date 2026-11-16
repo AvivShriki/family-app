@@ -4,7 +4,6 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
-  sendEmailVerification,
   signOut,
   deleteUser,
   updatePassword,
@@ -14,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { DEMO_MODE } from '../config/demo';
+import { sendVerificationEmail } from '../services/verificationEmail';
 
 // Fake user object used in demo mode
 const DEMO_USER = { email: 'aviv@demo', uid: 'demo' } as unknown as User;
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (DEMO_MODE) return;
     const current = auth.currentUser;
     if (!current) throw new Error('auth/no-user');
-    await sendEmailVerification(current);
+    await sendVerificationEmail(current);
   };
 
   const refreshVerification = async (): Promise<boolean> => {
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // למסך האישור וממנו יש כפתור שליחה חוזרת.
     //
     // האימות עצמו כן חוסם מכאן והלאה — גם במסך וגם בחוקי Firestore.
-    sendEmailVerification(cred.user).catch((e) => console.error('שליחת מייל האימות נכשלה:', e));
+    sendVerificationEmail(cred.user).catch((e) => console.error('שליחת מייל האימות נכשלה:', e));
     return cred.user.uid;
   };
 
