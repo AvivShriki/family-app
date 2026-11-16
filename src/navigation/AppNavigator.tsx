@@ -8,6 +8,7 @@ import { useHousehold } from '../context/HouseholdContext';
 import { useBabyProfile } from '../hooks/useBabyProfile';
 import LoginScreen from '../screens/LoginScreen';
 import NoHouseholdScreen from '../screens/NoHouseholdScreen';
+import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import InviteScreen from '../screens/InviteScreen';
@@ -37,7 +38,7 @@ const headerStyle = {
 
 export default function AppNavigator() {
   const inviteCode = inviteCodeFromUrl();
-  const { user, loading } = useAuth();
+  const { user, loading, emailVerified } = useAuth();
   const { householdId, loading: householdLoading } = useHousehold();
   const { profile } = useBabyProfile();
 
@@ -65,17 +66,21 @@ export default function AppNavigator() {
               />
             ) : null}
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen
-              name="SignUp"
-              component={SignUpScreen}
-              options={{ headerShown: false }}
-            />
+            <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="ForgotPassword"
               component={ForgotPasswordScreen}
               options={{ headerShown: false }}
             />
           </>
+        ) : !emailVerified ? (
+          /* חסימה לפני כל השאר: מי שלא אישר את הכתובת לא נכנס. זו
+             חסימת ממשק בלבד — האכיפה האמיתית תגיע מחוקי Firestore. */
+          <Stack.Screen
+            name="VerifyEmail"
+            component={VerifyEmailScreen}
+            options={{ headerShown: false }}
+          />
         ) : !householdId ? (
           <Stack.Screen
             name="NoHousehold"

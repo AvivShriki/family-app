@@ -20,6 +20,18 @@ const DEMO_USER = { email: 'aviv@demo', uid: 'demo' } as unknown as User;
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  /** האם הכתובת אומתה. במצב דמו תמיד אמת, אחרת הדמו היה נחסם. */
+  emailVerified: boolean;
+  /** שולח שוב את מייל האימות לכתובת של המשתמש המחובר */
+  resendVerification: () => Promise<void>;
+  /**
+   * מושך מחדש את מצב החשבון מהשרת ומחזיר אם הוא אומת.
+   *
+   * Firebase לא מעדכן את emailVerified מעצמו — הוא נקבע ברגע
+   * ההתחברות ונשאר. בלי רענון מפורש, מי שלחץ על הקישור במייל היה
+   * רואה את מסך החסימה גם אחרי שאימת.
+   */
+  refreshVerification: () => Promise<boolean>;
   login: (email: string, password: string) => Promise<void>;
   /** יוצר חשבון ומחזיר את המזהה שלו — הוא גם המזהה של המשפחה החדשה */
   signUp: (email: string, password: string) => Promise<string>;
@@ -33,15 +45,42 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(DEMO_MODE ? DEMO_USER : null);
   const [loading, setLoading] = useState(!DEMO_MODE);
+  const [emailVerified, setEmailVerified] = useState(DEMO_MODE);
 
   useEffect(() => {
     if (DEMO_MODE) return;
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
+      setEmailVerified(!!u?.emailVerified);
       setLoading(false);
     });
     return unsub;
   }, []);
+
+  const resendVerification = async () => {
+    if (DEMO_MODE) return;
+    const current = auth.currentUser;
+    if (!current) throw new Error('auth/no-user');
+    await sendEmailVerification(current);
+  };
+
+  const refreshVerification = async (): Promise<boolean> => {
+    if (DEMO_MODE) {
+      setEmailVerified(true);
+      return true;
+    }
+    const current = auth.currentUser;
+    if (!current) return false;
+    await current.reload();
+    const verified = !!auth.currentUser?.emailVerified;
+    // רענון כפוי של הטוקן. חוקי Firestore קוראים את email_verified
+    // מתוך הטוקן ולא מהחשבון, והטוקן הקיים עדיין נושא את הערך הישן —
+    // בלי השורה הזו מי שאימת היה עובר את המסך ונחסם על ידי החוקים,
+    // עד שעה, בלי שום הסבר.
+    if (verified) await current.getIdToken(true);
+    setEmailVerified(verified);
+    return verified;
+  };
 
   const login = async (email: string, password: string) => {
     if (DEMO_MODE) {
@@ -59,9 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     // מייל אימות נשלח, אבל אינו חוסם כלום: שבעת החשבונות שנוצרו בקונסולה
     // מעולם לא אומתו, וחסימה לפי אימות הייתה נועלת אותם בחוץ.
-    sendEmailVerification(cred.user).catch((e) =>
-      console.error('שליחת מייל האימות נכשלה:', e),
-    );
+    sendEmailVerification(cred.user).catch((e) => console.error('שליחת מייל האימות נכשלה:', e));
     return cred.user.uid;
   };
 
@@ -90,7 +127,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signUp, resetPassword, logout, changePassword }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        emailVerified,
+        resendVerification,
+        refreshVerification,
+        login,
+        signUp,
+        resetPassword,
+        logout,
+        changePassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
