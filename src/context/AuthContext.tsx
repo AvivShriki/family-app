@@ -96,8 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return DEMO_USER.uid;
     }
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    // מייל אימות נשלח, אבל אינו חוסם כלום: שבעת החשבונות שנוצרו בקונסולה
-    // מעולם לא אומתו, וחסימה לפי אימות הייתה נועלת אותם בחוץ.
+    // המייל נשלח ברקע ואינו עוצר את ההרשמה: החשבון כבר נוצר, ואין
+    // טעם להפיל את התהליך כי השליחה נכשלה. מי שלא קיבל אותו מגיע
+    // למסך האישור וממנו יש כפתור שליחה חוזרת.
+    //
+    // האימות עצמו כן חוסם מכאן והלאה — גם במסך וגם בחוקי Firestore.
     sendEmailVerification(cred.user).catch((e) => console.error('שליחת מייל האימות נכשלה:', e));
     return cred.user.uid;
   };
