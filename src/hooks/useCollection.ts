@@ -8,6 +8,7 @@ import {
   doc,
   query,
   orderBy,
+  where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useHousehold } from '../context/HouseholdContext';
@@ -25,6 +26,14 @@ export function useCollection<T extends { id: string }>(
   colName: ColName,
   orderByField: string,
   direction: 'asc' | 'desc' = 'asc',
+  /**
+   * טוען רק מסמכים שבהם orderByField גדול או שווה לערך הזה.
+   *
+   * זה מה שחוסם את הגידול בעלות: בלי החסם, כל פתיחה של האפליקציה
+   * מושכת את כל ההיסטוריה, והמחיר עולה ככל שמתעדים יותר. אי-שוויון
+   * על אותו שדה שלפיו ממיינים אינו דורש אינדקס מורכב.
+   */
+  sinceValue?: number,
 ) {
   const { householdId } = useHousehold();
   const [items, setItems] = useState<T[]>([]);
@@ -33,7 +42,10 @@ export function useCollection<T extends { id: string }>(
 
   useEffect(() => {
     if (DEMO_MODE) {
-      const unsub = mockSubscribe(colName, (docs) => {
+      const unsub = mockSubscribe(colName, (all) => {
+        // גם הדמו מסנן, אחרת אי אפשר לבדוק את התנהגות החלון
+        const docs =
+          sinceValue === undefined ? all : all.filter((d) => d[orderByField] >= sinceValue);
         const sorted = [...docs].sort((a, b) =>
           direction === 'asc'
             ? a[orderByField] > b[orderByField]
@@ -56,7 +68,14 @@ export function useCollection<T extends { id: string }>(
       return;
     }
 
-    const q = query(colRef(householdId, colName), orderBy(orderByField, direction));
+    const q =
+      sinceValue === undefined
+        ? query(colRef(householdId, colName), orderBy(orderByField, direction))
+        : query(
+            colRef(householdId, colName),
+            where(orderByField, '>=', sinceValue),
+            orderBy(orderByField, direction),
+          );
     const unsub = onSnapshot(
       q,
       (snap) => {
@@ -72,7 +91,7 @@ export function useCollection<T extends { id: string }>(
       },
     );
     return unsub;
-  }, [colName, orderByField, direction, householdId]);
+  }, [colName, orderByField, direction, householdId, sinceValue]);
 
   // כתיבה בלי משק בית תיכשל ממילא בחוקי האבטחה — עדיף להיכשל מוקדם ובבירור
   const requireHousehold = () => {

@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getAgeText, fmtDuration, isSameDay } from '../src/utils/dates';
+import { windowStart, extendedWindow, startOfDay } from '../src/utils/logWindow';
 
 // ---- getAgeText ------------------------------------------------------------
 // The bug this guards against: month count must respect day-of-month.
@@ -61,3 +62,49 @@ test('isSameDay: adjacent days are different', () => {
   assert.equal(isSameDay(new Date(2026, 6, 12, 0, 1).getTime(), day), false);
 });
 
+
+// ---- חלון טעינת הרישומים ----------------------------------------------
+// הבאג שהבדיקות האלה שומרות מפניו: טעינת כל ההיסטוריה בכל פתיחה, שהעלתה
+// את מחיר הפתיחה ככל שהמשפחה מתעדת יותר — עד שהמכסה היומית נגמרה.
+const DAY = 86400000;
+const daysBetween = (a: number, b: number) => Math.round((a - b) / DAY);
+
+test('startOfDay: מאפס את השעה', () => {
+  const end = new Date(2026, 10, 16, 23, 59, 59, 999).getTime();
+  assert.equal(startOfDay(end), new Date(2026, 10, 16).getTime());
+});
+
+test('windowStart: חצות, בדיוק שישים יום אחורה', () => {
+  const now = new Date(2026, 10, 16, 14, 30).getTime();
+  const start = windowStart(now);
+  assert.equal(new Date(start).getHours(), 0);
+  assert.equal(daysBetween(startOfDay(now), start), 60);
+});
+
+test('extendedWindow: תאריך שכבר בתוך החלון לא משנה דבר', () => {
+  const cur = windowStart(new Date(2026, 10, 16).getTime());
+  const inside = new Date(2026, 10, 1).getTime();
+  assert.equal(extendedWindow(cur, inside), cur);
+});
+
+test('extendedWindow: חזרה אל מעבר לקצה מרחיבה בצעד שלם', () => {
+  const cur = new Date(2026, 8, 17).getTime();
+  const needed = new Date(2026, 8, 10, 9, 0).getTime();
+  const next = extendedWindow(cur, needed, 60);
+  assert.ok(next < cur);
+  assert.equal(daysBetween(startOfDay(needed), next), 60);
+});
+
+// בלי זה, חזרה קדימה בתאריך הייתה מכווצת את החלון ומוחקת נתונים
+// שכבר שילמנו עליהם בקריאות
+test('extendedWindow: החלון לעולם לא מצטמצם', () => {
+  const cur = new Date(2026, 8, 17).getTime();
+  const future = new Date(2026, 11, 1).getTime();
+  assert.equal(extendedWindow(cur, future), cur);
+});
+
+test('extendedWindow: התוצאה תמיד נופלת על חצות', () => {
+  const cur = new Date(2026, 8, 17).getTime();
+  const next = extendedWindow(cur, new Date(2026, 7, 3, 23, 59).getTime());
+  assert.equal(new Date(next).getHours(), 0);
+});

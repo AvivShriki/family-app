@@ -36,7 +36,7 @@ interface Props {
 }
 
 export default function BabyCalendarScreen({ onSelectDay }: Props) {
-  const { items: allLogs } = useBabyLogs();
+  const { items: allLogs, ensureLoadedSince } = useBabyLogs();
   const { profile } = useBabyProfile();
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -71,11 +71,23 @@ export default function BabyCalendarScreen({ onSelectDay }: Props) {
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const goMonth = (delta: number) => {
-    setViewDate(new Date(year, month + delta, 1));
+  /**
+   * מעבר חודש מוודא שהחודש שאליו עוברים כבר נטען.
+   *
+   * הרישומים נטענים בחלון של שישים יום, ולכן גלילה רחוקה אחורה
+   * מרחיבה אותו — אחרת הלוח היה מציג חודש ריק מנקודות, שנקרא כמו
+   * חודש בלי תיעוד ולא כמו חודש שלא נטען.
+   */
+  const showMonth = (d: Date) => {
+    ensureLoadedSince(d.getTime());
+    setViewDate(d);
   };
 
-  const goToday = () => setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  const goMonth = (delta: number) => {
+    showMonth(new Date(year, month + delta, 1));
+  };
+
+  const goToday = () => showMonth(new Date(today.getFullYear(), today.getMonth(), 1));
 
   const atCurrentMonth = year === today.getFullYear() && month === today.getMonth();
 
