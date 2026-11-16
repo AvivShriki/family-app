@@ -47,6 +47,12 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid in membersOf(hid);
     }
 
+    // כתובת מאומתת. הערך נקרא מהטוקן ולא מהחשבון, ולכן מי שאישר זה
+    // עתה צריך טוקן חדש — האפליקציה מבקשת אחד בכוח אחרי האימות.
+    function verified() {
+      return request.auth.token.email_verified == true;
+    }
+
     function invite(code) {
       return get(/databases/$(database)/documents/invites/$(code)).data;
     }
@@ -119,9 +125,26 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
     }
 
-    // הנתונים עצמם: גם השיוך וגם החברות חייבים להסכים
+    // הנתונים עצמם: השיוך, החברות והכתובת המאומתת — שלושתם.
+    //
+    // בלי האימות, מי שנרשם עם כתובת שאינה שלו יכול לפתוח משפחה ולכתוב
+    // לתוכה בלי גבול. ההרשמה עצמה נשארת פתוחה (אי אפשר לאמת כתובת לפני
+    // שיש חשבון), אבל הנתונים נעולים עד שהכתובת אושרה.
     match /households/{householdId}/{document=**} {
       allow read, write: if request.auth != null
+        && householdOf() == householdId
+        && isMember(householdId)
+        && verified();
+    }
+
+    // החריג היחיד לאימות: פרופיל התינוק/ת נכתב בשנייה שבה המשפחה
+    // נפתחת, לפני שהמשתמש בכלל הספיק לראות את המייל. בלי החריג
+    // ההרשמה נשברת באמצע — החשבון והמשפחה נוצרים, והפרופיל לא.
+    //
+    // זו יצירה בלבד, ורק במשפחה של המשתמש עצמו: אין כאן דרך לגעת
+    // בנתונים של אף אחד אחר, ואין דרך לדרוס פרופיל קיים.
+    match /households/{householdId}/settings/babyProfile {
+      allow create: if request.auth != null
         && householdOf() == householdId
         && isMember(householdId);
     }
