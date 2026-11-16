@@ -6,6 +6,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   signOut,
+  deleteUser,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
@@ -38,6 +39,15 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** אימות מחדש עם הסיסמה. Firebase דורש התחברות טרייה לפני מחיקה. */
+  reauthenticate: (password: string) => Promise<void>;
+  /**
+   * מוחק את חשבון ההתחברות.
+   *
+   * נקרא אחרון, אחרי שהנתונים ב-Firestore כבר נוקו: אם סדר הפעולות
+   * מתהפך, המשתמש מאבד את ההרשאה לנקות ומשאיר נתונים יתומים.
+   */
+  deleteAuthAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -129,6 +139,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await updatePassword(current, newPassword);
   };
 
+  const reauthenticate = async (password: string) => {
+    if (DEMO_MODE) return;
+    const current = auth.currentUser;
+    if (!current?.email) throw new Error('auth/no-user');
+    const credential = EmailAuthProvider.credential(current.email, password);
+    await reauthenticateWithCredential(current, credential);
+  };
+
+  const deleteAuthAccount = async () => {
+    if (DEMO_MODE) {
+      setUser(null);
+      return;
+    }
+    const current = auth.currentUser;
+    if (!current) throw new Error('auth/no-user');
+    await deleteUser(current);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -142,6 +170,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetPassword,
         logout,
         changePassword,
+        reauthenticate,
+        deleteAuthAccount,
       }}
     >
       {children}

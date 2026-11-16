@@ -73,8 +73,8 @@ service cloud.firestore {
         && (request.auth.uid == userId || userEmail() == userId);
 
       // נכתב פעם אחת בלבד: או פתיחת משפחה חדשה שמזההּ הוא מזהה היוצר,
-      // או הצטרפות עם הזמנה תקפה. בלי עדכון ובלי מחיקה — מי שכבר שויך
-      // לא יכול להעביר את עצמו למשפחה אחרת.
+      // או הצטרפות עם הזמנה תקפה. אין עדכון — מי שכבר שויך לא יכול
+      // להעביר את עצמו למשפחה אחרת. מחיקה עצמית כן, ראו למטה.
       allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.householdId is string
@@ -82,7 +82,12 @@ service cloud.firestore {
           request.resource.data.householdId == request.auth.uid
           || validInvite(request.resource.data.inviteCode, request.resource.data.householdId)
         );
-      allow update, delete: if false;
+      allow update: if false;
+
+      // מחיקה עצמית בלבד, כחלק ממחיקת חשבון. שני הנתיבים נתמכים:
+      // המסמך לפי מזהה, והמסמך הישן לפי אימייל.
+      allow delete: if request.auth != null
+        && (request.auth.uid == userId || userEmail() == userId);
     }
 
     match /households/{householdId} {
@@ -100,7 +105,18 @@ service cloud.firestore {
         && request.resource.data.members.size() <= 3
         && request.resource.data.createdBy == resource.data.createdBy;
 
-      allow delete: if false;
+      // יציאה מהמשפחה, כחלק ממחיקת חשבון: רק הסרה של עצמך, ורק
+      // שלך. ההשוואה ל-removeAll היא מה שמונע הסרה של בן משפחה אחר
+      // או שינוי הרשימה לכל דבר אחר.
+      allow update: if request.auth != null
+        && isMember(householdId)
+        && request.resource.data.members == resource.data.members.removeAll([request.auth.uid])
+        && request.resource.data.createdBy == resource.data.createdBy;
+
+      // מחיקת המשפחה מותרת רק לחבר האחרון שנשאר בה, כשהוא מוחק את
+      // עצמו. כל עוד יש עוד מישהו, התיעוד שייך גם לו.
+      allow delete: if request.auth != null
+        && resource.data.members == [request.auth.uid];
     }
 
     match /invites/{code} {
@@ -130,7 +146,11 @@ service cloud.firestore {
     // בלי האימות, מי שנרשם עם כתובת שאינה שלו יכול לפתוח משפחה ולכתוב
     // לתוכה בלי גבול. ההרשמה עצמה נשארת פתוחה (אי אפשר לאמת כתובת לפני
     // שיש חשבון), אבל הנתונים נעולים עד שהכתובת אושרה.
-    match /households/{householdId}/{document=**} {
+    // {sub}/{document=**} ולא {document=**}: התבנית הקצרה תופסת גם את
+    // מסמך המשפחה עצמו, ואז כל חבר היה יכול למחוק את המשפחה או לשכתב
+    // את רשימת החברים — כולל להסיר את בן הזוג שלו. מסמך המשפחה מנוהל
+    // אך ורק בבלוק הייעודי שלו למעלה.
+    match /households/{householdId}/{sub}/{document=**} {
       allow read, write: if request.auth != null
         && householdOf() == householdId
         && isMember(householdId)

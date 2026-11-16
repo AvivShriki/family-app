@@ -16,6 +16,7 @@ import InviteWelcomeScreen from '../screens/InviteWelcomeScreen';
 import ChatScreen from '../screens/ChatScreen';
 import MedicationsScreen from '../screens/baby/MedicationsScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BabyNavigator from '../screens/baby/BabyNavigator';
 import { colors, spacing, radius } from '../config/theme';
@@ -133,6 +134,11 @@ export default function AppNavigator() {
               name="Medications"
               component={MedicationsScreen}
               options={{ title: 'תרופות ותוספים 💊' }}
+            />
+            <Stack.Screen
+              name="DeleteAccount"
+              component={DeleteAccountScreen}
+              options={{ title: 'מחיקת החשבון' }}
             />
           </>
         )}

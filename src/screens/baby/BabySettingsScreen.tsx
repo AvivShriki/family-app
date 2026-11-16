@@ -200,6 +200,22 @@ export default function BabySettingsScreen({ navigation }: any) {
         <Ionicons name="log-out-outline" size={18} color={colors.danger} />
       </TouchableOpacity>
 
+      {/* מחיקה אינה יציאה, ולכן היא לא יושבת לידה: יש ביניהן מרווח
+          והסבר, כדי שלא תילחץ בטעות במקום להתנתק */}
+      <TouchableOpacity
+        style={[styles.accountRow, styles.deleteRow]}
+        onPress={() => navigation.navigate('DeleteAccount')}
+        accessibilityRole="button"
+        accessibilityLabel="מחיקת החשבון"
+      >
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.accountLabel, styles.logoutLabel]}>מחיקת החשבון</Text>
+          <Text style={styles.deleteHint}>החשבון נמחק לצמיתות</Text>
+        </View>
+        <Ionicons name="trash-outline" size={18} color={colors.danger} />
+      </TouchableOpacity>
+
       <DatePickerModal
         visible={pickerOpen}
         value={birthDate}
@@ -302,6 +318,8 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   logoutLabel: { color: colors.danger },
+  deleteRow: { marginTop: spacing.lg },
+  deleteHint: { fontSize: 12, color: colors.textMuted, textAlign: 'right', marginTop: 1 },
   dateText: { fontSize: 15, color: colors.text, textAlign: 'right' },
   datePlaceholder: { color: colors.textMuted },
   agePreview: {
