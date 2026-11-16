@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 import { colors, spacing, radius, font, shadow } from '../config/theme';
@@ -35,7 +36,7 @@ function errorText(code: string) {
 }
 
 export default function ChangePasswordScreen({ navigation }: any) {
-  const { user, changePassword } = useAuth();
+  const { user, changePassword, resetPassword } = useAuth();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -43,6 +44,10 @@ export default function ChangePasswordScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  // איפוס במייל, למי שאינו זוכר את הסיסמה הנוכחית ולכן לא יכול
+  // למלא את הטופס שמעל
+  const [resetSent, setResetSent] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // שגיאה שנשארת על המסך בזמן שמתקנים את השדה מבלבלת יותר משהיא עוזרת
   const edit = (setter: (v: string) => void) => (v: string) => {
@@ -80,14 +85,26 @@ export default function ChangePasswordScreen({ navigation }: any) {
     }
   };
 
+  const onForgot = async () => {
+    if (!user?.email || resetting) return;
+    setError('');
+    setResetting(true);
+    try {
+      await resetPassword(user.email);
+      setResetSent(true);
+    } catch {
+      setError('שליחת הקישור נכשלה. בדקו את החיבור ונסו שוב');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (done) {
     return (
       <View style={styles.centered}>
         <Text style={styles.doneEmoji}>🔐</Text>
         <Text style={styles.doneTitle}>הסיסמה הוחלפה</Text>
-        <Text style={styles.doneBody}>
-          בכניסה הבאה מכל מכשיר תשתמשו בסיסמה החדשה.
-        </Text>
+        <Text style={styles.doneBody}>בכניסה הבאה מכל מכשיר תשתמשו בסיסמה החדשה.</Text>
         <Button
           label="חזרה"
           onPress={() => navigation.goBack()}
@@ -156,9 +173,32 @@ export default function ChangePasswordScreen({ navigation }: any) {
           />
         </View>
 
-        <Text style={styles.hint}>
-          מי ששכח את הסיסמה לגמרי לא יכול לאפס אותה כאן — צריך לפנות למי שפתח את החשבון.
-        </Text>
+        {/* מי שאינו זוכר את הסיסמה הנוכחית לא יכול למלא את הטופס שמעל.
+            קודם כתוב כאן שצריך לפנות למי שפתח את החשבון — זה כבר לא
+            נכון מאז שנוסף איפוס עצמי. */}
+        <View style={styles.forgotCard}>
+          <Text style={styles.forgotTitle}>לא זוכרים את הסיסמה הנוכחית?</Text>
+          {resetSent ? (
+            <View style={styles.sentRow}>
+              <Ionicons name="checkmark-circle" size={17} color={colors.success} />
+              <Text style={styles.sentText}>
+                שלחנו קישור לאיפוס אל {user?.email}. כדאי להציץ גם בספאם.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.forgotBody}>
+                נשלח קישור לכתובת שלכם, ותוכלו לבחור סיסמה חדשה בלי לדעת את הישנה.
+              </Text>
+              <Button
+                label="שליחת קישור לאיפוס"
+                variant="secondary"
+                onPress={onForgot}
+                loading={resetting}
+              />
+            </>
+          )}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -213,6 +253,36 @@ const styles = StyleSheet.create({
     color: colors.danger,
     textAlign: 'center',
     marginBottom: spacing.xs,
+  },
+  forgotCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginTop: spacing.md,
+    ...shadow.soft,
+  },
+  forgotTitle: {
+    fontSize: font.bodyLg,
+    fontWeight: font.weight.bold,
+    color: colors.text,
+    textAlign: 'right',
+    marginBottom: spacing.xs,
+  },
+  forgotBody: {
+    fontSize: font.small,
+    color: colors.textLight,
+    textAlign: 'right',
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  sentRow: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: spacing.xs + 2 },
+  sentText: {
+    flex: 1,
+    fontSize: font.small,
+    fontWeight: font.weight.semibold,
+    color: colors.success,
+    textAlign: 'right',
+    lineHeight: 19,
   },
   hint: {
     fontSize: font.small,
