@@ -5,16 +5,19 @@ import { colors, radius, font, spacing } from '../../config/theme';
 import TouchPulse from './TouchPulse';
 
 /**
- * ייצוג מוקטן של מסך האפליקציה, מצויר בקוד.
+ * ייצוג של מסך האפליקציה, מצויר בקוד.
  *
- * בכוונה לא צילומי מסך: צילום מתיישן בשקט בכל שינוי עיצוב, והוא גם
- * מחייב להמציא נתוני דמה או לחשוף נתונים אמיתיים. האיור כאן מצייר
- * את הצורה בלבד — בלי שום רישום של תינוקת אמיתית.
+ * בכוונה לא צילום מסך: צילום מתיישן בשקט בכל שינוי עיצוב, וגם מחייב
+ * לחשוף רישומים אמיתיים של התינוקת. התוכן כאן הוא דוגמה להמחשה —
+ * שעות ומינונים סבירים שממחישים איך נראה רישום, ולא נתון של אף אחד.
+ *
+ * הגרסה הראשונה הציגה פסים אפורים במקום תוכן. היא הייתה "נקייה" אבל
+ * לא הסבירה כלום: אי אפשר היה להבין מהאיור מה האפליקציה עושה.
  */
 
-const MINI_WIDTH = 188;
-const MINI_HEIGHT = 268;
-const MINI_TABBAR_HEIGHT = 46;
+const MINI_WIDTH = 278;
+const MINI_HEIGHT = 300;
+const MINI_TABBAR_HEIGHT = 52;
 
 type TabDef = { icon: keyof typeof Ionicons.glyphMap; label: string };
 
@@ -38,8 +41,7 @@ const RIGHT_TABS: TabDef[] = [
 function Pulse({ color }: { color?: string }) {
   return (
     <View pointerEvents="none" style={styles.pulseHost}>
-      {/* 30 ולא יותר: הטבעת מתרחבת עד פי 1.5, וסרגל הלשוניות בגובה 46 */}
-      <TouchPulse size={30} color={color} />
+      <TouchPulse size={38} color={color} />
     </View>
   );
 }
@@ -58,7 +60,7 @@ export function MiniTabBar({
     const focused = t.label === active;
     return (
       <View key={t.label} style={styles.tabItem}>
-        <Ionicons name={t.icon} size={13} color={focused ? colors.pinkAccent : colors.textMuted} />
+        <Ionicons name={t.icon} size={17} color={focused ? colors.pinkAccent : colors.textMuted} />
         <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{t.label}</Text>
         {pulseOn === t.label ? <Pulse /> : null}
       </View>
@@ -78,9 +80,38 @@ export function MiniTabBar({
   );
 }
 
-/** שורת תוכן גנרית — פס אפור שמרמז על טקסט בלי להמציא טקסט */
-export function MiniRow({ width = '70%', tall }: { width?: number | string; tall?: boolean }) {
-  return <View style={[styles.row, { width: width as never }, tall && styles.rowTall]} />;
+/**
+ * שורת רישום לדוגמה.
+ *
+ * אותו מבנה כמו במסך האמיתי: עיגול פסטל עם אייקון בימין, שם הרישום
+ * והפירוט לידו, והשעה בשמאל. האימוג'י שמור לשבבי בחירת הסוג, שבהם
+ * הוא באמת מופיע באפליקציה.
+ */
+export function MiniLogRow({
+  icon,
+  tint,
+  label,
+  meta,
+  time,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
+  label: string;
+  meta?: string;
+  time: string;
+}) {
+  return (
+    <View style={styles.logRow}>
+      <View style={[styles.logBadge, { backgroundColor: tint }]}>
+        <Ionicons name={icon} size={15} color={colors.text} />
+      </View>
+      <View style={styles.logTexts}>
+        <Text style={styles.logLabel}>{label}</Text>
+        {meta ? <Text style={styles.logMeta}>{meta}</Text> : null}
+      </View>
+      <Text style={styles.logTime}>{time}</Text>
+    </View>
+  );
 }
 
 export default function MiniScreen({
@@ -124,7 +155,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   header: {
-    paddingVertical: spacing.sm,
+    paddingVertical: 7,
     paddingHorizontal: spacing.sm,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
@@ -132,25 +163,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerText: {
-    fontSize: font.caption,
+    fontSize: 12,
     fontWeight: font.weight.semibold,
     color: colors.text,
   },
   body: {
     flex: 1,
-    padding: spacing.sm,
-    gap: 6,
+    padding: 10,
+    gap: 7,
   },
-  row: {
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: colors.creamDark,
-  },
-  rowTall: {
-    height: 26,
+  logRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
+  },
+  logBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logTexts: { flex: 1 },
+  logLabel: {
+    fontSize: 12,
+    fontWeight: font.weight.semibold,
+    color: colors.text,
+  },
+  logMeta: {
+    fontSize: 10,
+    color: colors.textLight,
+  },
+  logTime: {
+    fontSize: 11,
+    fontWeight: font.weight.semibold,
+    color: colors.textLight,
   },
   tabBar: {
     height: MINI_TABBAR_HEIGHT,
@@ -160,13 +213,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingHorizontal: 2,
+    paddingHorizontal: 3,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   // לא StyleSheet.absoluteFillObject — הוא לא קיים בגרסת ה-RN של הפרויקט
   pulseHost: {
@@ -179,7 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabLabel: {
-    fontSize: 7,
+    fontSize: 9,
     color: colors.textMuted,
   },
   tabLabelActive: {
@@ -187,18 +240,18 @@ const styles = StyleSheet.create({
     fontWeight: font.weight.semibold,
   },
   fab: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: colors.pinkAccent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 2,
+    marginHorizontal: 3,
   },
   fabText: {
     color: colors.white,
-    fontSize: 20,
-    lineHeight: 23,
+    fontSize: 25,
+    lineHeight: 29,
     fontWeight: font.weight.bold,
   },
 });

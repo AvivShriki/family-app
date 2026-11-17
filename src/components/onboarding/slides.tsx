@@ -1,16 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, font, spacing } from '../../config/theme';
-import MiniScreen, { MiniRow } from './MiniScreen';
+import { colors, radius, font } from '../../config/theme';
+import MiniScreen, { MiniLogRow } from './MiniScreen';
 import TouchPulse from './TouchPulse';
 
 /**
  * ארבע השקופיות של ההדרכה.
  *
  * כל איור מצויר בקוד ומחקה את הצורה של המסך האמיתי — אותו סרגל
- * לשוניות, אותם סוגי רישום, אותם צבעים מהטוקנים. אין כאן צילומי
- * מסך ואין נתוני דמה של רישומים: רק פסים אפורים שמרמזים על תוכן.
+ * לשוניות, אותם סוגי רישום, אותם צבעים מהטוקנים.
+ *
+ * התוכן הוא דוגמה להמחשה: שעות ומינונים סבירים שמראים איך נראה
+ * רישום בפועל. זה לא נתון של אף משפחה, והוא לא מוצג בשום מקום מחוץ
+ * להדרכה. גרסה קודמת הציגה פסים אפורים במקום טקסט, ואי אפשר היה
+ * להבין ממנה מה האפליקציה בכלל עושה.
  */
 
 export type Slide = {
@@ -28,15 +32,25 @@ const LOG_TYPES = [
   { emoji: '📝', label: 'הערה' },
 ];
 
-/** 1 — איפה הכפתור שמתעדים בו */
+/** 1 — איפה הכפתור שמתעדים בו, ואיך נראה יומן מלא */
 function SlideLog() {
   return (
-    <MiniScreen title="היומן של ליבי" activeTab="יומן" pulseFab>
-      <MiniRow width="55%" />
-      <MiniRow tall />
-      <MiniRow tall />
-      <MiniRow width="40%" />
-      <MiniRow tall />
+    <MiniScreen title="היומן · היום" activeTab="יומן" pulseFab>
+      <MiniLogRow
+        icon="cafe-outline"
+        tint={colors.pink}
+        label="האכלה"
+        meta="180 מ״ל"
+        time="11:00"
+      />
+      <MiniLogRow
+        icon="moon-outline"
+        tint={colors.blue}
+        label="שינה"
+        meta="1ש׳ 15ד׳"
+        time="09:15"
+      />
+      <MiniLogRow icon="body-outline" tint={colors.success} label="חיתול" meta="קקי" time="08:40" />
     </MiniScreen>
   );
 }
@@ -52,63 +66,74 @@ function SlideChoose() {
             <Text style={[styles.chipLabel, i === 0 && styles.chipLabelActive]}>{t.label}</Text>
             {i === 0 ? (
               <View pointerEvents="none" style={styles.chipPulse}>
-                <TouchPulse size={34} />
+                <TouchPulse size={46} />
               </View>
             ) : null}
           </View>
         ))}
       </View>
-      <View style={styles.fieldRow}>
-        <Ionicons name="water-outline" size={12} color={colors.blueAccent} />
-        <MiniRow width="55%" />
+
+      <View style={styles.field}>
+        <Ionicons name="water-outline" size={14} color={colors.blueAccent} />
+        <Text style={styles.fieldLabel}>כמות</Text>
+        <Text style={styles.fieldValue}>180 מ״ל</Text>
       </View>
-      <View style={styles.fieldRow}>
-        <Ionicons name="time-outline" size={12} color={colors.textLight} />
-        <MiniRow width="40%" />
+      <View style={styles.field}>
+        <Ionicons name="time-outline" size={14} color={colors.textLight} />
+        <Text style={styles.fieldLabel}>שעה</Text>
+        <Text style={styles.fieldValue}>11:00</Text>
       </View>
-      <View style={styles.saveBtn}>
-        <Text style={styles.saveText}>שמירה</Text>
+
+      <View style={styles.primaryBtn}>
+        <Text style={styles.primaryBtnText}>שמירה</Text>
       </View>
     </MiniScreen>
   );
 }
 
-/** 3 — איפה רואים את היום, את החודש ואת הסיכום */
+/** 3 — איפה רואים את החודש ואת הסיכום */
 function SlideNavigate() {
+  // נקודות על ימים שתועדו בהם רישומים — כמו במסך החודשי
+  const marked = new Set([2, 3, 5, 8, 9, 12, 15, 16, 17, 20, 22, 23, 26, 27]);
   return (
-    <MiniScreen title="החודש של ליבי" activeTab="חודש" pulseOn="סיכום">
+    <MiniScreen title="החודש" activeTab="חודש" pulseOn="סיכום">
       <View style={styles.grid}>
-        {Array.from({ length: 21 }).map((_, i) => (
-          <View key={i} style={[styles.gridCell, i % 5 === 2 && styles.gridCellMarked]} />
-        ))}
+        {/* 28 = ארבע שורות שלמות של שבעה. מספר אחר משאיר שורה קטועה
+            שנראית כמו תקלה ולא כמו לוח שנה. */}
+        {Array.from({ length: 28 }).map((_, i) => {
+          const day = i + 1;
+          const on = marked.has(day);
+          return (
+            <View key={day} style={[styles.gridCell, on && styles.gridCellOn]}>
+              <Text style={[styles.gridDay, on && styles.gridDayOn]}>{day}</Text>
+              {on ? <View style={styles.gridDot} /> : null}
+            </View>
+          );
+        })}
       </View>
-      <MiniRow width="50%" />
-      <MiniRow tall />
+      <View style={styles.statRow}>
+        <Text style={styles.statValue}>6</Text>
+        <Text style={styles.statLabel}>ארוחות ביום בממוצע</Text>
+      </View>
     </MiniScreen>
   );
 }
 
-/** 4 — שני הורים, אותה תינוקת */
+/** 4 — שני הורים, אותו יומן */
 function SlideFamily() {
   return (
-    <MiniScreen title="המשפחה שלנו" activeTab="הגדרות" pulseOn="הגדרות">
-      <View style={styles.avatars}>
-        <View style={[styles.avatar, { backgroundColor: colors.pink }]}>
-          <Ionicons name="person" size={14} color={colors.pinkAccent} />
-        </View>
-        <View style={[styles.avatar, { backgroundColor: colors.blue }]}>
-          <Ionicons name="person" size={14} color={colors.blueAccent} />
-        </View>
-      </View>
+    <MiniScreen title="הודעות למשפחה" activeTab="הגדרות" pulseOn="הגדרות">
       <View style={styles.bubbleRight}>
-        <MiniRow width="80%" />
+        <Text style={styles.bubbleName}>אמא</Text>
+        <Text style={styles.bubbleText}>אכלה טוב והלכה לישון 💤</Text>
       </View>
       <View style={styles.bubbleLeft}>
-        <MiniRow width="60%" />
+        <Text style={styles.bubbleText}>מעולה, אני מתעד את זה</Text>
       </View>
-      <View style={styles.inviteBtn}>
-        <Ionicons name="person-add-outline" size={11} color={colors.white} />
-        <Text style={styles.saveText}>הוספת בן משפחה</Text>
+
+      <View style={styles.primaryBtn}>
+        <Ionicons name="person-add-outline" size={13} color={colors.white} />
+        <Text style={styles.primaryBtnText}>הוספת בן משפחה</Text>
       </View>
     </MiniScreen>
   );
@@ -130,13 +155,13 @@ export const SLIDES: Slide[] = [
   {
     key: 'navigate',
     title: 'רואים את התמונה המלאה',
-    body: '"יומן" הוא היום הנוכחי, "חודש" מראה את כל החודש, ו"סיכום" אוסף את המגמות.',
+    body: '"חודש" מראה באילו ימים תועד משהו, ו"סיכום" הופך את זה לממוצעים ומגמות.',
     render: () => <SlideNavigate />,
   },
   {
     key: 'family',
     title: 'וכל המשפחה באותו מקום',
-    body: 'מההגדרות אפשר לצרף בן משפחה, ואז שניכם מתעדים לאותו יומן ומשאירים הודעות.',
+    body: 'מההגדרות מצרפים בן משפחה, ואז שניכם מתעדים לאותו יומן ומשאירים הודעות.',
     render: () => <SlideFamily />,
   },
 ];
@@ -144,15 +169,14 @@ export const SLIDES: Slide[] = [
 const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
+    gap: 6,
     justifyContent: 'center',
   },
   chip: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 38,
-    paddingVertical: 5,
+    flex: 1,
+    paddingVertical: 8,
     borderRadius: radius.sm,
     backgroundColor: colors.white,
     borderWidth: 1,
@@ -171,90 +195,107 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chipEmoji: { fontSize: 13 },
-  chipLabel: { fontSize: 7, color: colors.textMuted },
+  chipEmoji: { fontSize: 18 },
+  chipLabel: { fontSize: 9, color: colors.textMuted, marginTop: 2 },
   chipLabelActive: { color: colors.text, fontWeight: font.weight.semibold },
-  fieldRow: {
+  field: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 7,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 9,
   },
-  saveBtn: {
+  fieldLabel: { fontSize: 11, color: colors.textLight, flex: 1 },
+  fieldValue: { fontSize: 12, fontWeight: font.weight.semibold, color: colors.text },
+  primaryBtn: {
     marginTop: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: colors.pinkAccent,
     borderRadius: radius.full,
-    paddingVertical: 7,
+    paddingVertical: 9,
   },
-  saveText: {
+  primaryBtnText: {
     color: colors.white,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: font.weight.semibold,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 3,
+    gap: 4,
     justifyContent: 'center',
   },
   gridCell: {
-    width: 20,
-    height: 16,
-    borderRadius: 4,
+    width: 30,
+    height: 28,
+    borderRadius: 6,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  gridCellMarked: {
-    backgroundColor: colors.pink,
-    borderColor: colors.pinkDark,
-  },
-  avatars: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginBottom: 2,
-  },
-  avatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  gridCellOn: {
+    backgroundColor: colors.pink,
+    borderColor: colors.pinkDark,
+  },
+  gridDay: { fontSize: 10, color: colors.textMuted },
+  gridDayOn: { color: colors.text, fontWeight: font.weight.semibold },
+  gridDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.pinkAccent,
+    marginTop: 1,
+  },
+  statRow: {
+    marginTop: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: 8,
+  },
+  statValue: {
+    fontSize: 17,
+    fontWeight: font.weight.bold,
+    color: colors.pinkAccent,
+  },
+  statLabel: { fontSize: 11, color: colors.textLight },
   bubbleRight: {
     alignSelf: 'flex-end',
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    padding: 6,
-    width: '80%',
+    borderRadius: radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    maxWidth: '85%',
   },
   bubbleLeft: {
     alignSelf: 'flex-start',
     backgroundColor: colors.pink,
-    borderRadius: radius.sm,
-    padding: 6,
-    width: '65%',
+    borderRadius: radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    maxWidth: '80%',
   },
-  inviteBtn: {
-    marginTop: 'auto',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    backgroundColor: colors.pinkAccent,
-    borderRadius: radius.full,
-    paddingVertical: 7,
+  bubbleName: {
+    fontSize: 9,
+    color: colors.pinkAccent,
+    fontWeight: font.weight.semibold,
+    marginBottom: 1,
   },
+  bubbleText: { fontSize: 11, color: colors.text, lineHeight: 16 },
 });
