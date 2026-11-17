@@ -83,18 +83,20 @@ export function MiniTabBar({
 /**
  * שורת רישום לדוגמה.
  *
- * אותו מבנה כמו במסך האמיתי: עיגול פסטל עם אייקון בימין, שם הרישום
- * והפירוט לידו, והשעה בשמאל. האימוג'י שמור לשבבי בחירת הסוג, שבהם
- * הוא באמת מופיע באפליקציה.
+ * אותו מבנה כמו במסך האמיתי: אימוג'י בתוך עיגול פסטל בימין, שם
+ * הרישום והפירוט לידו, והשעה בשמאל.
+ *
+ * האימוג'י חשוב לדיוק — גרסה קודמת החליפה אותו באייקוני Ionicons,
+ * וזה נראה נקי אבל כבר לא דמה למסך שהמשתמש יפגוש.
  */
 export function MiniLogRow({
-  icon,
+  emoji,
   tint,
   label,
   meta,
   time,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  emoji: string;
   tint: string;
   label: string;
   meta?: string;
@@ -103,7 +105,7 @@ export function MiniLogRow({
   return (
     <View style={styles.logRow}>
       <View style={[styles.logBadge, { backgroundColor: tint }]}>
-        <Ionicons name={icon} size={15} color={colors.text} />
+        <Text style={styles.logEmoji}>{emoji}</Text>
       </View>
       <View style={styles.logTexts}>
         <Text style={styles.logLabel}>{label}</Text>
@@ -184,12 +186,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   logBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  logEmoji: { fontSize: 15 },
   logTexts: { flex: 1 },
   logLabel: {
     fontSize: 12,

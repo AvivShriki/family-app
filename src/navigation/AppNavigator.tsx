@@ -121,7 +121,7 @@ export default function AppNavigator() {
                       activeOpacity={0.7}
                     >
                       <View style={homeButtonStyles.pill}>
-                        <Ionicons name="home" size={15} color={colors.text} />
+                        <Ionicons name="home" size={18} color={colors.text} />
                         <Text style={homeButtonStyles.label}>בית</Text>
                       </View>
                     </TouchableOpacity>
@@ -162,17 +162,27 @@ export default function AppNavigator() {
 }
 
 // הכפתור הוא שבב, לא טקסט מרחף: הרקע נותן לו גבול ברור ומסמן שהוא
-// נלחץ. השבב עצמו 32 בגובה, ועטוף במגע של 44 כדי לעמוד ביעד המגע.
+// נלחץ. השבב 38 בגובה ועטוף במגע של 48, מעל יעד המגע המומלץ.
+//
+// ורוד פסטל ולא בז': זו השפה של האפליקציה — אותו רקע כמו עיגולי
+// הרישום ושבבי הבחירה. במכוון לא ורוד מלא כמו הכפתור הראשי, כי
+// הפעולה הראשית במסך הזה היא התיעוד (ה-"+"), וכפתור בית רועש היה
+// מתחרה בו על העין.
+//
+// הטקסט נשאר חום כהה ולא ורוד: חום על הוורוד הפסטלי נותן 8.6:1,
+// בעוד ורוד על ורוד נותן 3.5:1 — מתחת לסף של טקסט רגיל.
 const homeButtonStyles = StyleSheet.create({
-  touch: { height: 44, justifyContent: 'center', paddingLeft: spacing.xs },
+  touch: { height: 48, justifyContent: 'center', paddingLeft: spacing.xs },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    height: 32,
-    paddingHorizontal: spacing.sm + 2,
+    gap: 6,
+    height: 38,
+    paddingHorizontal: spacing.md - 2,
     borderRadius: radius.full,
-    backgroundColor: colors.creamDark,
+    backgroundColor: colors.pink,
+    borderWidth: 1,
+    borderColor: colors.pinkDark,
   },
-  label: { fontSize: 13, fontWeight: '600', color: colors.text },
+  label: { fontSize: 15, fontWeight: '700', color: colors.text },
 });

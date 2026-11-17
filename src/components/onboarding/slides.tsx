@@ -36,21 +36,10 @@ const LOG_TYPES = [
 function SlideLog() {
   return (
     <MiniScreen title="היומן · היום" activeTab="יומן" pulseFab>
-      <MiniLogRow
-        icon="cafe-outline"
-        tint={colors.pink}
-        label="האכלה"
-        meta="180 מ״ל"
-        time="11:00"
-      />
-      <MiniLogRow
-        icon="moon-outline"
-        tint={colors.blue}
-        label="שינה"
-        meta="1ש׳ 15ד׳"
-        time="09:15"
-      />
-      <MiniLogRow icon="body-outline" tint={colors.success} label="חיתול" meta="קקי" time="08:40" />
+      {/* אותם אימוג'י וצבעים כמו בשורות היומן האמיתיות */}
+      <MiniLogRow emoji="🍼" tint={colors.pink} label="ארוחה" meta="180 מ״ל" time="11:00" />
+      <MiniLogRow emoji="😴" tint={colors.blue} label="שינה" meta="1ש׳ 15ד׳" time="09:15" />
+      <MiniLogRow emoji="💩" tint={colors.creamDark} label="חיתול" meta="קקי" time="08:40" />
     </MiniScreen>
   );
 }
