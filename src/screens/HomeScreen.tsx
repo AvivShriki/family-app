@@ -17,7 +17,7 @@ import SummaryCards, { CardDef } from './home/SummaryCards';
 import RecentActivity from './home/RecentActivity';
 import ComingSoon from './home/ComingSoon';
 import SoftIcon from './home/SoftIcon';
-import { shortDuration } from './home/activity';
+import { formatDuration } from './home/activity';
 import HomeTabBar, { TAB_BAR_HEIGHT } from './home/HomeTabBar';
 
 interface Props {
@@ -91,7 +91,7 @@ export default function HomeScreen({ navigation }: Props) {
           tint: c.roseDeep,
           surface: c.roseSoft,
           value: stats.totalMl,
-          suffix: 'מ"ל',
+          suffix: 'מיליליטר',
           label: 'האכלה היום',
           onPress: goJournal,
         }
@@ -110,7 +110,8 @@ export default function HomeScreen({ navigation }: Props) {
       tint: c.blueDeep,
       surface: c.blue,
       value: stats.sleepMinutes,
-      display: (m) => (m > 0 ? shortDuration(m * 60000) : '—'),
+      display: (m) => (m > 0 ? formatDuration(m * 60000) : '—'),
+      valueStyle: 'text',
       label: 'שינה היום',
       onPress: goJournal,
     },

@@ -43,13 +43,28 @@ export const metaOf = (type: BabyLog['type']): Meta => META[type] ?? META.note;
 
 const DIAPER: Record<string, string> = { wet: 'שתן', dirty: 'קקי', both: 'שתן + קקי' };
 
-/** "2ש׳ 30ד׳" — נקודתיים בשורת מונים נקראות כשעון */
-export function shortDuration(ms: number): string {
+const hoursWord = (h: number) => (h === 1 ? 'שעה' : h === 2 ? 'שעתיים' : `${h} שעות`);
+const minutesWord = (m: number) => (m === 1 ? 'דקה' : m === 2 ? 'שתי דקות' : `${m} דקות`);
+
+/**
+ * משך בזמן, במילים מלאות: "שעתיים ו-40 דקות".
+ *
+ * קודם היה "2ש׳ 40ד׳". הקיצורים חסכו מקום אבל דרשו פענוח, והגרש
+ * הקטן נבלע בקריאה מהירה — בדיוק מה שהורה עייף עושה.
+ *
+ * עברית סופרת אחרת בכל כמות: שעה, שעתיים, שלוש שעות. צורת יחיד
+ * וזוגי אינן "מקרה קצה" כאן אלא הערכים השכיחים ביותר בשינה אחת.
+ */
+export function formatDuration(ms: number): string {
   const min = Math.round(ms / 60000);
+  if (min <= 0) return 'פחות מדקה';
   const h = Math.floor(min / 60);
   const m = min % 60;
-  if (h > 0) return m > 0 ? `${h}ש׳ ${m}ד׳` : `${h}ש׳`;
-  return `${m}ד׳`;
+  if (h === 0) return minutesWord(m);
+  if (m === 0) return hoursWord(h);
+  // מקף לפני ספרה ("ו-40 דקות") אבל לא לפני מילה ("ודקה")
+  const mins = minutesWord(m);
+  return `${hoursWord(h)} ${/^\d/.test(mins) ? 'ו-' : 'ו'}${mins}`;
 }
 
 /**
@@ -67,10 +82,10 @@ export function titleOf(log: BabyLog, medName?: string): string {
 /** הפרט שמוסיף מידע מעבר לשם ולשעה */
 export function detailOf(log: BabyLog): string {
   const parts: string[] = [];
-  if (log.type === 'feeding' && log.amountMl) parts.push(`${log.amountMl} מ"ל`);
+  if (log.type === 'feeding' && log.amountMl) parts.push(`${log.amountMl} מיליליטר`);
   if (log.type === 'sleep') {
     parts.push(
-      log.endTimestamp ? shortDuration(log.endTimestamp - log.timestamp) : 'עוד לא נרשמה התעוררות',
+      log.endTimestamp ? formatDuration(log.endTimestamp - log.timestamp) : 'עוד לא נרשמה התעוררות',
     );
   }
   if (log.type === 'diaper' && log.diaperType) parts.push(DIAPER[log.diaperType] ?? '');
