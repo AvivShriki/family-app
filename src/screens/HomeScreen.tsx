@@ -17,7 +17,7 @@ import SummaryCards, { CardDef } from './home/SummaryCards';
 import RecentActivity from './home/RecentActivity';
 import ComingSoon from './home/ComingSoon';
 import SoftIcon from './home/SoftIcon';
-import { formatDuration } from './home/activity';
+import { durationParts } from './home/activity';
 import HomeTabBar, { TAB_BAR_HEIGHT } from './home/HomeTabBar';
 
 interface Props {
@@ -79,9 +79,11 @@ export default function HomeScreen({ navigation }: Props) {
   const medName = (id?: string) => medications.find((m) => m.id === id)?.name;
   const lastMessage = messages[messages.length - 1];
 
+  const sleep = durationParts(stats.sleepMinutes * 60000);
+
   /**
-   * כרטיס ההאכלה מציג מ"ל כשיש מה למדוד, ומספר ארוחות כשהיום היה
-   * כולו הנקה — "0 מ"ל" אחרי ארבע הנקות הוא מספר נכון שמשקר.
+   * כרטיס ההאכלה מציג מיליליטרים כשיש מה למדוד, ומספר ארוחות כשהיום
+   * היה כולו הנקה — "0 מיליליטר" אחרי ארבע הנקות הוא מספר נכון שמשקר.
    */
   const cards: CardDef[] = [
     stats.totalMl > 0
@@ -109,9 +111,11 @@ export default function HomeScreen({ navigation }: Props) {
       icon: 'weather-night',
       tint: c.blueDeep,
       surface: c.blue,
-      value: stats.sleepMinutes,
-      display: (m) => (m > 0 ? formatDuration(m * 60000) : '—'),
-      valueStyle: 'text',
+      // המספר והיחידה מופרדים, כדי לשמור על אותו מבנה כמו שאר
+      // האריחים: ספרה גדולה למעלה והמילים מתחתיה.
+      value: sleep.value,
+      display: (n) => (stats.sleepMinutes > 0 ? String(n) : '—'),
+      suffix: stats.sleepMinutes > 0 ? sleep.unit : undefined,
       label: 'שינה היום',
       onPress: goJournal,
     },

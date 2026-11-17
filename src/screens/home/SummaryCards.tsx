@@ -21,16 +21,9 @@ interface CardDef {
   surface: string;
   /** המספר להנפשה */
   value: number;
-  /** מה שמוצג בפועל, כשהערך אינו מספר פשוט (למשל "שעתיים ו-40 דקות") */
+  /** מה שמוצג במקום המספר עצמו (למשל "—" כשאין נתון) */
   display?: (animated: number) => string;
-  /**
-   * 'text' לערך שהוא משפט ולא מספר.
-   *
-   * גופן המונה הוא 24 ומיועד לספרה אחת או שתיים. משך בזמן במילים
-   * מלאות ארוך בהרבה, ובגודל הזה הוא נחתך בשורה אחת — ולכן מוצג
-   * קטן יותר ועל שתי שורות.
-   */
-  valueStyle?: 'metric' | 'text';
+  /** היחידה שמתחת למספר: "מיליליטר", "שעות ו-40 דקות" */
   suffix?: string;
   label: string;
   onPress: () => void;
@@ -50,11 +43,17 @@ function Card({ def, delay }: { def: CardDef; delay: number }) {
       >
         <View style={styles.card}>
           <SoftIcon icon={def.icon} tint={def.tint} surface={def.surface} size={40} />
-          <View style={styles.valueRow}>
-            <Text style={def.valueStyle === 'text' ? styles.valueText : t.metric} numberOfLines={2}>
-              {shown}
-            </Text>
-            {def.suffix ? <Text style={styles.suffix}>{def.suffix}</Text> : null}
+          <Text style={t.metric} numberOfLines={1}>
+            {shown}
+          </Text>
+          {/* שורת היחידה שומרת על גובהה גם כשהיא ריקה, אחרת התוויות
+              של שלושת האריחים יושבות בגבהים שונים והשורה נראית עקומה */}
+          <View style={styles.unitSlot}>
+            {def.suffix ? (
+              <Text style={styles.suffix} numberOfLines={2}>
+                {def.suffix}
+              </Text>
+            ) : null}
           </View>
           <Text style={[t.caption, styles.label]} numberOfLines={1}>
             {def.label}
@@ -90,11 +89,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     ...shadow.card,
   },
-  valueRow: { flexDirection: 'row-reverse', alignItems: 'baseline', gap: 2, flexShrink: 1 },
-  // 17 ולא 24: נמדד מול הפונט האמיתי ברוחב הפנימי (90px). המקרה
-  // הגרוע, "14 שעות ו-20 דקות", יוצא 145px — שתי שורות נוחות, והמילה
-  // הארוכה ביותר 60px. ב-24 זה היה נחתך.
-  valueText: { ...t.metric, fontSize: 17, lineHeight: 21, letterSpacing: 0 },
-  suffix: { ...t.caption, color: c.textSoft, fontWeight: '700' },
+  // שתי שורות של caption, כדי ש"שעות ו-40 דקות" לא ידחף את התווית
+  unitSlot: { minHeight: 15, justifyContent: 'center' },
+  suffix: { ...t.caption, color: c.textSoft, fontWeight: '700', textAlign: 'center' },
   label: { textAlign: 'center' },
 });
