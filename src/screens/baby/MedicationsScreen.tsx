@@ -25,6 +25,9 @@ export default function MedicationsScreen() {
         medication={editing === 'new' ? null : editing}
         onCancel={() => setEditing(null)}
         onSave={async (data) => {
+          // בלי ה-await הזה בתוך try, כישלון כתיבה היה משאיר את הטופס
+          // פתוח בשקט — בלי הודעה ובלי שגיאה. זה נראה בדיוק כמו
+          // "הכפתור לא עושה כלום".
           if (editing === 'new') await add({ ...data, active: true });
           else await update(editing.id, data);
           setEditing(null);
@@ -125,12 +128,21 @@ function MedicationForm({
   const [endDate, setEndDate] = useState(medication?.endDate ?? '');
   const [picker, setPicker] = useState<'start' | 'end' | 'time' | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const submit = async () => {
     if (!name.trim() || saving) return;
     setSaving(true);
-    await onSave({ name: name.trim(), emoji, dose: dose.trim(), times, startDate, endDate });
-    setSaving(false);
+    setError('');
+    try {
+      await onSave({ name: name.trim(), emoji, dose: dose.trim(), times, startDate, endDate });
+    } catch (e) {
+      // finally ולא רק catch: בלעדיו הכפתור נשאר תקוע על "שומר"
+      console.error('שמירת התרופה נכשלה:', e);
+      setError('השמירה לא הצליחה — בדקו את החיבור ונסו שוב');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -209,6 +221,8 @@ function MedicationForm({
           </TouchableOpacity>
         ) : null}
 
+        {error ? <Text style={styles.saveError}>{error}</Text> : null}
+
         <Button
           label="שמירה"
           onPress={submit}
@@ -241,6 +255,7 @@ function MedicationForm({
 }
 
 const styles = StyleSheet.create({
+  saveError: { fontSize: 13, color: colors.danger, textAlign: 'center', marginTop: spacing.sm },
   container: { flex: 1, backgroundColor: colors.cream },
   content: { padding: spacing.md, paddingBottom: 120 },
   intro: {
@@ -261,7 +276,12 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   deleteBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  name: { fontSize: font.bodyLg, fontWeight: font.weight.bold, color: colors.text, textAlign: 'right' },
+  name: {
+    fontSize: font.bodyLg,
+    fontWeight: font.weight.bold,
+    color: colors.text,
+    textAlign: 'right',
+  },
   meta: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginTop: 2 },
   inactive: { fontSize: font.caption, color: colors.textMuted },
 
@@ -337,5 +357,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     lineHeight: 17,
   },
-  cancel: { fontSize: font.small, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
+  cancel: {
+    fontSize: font.small,
+    color: colors.textLight,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
 });

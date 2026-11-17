@@ -78,7 +78,9 @@ export function MedicationsProvider({ children }: { children: React.ReactNode })
       setMedications(demoMeds);
       return;
     }
-    if (!householdId) return;
+    // זריקה ולא return שקט: בלי משק בית הכתיבה לא תקרה, והמשתמש
+    // צריך לדעת שזה נכשל ולא לנחש למה הרשימה לא השתנתה
+    if (!householdId) throw new Error('אין משק בית משויך למשתמש הזה');
     await addDoc(col(), entry);
   };
 
@@ -88,7 +90,9 @@ export function MedicationsProvider({ children }: { children: React.ReactNode })
       setMedications(demoMeds);
       return;
     }
-    if (!householdId) return;
+    // זריקה ולא return שקט: בלי משק בית הכתיבה לא תקרה, והמשתמש
+    // צריך לדעת שזה נכשל ולא לנחש למה הרשימה לא השתנתה
+    if (!householdId) throw new Error('אין משק בית משויך למשתמש הזה');
     await updateDoc(doc(db, 'households', householdId, 'medications', id), data as any);
   };
 
@@ -98,16 +102,16 @@ export function MedicationsProvider({ children }: { children: React.ReactNode })
       setMedications(demoMeds);
       return;
     }
-    if (!householdId) return;
+    // זריקה ולא return שקט: בלי משק בית הכתיבה לא תקרה, והמשתמש
+    // צריך לדעת שזה נכשל ולא לנחש למה הרשימה לא השתנתה
+    if (!householdId) throw new Error('אין משק בית משויך למשתמש הזה');
     await deleteDoc(doc(db, 'households', householdId, 'medications', id));
   };
 
   const activeToday = medications.filter((m) => isActiveOn(m, new Date()));
 
   return (
-    <MedicationsContext.Provider
-      value={{ medications, activeToday, loading, add, update, remove }}
-    >
+    <MedicationsContext.Provider value={{ medications, activeToday, loading, add, update, remove }}>
       {children}
     </MedicationsContext.Provider>
   );
