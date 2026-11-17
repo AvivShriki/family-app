@@ -5,10 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useHousehold } from '../context/HouseholdContext';
-import { useBabyProfile } from '../hooks/useBabyProfile';
 import Button from '../components/Button';
 import { createInvite } from '../services/familySetup';
 import { colors, spacing, radius, font, shadow } from '../config/theme';
+import { useProfile } from '../context/ProfileContext';
 
 const MAX_MEMBERS = 3;
 
@@ -21,7 +21,7 @@ function inviteLink(code: string): string {
 export default function InviteScreen() {
   const { user } = useAuth();
   const { householdId } = useHousehold();
-  const { profile } = useBabyProfile();
+  const { profile } = useProfile();
   const [members, setMembers] = useState<number | null>(null);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -65,8 +65,8 @@ export default function InviteScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>הוספת בן משפחה 👨‍👩‍👧</Text>
         <Text style={styles.body}>
-          שלחו את הקישור למי שתרצו שיתעד יחד אתכם. הוא נכנס לאותו תיעוד בדיוק,
-          ורואה את כל מה שאתם רואים.
+          שלחו את הקישור למי שתרצו שיתעד יחד אתכם. הוא נכנס לאותו תיעוד בדיוק, ורואה את כל מה שאתם
+          רואים.
         </Text>
 
         {members !== null ? (
@@ -82,7 +82,11 @@ export default function InviteScreen() {
                 {inviteLink(code)}
               </Text>
             </View>
-            <TouchableOpacity style={styles.copyRow} onPress={onCopy} accessibilityLabel="העתקת הקישור">
+            <TouchableOpacity
+              style={styles.copyRow}
+              onPress={onCopy}
+              accessibilityLabel="העתקת הקישור"
+            >
               <Ionicons
                 name={copied ? 'checkmark' : 'copy-outline'}
                 size={18}

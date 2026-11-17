@@ -6,6 +6,7 @@ import { HouseholdProvider } from './src/context/HouseholdContext';
 import { BabyLogsProvider } from './src/context/BabyLogsContext';
 import { MessagesProvider } from './src/context/MessagesContext';
 import { MedicationsProvider } from './src/context/MedicationsContext';
+import { ProfileProvider } from './src/context/ProfileContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { registerServiceWorker } from './src/utils/registerServiceWorker';
 
@@ -19,8 +20,11 @@ export default function App() {
           <BabyLogsProvider>
             <MessagesProvider>
               <MedicationsProvider>
-                <StatusBar style="dark" />
-                <AppNavigator />
+                {/* אחרי HouseholdProvider — הפרופיל נקרא מתוך משק הבית */}
+                <ProfileProvider>
+                  <StatusBar style="dark" />
+                  <AppNavigator />
+                </ProfileProvider>
               </MedicationsProvider>
             </MessagesProvider>
           </BabyLogsProvider>

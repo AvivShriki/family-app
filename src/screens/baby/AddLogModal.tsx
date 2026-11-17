@@ -38,7 +38,7 @@ const TYPES: { type: LogType; emoji: string; label: string }[] = [
 ];
 
 const DIAPER_OPTIONS = [
-  { value: 'wet', label: 'שתן' },
+  { value: 'wet', label: 'פיפי' },
   { value: 'dirty', label: 'קקי' },
   { value: 'both', label: 'שניהם' },
 ];

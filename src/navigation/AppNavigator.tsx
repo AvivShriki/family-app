@@ -5,7 +5,6 @@ import { ActivityIndicator, View, Text, TouchableOpacity, StyleSheet } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useHousehold } from '../context/HouseholdContext';
-import { useBabyProfile } from '../hooks/useBabyProfile';
 import LoginScreen from '../screens/LoginScreen';
 import NoHouseholdScreen from '../screens/NoHouseholdScreen';
 import VerifyEmailScreen from '../screens/VerifyEmailScreen';
@@ -22,6 +21,7 @@ import BabyNavigator from '../screens/baby/BabyNavigator';
 import OnboardingTour from '../components/onboarding/OnboardingTour';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { colors, spacing, radius } from '../config/theme';
+import { useProfile } from '../context/ProfileContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -43,7 +43,7 @@ export default function AppNavigator() {
   const inviteCode = inviteCodeFromUrl();
   const { user, loading, emailVerified } = useAuth();
   const { householdId, loading: householdLoading } = useHousehold();
-  const { profile } = useBabyProfile();
+  const { profile } = useProfile();
   const onboarding = useOnboarding();
 
   // ההדרכה מוצגת רק אחרי שכל השערים נפתחו. אין טעם להסביר איך

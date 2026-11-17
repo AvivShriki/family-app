@@ -41,7 +41,7 @@ const META: Record<BabyLog['type'], Meta> = {
 
 export const metaOf = (type: BabyLog['type']): Meta => META[type] ?? META.note;
 
-const DIAPER: Record<string, string> = { wet: 'שתן', dirty: 'קקי', both: 'שתן + קקי' };
+const DIAPER: Record<string, string> = { wet: 'פיפי', dirty: 'קקי', both: 'פיפי + קקי' };
 
 const hoursWord = (h: number) => (h === 1 ? 'שעה' : h === 2 ? 'שעתיים' : `${h} שעות`);
 const minutesWord = (m: number) => (m === 1 ? 'דקה' : m === 2 ? 'שתי דקות' : `${m} דקות`);

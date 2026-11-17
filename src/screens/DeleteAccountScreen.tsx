@@ -11,10 +11,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useHousehold } from '../context/HouseholdContext';
-import { useBabyProfile } from '../hooks/useBabyProfile';
 import Button from '../components/Button';
 import { previewDeletion, purgeUserData, DeletionPreview } from '../services/accountDeletion';
 import { colors, spacing, radius, font, shadow } from '../config/theme';
+import { useProfile } from '../context/ProfileContext';
 
 /**
  * מחיקת חשבון.
@@ -41,7 +41,7 @@ function errorText(code: string) {
 export default function DeleteAccountScreen() {
   const { user, reauthenticate, deleteAuthAccount } = useAuth();
   const { householdId } = useHousehold();
-  const { profile } = useBabyProfile();
+  const { profile } = useProfile();
 
   const [preview, setPreview] = useState<DeletionPreview | null>(null);
   const [password, setPassword] = useState('');

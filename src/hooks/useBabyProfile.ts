@@ -4,6 +4,12 @@ import { db } from '../config/firebase';
 import { useHousehold } from '../context/HouseholdContext';
 import { DEMO_MODE } from '../config/demo';
 
+/** מין התינוק/ת — קובע את לשון הטקסטים ואת גוון האפליקציה */
+export type BabyGender = 'girl' | 'boy';
+
+/** איך המשפחה מאכילה ברוב המקרים. קובע ברירת מחדל בלבד. */
+export type FeedingMethod = 'bottle' | 'breast';
+
 export interface BabyProfile {
   name: string;
   birthDate: string; // 'YYYY-MM-DD'
@@ -11,10 +17,17 @@ export interface BabyProfile {
   // שם המשפחה לברכה בדף הבית. שייך למשק הבית ולא לתינוקת, אבל חי באותו
   // מסמך הגדרות כדי לא לפצל קריאה אחת לשתיים.
   familyName?: string;
+  gender?: BabyGender;
+  feedingDefault?: FeedingMethod;
 }
 
 // מוצג עד שהמסמך נטען, וגם למשפחה חדשה שעדיין לא מילאה את הפרטים —
-// לכן ניטרלי, בלי שם או תאריך של משפחה מסוימת
+// לכן ניטרלי, בלי שם או תאריך של משפחה מסוימת.
+//
+// gender ו-feedingDefault נשארים ריקים בכוונה ולא מקבלים ברירת מחדל:
+// למשפחות שכבר רשומות אין את השדות האלה, וקביעת ערך כאן הייתה אומרת
+// להן משהו שהן לא בחרו. הקוד שצורך אותם מתייחס לחסר כ"נקבה" ו"בקבוק",
+// כי זה מה שהאפליקציה הציגה עד היום.
 export const DEFAULT_PROFILE: BabyProfile = { name: 'התינוקת', birthDate: '' };
 
 // Age calculation lives in utils/dates (pure + unit-tested); re-exported here
@@ -73,6 +86,8 @@ export function useBabyProfile() {
       birthDate: data.birthDate,
       photoUrl: data.photoUrl ?? deleteField(),
       familyName: data.familyName?.trim() || deleteField(),
+      gender: data.gender ?? deleteField(),
+      feedingDefault: data.feedingDefault ?? deleteField(),
     };
     if (!householdId) throw new Error('אין משק בית משויך למשתמש הזה');
     await setDoc(profileDoc(householdId), payload, { merge: true });

@@ -9,16 +9,17 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
+import { getAgeText, BabyGender, FeedingMethod } from '../../hooks/useBabyProfile';
 import { useAuth } from '../../context/AuthContext';
 import DatePickerModal from '../../components/DatePickerModal';
 import Button from '../../components/Button';
 import { pickProfileImage } from '../../utils/imagePicker';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 import { useOnboarding } from '../../hooks/useOnboarding';
+import { useProfile } from '../../context/ProfileContext';
 
 export default function BabySettingsScreen({ navigation }: any) {
-  const { profile, save } = useBabyProfile();
+  const { profile, save, words } = useProfile();
   const { logout } = useAuth();
   const { replay: replayOnboarding } = useOnboarding();
   // עריכות המשתמש חיות בנפרד מהפרופיל; כל עוד לא נערך — מציגים את הערך מהשרת.
@@ -26,6 +27,8 @@ export default function BabySettingsScreen({ navigation }: any) {
   const [nameEdit, setNameEdit] = useState<string | null>(null);
   const [birthDateEdit, setBirthDateEdit] = useState<string | null>(null);
   const [familyNameEdit, setFamilyNameEdit] = useState<string | null>(null);
+  const [genderEdit, setGenderEdit] = useState<BabyGender | null>(null);
+  const [feedingEdit, setFeedingEdit] = useState<FeedingMethod | null>(null);
   // undefined = לא נגעו בתמונה, null = הוסרה, string = תמונה חדשה שנבחרה
   const [photoEdit, setPhotoEdit] = useState<string | null | undefined>(undefined);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -36,12 +39,17 @@ export default function BabySettingsScreen({ navigation }: any) {
   const name = nameEdit ?? profile.name;
   const birthDate = birthDateEdit ?? profile.birthDate;
   const familyName = familyNameEdit ?? profile.familyName ?? '';
+  // חסר = נקבה ובקבוק, כי זה מה שהאפליקציה הציגה לפני שהשדות נולדו
+  const gender: BabyGender = genderEdit ?? profile.gender ?? 'girl';
+  const feeding: FeedingMethod = feedingEdit ?? profile.feedingDefault ?? 'bottle';
   const photoUrl = photoEdit === undefined ? profile.photoUrl : (photoEdit ?? undefined);
 
   const dirty =
     name.trim() !== profile.name ||
     birthDate !== profile.birthDate ||
     familyName.trim() !== (profile.familyName ?? '') ||
+    gender !== (profile.gender ?? 'girl') ||
+    feeding !== (profile.feedingDefault ?? 'bottle') ||
     photoUrl !== profile.photoUrl;
   // תאריך הלידה אינו חובה לשמירה: בלעדיו מוצג "תאריך לידה טרם הוגדר",
   // ואין סיבה שהוא יחסום הגדרה של שם המשפחה או של שם התינוקת.
@@ -62,7 +70,14 @@ export default function BabySettingsScreen({ navigation }: any) {
 
   const onSave = async () => {
     try {
-      await save({ name: name.trim(), birthDate, photoUrl, familyName: familyName.trim() });
+      await save({
+        name: name.trim(),
+        birthDate,
+        photoUrl,
+        familyName: familyName.trim(),
+        gender,
+        feedingDefault: feeding,
+      });
       setPhotoEdit(undefined); // מסונכרן מחדש מהפרופיל השמור
       setFamilyNameEdit(null);
       setStatus('saved');
@@ -76,7 +91,9 @@ export default function BabySettingsScreen({ navigation }: any) {
     // היו נחתכות בלי שום דרך להגיע אליהן
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>פרופיל התינוקת 🌸</Text>
+        <Text style={styles.cardTitle}>
+          פרופיל {words.theBaby} {gender === 'boy' ? '💙' : '🌸'}
+        </Text>
 
         {/* תמונת פרופיל — מוצגת בכל האפליקציה */}
         <View style={styles.photoSection}>
@@ -129,18 +146,9 @@ export default function BabySettingsScreen({ navigation }: any) {
             setNameEdit(t);
             setStatus('idle');
           }}
-          placeholder="שם התינוקת"
+          placeholder={`שם ${words.theBaby}`}
           placeholderTextColor={colors.textMuted}
         />
-
-        <Text style={styles.label}>תאריך לידה</Text>
-        <TouchableOpacity style={styles.input} onPress={() => setPickerOpen(true)}>
-          {/* משפחה חדשה מגיעה בלי תאריך; בלי הבדיקה הזו מוצג "Invalid Date" */}
-          <Text style={[styles.dateText, !birthDate && styles.datePlaceholder]}>
-            {birthDate ? new Date(birthDate).toLocaleDateString('he-IL') : 'בחירת תאריך'}
-          </Text>
-        </TouchableOpacity>
-        <Text style={styles.agePreview}>{getAgeText(birthDate)}</Text>
 
         <Text style={styles.label}>שם המשפחה</Text>
         <TextInput
@@ -153,6 +161,71 @@ export default function BabySettingsScreen({ navigation }: any) {
           placeholder="לברכה בדף הבית, למשל: שריקי"
           placeholderTextColor={colors.textMuted}
         />
+
+        <Text style={styles.label}>תאריך לידה</Text>
+        <TouchableOpacity style={styles.input} onPress={() => setPickerOpen(true)}>
+          {/* משפחה חדשה מגיעה בלי תאריך; בלי הבדיקה הזו מוצג "Invalid Date" */}
+          <Text style={[styles.dateText, !birthDate && styles.datePlaceholder]}>
+            {birthDate ? new Date(birthDate).toLocaleDateString('he-IL') : 'בחירת תאריך'}
+          </Text>
+        </TouchableOpacity>
+        <Text style={styles.agePreview}>{getAgeText(birthDate)}</Text>
+
+        <Text style={styles.label}>מין</Text>
+        <View style={styles.choiceRow}>
+          {(
+            [
+              { key: 'girl', label: 'תינוקת', emoji: '🌸' },
+              { key: 'boy', label: 'תינוק', emoji: '💙' },
+            ] as const
+          ).map((o) => (
+            <TouchableOpacity
+              key={o.key}
+              style={[styles.choice, gender === o.key && styles.choiceOn]}
+              onPress={() => {
+                setGenderEdit(o.key);
+                setStatus('idle');
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: gender === o.key }}
+              accessibilityLabel={o.label}
+            >
+              <Text style={styles.choiceEmoji}>{o.emoji}</Text>
+              <Text style={[styles.choiceLabel, gender === o.key && styles.choiceLabelOn]}>
+                {o.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={styles.hint}>קובע את לשון הטקסטים ואת גוון האפליקציה</Text>
+
+        <Text style={styles.label}>איך מאכילים בדרך כלל</Text>
+        <View style={styles.choiceRow}>
+          {(
+            [
+              { key: 'bottle', label: 'בקבוק', emoji: '🍼' },
+              { key: 'breast', label: 'הנקה', emoji: '🤱' },
+            ] as const
+          ).map((o) => (
+            <TouchableOpacity
+              key={o.key}
+              style={[styles.choice, feeding === o.key && styles.choiceOn]}
+              onPress={() => {
+                setFeedingEdit(o.key);
+                setStatus('idle');
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: feeding === o.key }}
+              accessibilityLabel={o.label}
+            >
+              <Text style={styles.choiceEmoji}>{o.emoji}</Text>
+              <Text style={[styles.choiceLabel, feeding === o.key && styles.choiceLabelOn]}>
+                {o.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={styles.hint}>רק ברירת המחדל — בתיעוד עצמו תמיד אפשר לבחור אחרת</Text>
 
         <Button label="שמירה" onPress={onSave} disabled={!dirty || !valid} />
 
@@ -242,6 +315,22 @@ export default function BabySettingsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  choiceRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
+  choice: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  choiceOn: { borderColor: colors.pinkAccent, backgroundColor: colors.pink },
+  choiceEmoji: { fontSize: 20 },
+  choiceLabel: { fontSize: 13, color: colors.textMuted },
+  choiceLabelOn: { color: colors.text, fontWeight: '700' },
+  hint: { fontSize: 12, color: colors.textLight, marginBottom: spacing.md, textAlign: 'right' },
   container: { flex: 1, backgroundColor: colors.cream },
   // הריווח התחתון מפנה מקום לסרגל הטאבים ולכפתור ההוספה שמרחפים מעליו
   content: { padding: spacing.md, paddingBottom: 120 },

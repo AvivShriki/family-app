@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBabyLogs } from '../context/BabyLogsContext';
 import { useMessages } from '../context/MessagesContext';
 import { useMedications } from '../context/MedicationsContext';
-import { useBabyProfile } from '../hooks/useBabyProfile';
 import { BabyLog } from '../types';
 import { getAgeText, isSameDay, fmtTime } from '../utils/dates';
 
@@ -19,6 +18,7 @@ import ComingSoon from './home/ComingSoon';
 import SoftIcon from './home/SoftIcon';
 import { durationParts } from './home/activity';
 import HomeTabBar, { TAB_BAR_HEIGHT } from './home/HomeTabBar';
+import { useProfile } from '../context/ProfileContext';
 
 interface Props {
   navigation: any;
@@ -43,7 +43,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { items: babyLogs, loading } = useBabyLogs();
   const { messages } = useMessages();
   const { medications } = useMedications();
-  const { profile } = useBabyProfile();
+  const { profile } = useProfile();
 
   const now = new Date();
 

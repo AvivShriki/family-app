@@ -4,7 +4,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBabyLogs } from '../../context/BabyLogsContext';
 import { useMedications } from '../../context/MedicationsContext';
-import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
+import { getAgeText } from '../../hooks/useBabyProfile';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
 import AddLogModal from './AddLogModal';
@@ -12,6 +12,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import EmptyState from '../../components/EmptyState';
 import { useBabyDate } from './BabyDateContext';
 import { fmtTime, fmtDuration, isSameDay } from '../../utils/dates';
+import { useProfile } from '../../context/ProfileContext';
 
 const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
   feeding: { emoji: '🍼', label: 'ארוחה', bg: '#FADADD' },
@@ -25,16 +26,16 @@ const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
 };
 
 const DIAPER_LABEL: Record<string, string> = {
-  wet: 'שתן',
+  wet: 'פיפי',
   dirty: 'קקי',
-  both: 'שתן + קקי',
+  both: 'פיפי + קקי',
 };
 
 export default function BabyDayScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { items: allLogs, remove } = useBabyLogs();
-  const { profile } = useBabyProfile();
+  const { profile } = useProfile();
   const { medications, activeToday } = useMedications();
   // התאריך משותף לכל מדור התינוקת (יומן + סיכום) דרך context —
   // כך מעבר לטאב "סיכום" נשאר על היום שצפינו בו

@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useBabyLogs } from '../../context/BabyLogsContext';
-import { useBabyProfile, getAgeText } from '../../hooks/useBabyProfile';
+import { getAgeText } from '../../hooks/useBabyProfile';
 import BabyAvatar from '../../components/BabyAvatar';
 import { BabyLog } from '../../types';
 import { colors, spacing, radius, shadow } from '../../config/theme';
+import { useProfile } from '../../context/ProfileContext';
 
 // Dot color per log type
 const DOT_COLOR: Record<string, string> = {
@@ -37,7 +38,7 @@ interface Props {
 
 export default function BabyCalendarScreen({ onSelectDay }: Props) {
   const { items: allLogs, ensureLoadedSince } = useBabyLogs();
-  const { profile } = useBabyProfile();
+  const { profile } = useProfile();
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
