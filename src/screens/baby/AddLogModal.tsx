@@ -19,6 +19,9 @@ import { colors, spacing, radius, font } from '../../config/theme';
 import Button from '../../components/Button';
 import TimePickerModal from '../../components/TimePickerModal';
 import AmountPickerModal from '../../components/AmountPickerModal';
+import BreastfeedingTimer, { BreastfeedingResult } from './BreastfeedingTimer';
+import { useProfile } from '../../context/ProfileContext';
+import { formatDuration } from '../home/activity';
 
 interface Props {
   visible: boolean;
@@ -64,6 +67,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const { user } = useAuth();
   const { add, update } = useBabyLogs();
   const { medications, activeToday } = useMedications();
+  const { profile } = useProfile();
 
   // מצב עריכה מאותחל ישירות מ-editLog — ההורה מרנדר מחדש עם key שונה
   // (id הרשומה או 'new'), כך שאין צורך לסנכרן את הטופס בתוך effect.
@@ -78,6 +82,17 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     editLog?.endTimestamp ? hhmmFromTs(editLog.endTimestamp) : '',
   );
   const [amountMl, setAmountMl] = useState(editLog?.amountMl ? String(editLog.amountMl) : '');
+  // ברירת המחדל מגיעה מההגדרות אך נשארת ניתנת לשינוי בכל רישום —
+  // אמא שמניקה בדרך כלל עדיין נותנת בקבוק לפעמים, ולהפך.
+  const [feedingMethod, setFeedingMethod] = useState<'bottle' | 'breast'>(
+    editLog?.feedingMethod ?? (editLog?.amountMl ? 'bottle' : (profile.feedingDefault ?? 'bottle')),
+  );
+  const [breast, setBreast] = useState<{ leftMs: number; rightMs: number } | null>(
+    editLog?.breastLeftMs != null || editLog?.breastRightMs != null
+      ? { leftMs: editLog.breastLeftMs ?? 0, rightMs: editLog.breastRightMs ?? 0 }
+      : null,
+  );
+  const [timerVisible, setTimerVisible] = useState(false);
   const [diaperType, setDiaperType] = useState<string>(editLog?.diaperType ?? 'dirty');
   const [note, setNote] = useState(editLog?.details ?? '');
   // התרופות שסומנו כניתנות יחד עם הארוחה הזו
@@ -96,6 +111,8 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     setStartTime(nowHHMM());
     setEndTime('');
     setAmountMl('');
+    setFeedingMethod(profile.feedingDefault ?? 'bottle');
+    setBreast(null);
     setDiaperType('dirty');
     setNote('');
     setGivenWith([]);
@@ -120,7 +137,18 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
       timestamp: ts,
       loggedBy: user?.email ?? 'demo',
     };
-    if (selectedType === 'feeding') entry.amountMl = parseInt(amountMl) || 0;
+    if (selectedType === 'feeding') {
+      entry.feedingMethod = feedingMethod;
+      if (feedingMethod === 'breast') {
+        // הנקה נמדדת בזמן ולא בכמות. amountMl נשאר 0 כדי שסכום
+        // המיליליטרים ביום לא יספור אותה ויציג מספר שמשקר.
+        entry.amountMl = 0;
+        entry.breastLeftMs = breast?.leftMs ?? 0;
+        entry.breastRightMs = breast?.rightMs ?? 0;
+      } else {
+        entry.amountMl = parseInt(amountMl) || 0;
+      }
+    }
     if (selectedType === 'sleep' && endTime) entry.endTimestamp = parseTime(endTime, selectedDate);
     if (selectedType === 'diaper') entry.diaperType = diaperType as any;
     if (selectedType === 'medication' && medId) entry.medicationId = medId;
@@ -150,200 +178,261 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
 
   return (
     <>
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.sheet}>
-          {/* Header */}
-          <View style={styles.header}>
-            {step === 'form' && !editLog ? (
-              <TouchableOpacity onPress={() => setStep('pick')} style={styles.backBtn}>
-                <Text style={styles.backText}>‹ חזרה</Text>
+      <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+        <KeyboardAvoidingView
+          style={styles.overlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.sheet}>
+            {/* Header */}
+            <View style={styles.header}>
+              {step === 'form' && !editLog ? (
+                <TouchableOpacity onPress={() => setStep('pick')} style={styles.backBtn}>
+                  <Text style={styles.backText}>‹ חזרה</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ width: 60 }} />
+              )}
+              <Text style={styles.title}>
+                {step === 'pick'
+                  ? 'הוסף אירוע'
+                  : `${editLog ? 'עריכת ' : ''}${typeMeta.emoji} ${typeMeta.label}`}
+              </Text>
+              <TouchableOpacity
+                onPress={handleClose}
+                style={styles.closeBtn}
+                accessibilityLabel="סגירה"
+              >
+                <Text style={styles.closeText}>✕</Text>
               </TouchableOpacity>
-            ) : (
-              <View style={{ width: 60 }} />
-            )}
-            <Text style={styles.title}>
-              {step === 'pick'
-                ? 'הוסף אירוע'
-                : `${editLog ? 'עריכת ' : ''}${typeMeta.emoji} ${typeMeta.label}`}
-            </Text>
-            <TouchableOpacity
-              onPress={handleClose}
-              style={styles.closeBtn}
-              accessibilityLabel="סגירה"
-            >
-              <Text style={styles.closeText}>✕</Text>
-            </TouchableOpacity>
-          </View>
+            </View>
 
-          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-            {step === 'pick' ? (
-              /* Type picker grid */
-              <View style={styles.typeGrid}>
-                {TYPES.map((t) => (
-                  <TouchableOpacity
-                    key={t.type}
-                    style={styles.typeBtn}
-                    onPress={() => pickType(t.type)}
-                  >
-                    <Text style={styles.typeEmoji}>{t.emoji}</Text>
-                    <Text style={styles.typeLabel}>{t.label}</Text>
-                  </TouchableOpacity>
-                ))}
-                {activeToday.map((m) => (
-                  <TouchableOpacity
-                    key={m.id}
-                    style={styles.typeBtn}
-                    onPress={() => pickType('medication', m.id)}
-                  >
-                    <Text style={styles.typeEmoji}>{m.emoji}</Text>
-                    <Text style={styles.typeLabel}>{m.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              /* Form fields */
-              <View>
-                {/* Start time — always shown */}
-                <Field label={selectedType === 'sleep' ? 'שעת כניסה לשינה' : 'שעה'}>
-                  <PickerField
-                    icon="time-outline"
-                    text={startTime}
-                    onPress={() => setStartPickerVisible(true)}
-                  />
-                </Field>
-
-                {/* Sleep end time */}
-                {selectedType === 'sleep' && (
-                  <Field label="שעת התעוררות">
+            <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+              {step === 'pick' ? (
+                /* Type picker grid */
+                <View style={styles.typeGrid}>
+                  {TYPES.map((t) => (
+                    <TouchableOpacity
+                      key={t.type}
+                      style={styles.typeBtn}
+                      onPress={() => pickType(t.type)}
+                    >
+                      <Text style={styles.typeEmoji}>{t.emoji}</Text>
+                      <Text style={styles.typeLabel}>{t.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  {activeToday.map((m) => (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={styles.typeBtn}
+                      onPress={() => pickType('medication', m.id)}
+                    >
+                      <Text style={styles.typeEmoji}>{m.emoji}</Text>
+                      <Text style={styles.typeLabel}>{m.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                /* Form fields */
+                <View>
+                  {/* Start time — always shown */}
+                  <Field label={selectedType === 'sleep' ? 'שעת כניסה לשינה' : 'שעה'}>
                     <PickerField
                       icon="time-outline"
-                      text={endTime}
-                      placeholder="בחר שעה"
-                      onPress={() => setEndPickerVisible(true)}
+                      text={startTime}
+                      onPress={() => setStartPickerVisible(true)}
                     />
                   </Field>
-                )}
 
-                {/* Feeding amount */}
-                {selectedType === 'feeding' && (
-                  <Field label="כמות">
-                    <PickerField
-                      icon="water-outline"
-                      text={amountMl ? `${amountMl} מ"ל` : ''}
-                      placeholder="בחר כמות (או הנקה)"
-                      onPress={() => setAmountPickerVisible(true)}
-                    />
-                  </Field>
-                )}
+                  {/* Sleep end time */}
+                  {selectedType === 'sleep' && (
+                    <Field label="שעת התעוררות">
+                      <PickerField
+                        icon="time-outline"
+                        text={endTime}
+                        placeholder="בחר שעה"
+                        onPress={() => setEndPickerVisible(true)}
+                      />
+                    </Field>
+                  )}
 
-                {/* תרופות שניתנו יחד עם הארוחה */}
-                {selectedType === 'feeding' && !editLog && activeToday.length > 0 && (
-                  <Field label="ניתנו גם בארוחה זו">
-                    <View style={styles.checkRow}>
-                      {activeToday.map((m) => (
-                        <CheckChip
-                          key={m.id}
-                          emoji={m.emoji}
-                          label={m.name}
-                          checked={givenWith.includes(m.id)}
-                          onPress={() =>
-                            setGivenWith((prev) =>
-                              prev.includes(m.id)
-                                ? prev.filter((x) => x !== m.id)
-                                : [...prev, m.id],
-                            )
-                          }
-                        />
-                      ))}
-                    </View>
-                  </Field>
-                )}
-
-                {/* מינון התרופה, כשהוגדר לה כזה */}
-                {selectedType === 'medication' && selectedMed?.dose ? (
-                  <Field label="מינון">
-                    <Text style={styles.doseText}>{selectedMed.dose}</Text>
-                  </Field>
-                ) : null}
-
-                {/* Diaper type */}
-                {selectedType === 'diaper' && (
-                  <Field label="סוג">
-                    <View style={styles.optionRow}>
-                      {DIAPER_OPTIONS.map((o) => (
-                        <TouchableOpacity
-                          key={o.value}
-                          style={[styles.optionBtn, diaperType === o.value && styles.optionActive]}
-                          onPress={() => setDiaperType(o.value)}
-                        >
-                          <Text
-                            style={[
-                              styles.optionText,
-                              diaperType === o.value && styles.optionTextActive,
-                            ]}
+                  {/* בקבוק או הנקה — תמיד שתי האפשרויות, גם אם בהגדרות נבחרה
+                      ברירת מחדל אחרת */}
+                  {selectedType === 'feeding' && (
+                    <Field label="איך האכלנו">
+                      <View style={styles.methodRow}>
+                        {(
+                          [
+                            { key: 'bottle', emoji: '🍼', label: 'בקבוק' },
+                            { key: 'breast', emoji: '🤱', label: 'הנקה' },
+                          ] as const
+                        ).map((o) => (
+                          <TouchableOpacity
+                            key={o.key}
+                            style={[styles.method, feedingMethod === o.key && styles.methodOn]}
+                            onPress={() => setFeedingMethod(o.key)}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected: feedingMethod === o.key }}
                           >
-                            {o.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                            <Text style={styles.methodEmoji}>{o.emoji}</Text>
+                            <Text
+                              style={[
+                                styles.methodLabel,
+                                feedingMethod === o.key && styles.methodLabelOn,
+                              ]}
+                            >
+                              {o.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </Field>
+                  )}
+
+                  {selectedType === 'feeding' && feedingMethod === 'bottle' && (
+                    <Field label="כמות">
+                      <PickerField
+                        icon="water-outline"
+                        text={amountMl ? `${amountMl} מיליליטר` : ''}
+                        placeholder="בחירת כמות"
+                        onPress={() => setAmountPickerVisible(true)}
+                      />
+                    </Field>
+                  )}
+
+                  {selectedType === 'feeding' && feedingMethod === 'breast' && (
+                    <Field label="זמני ההנקה">
+                      <PickerField
+                        icon="time-outline"
+                        text={
+                          breast
+                            ? `ימין ${formatDuration(breast.rightMs)} · שמאל ${formatDuration(breast.leftMs)}`
+                            : ''
+                        }
+                        placeholder="פתיחת טיימר ההנקה"
+                        onPress={() => setTimerVisible(true)}
+                      />
+                    </Field>
+                  )}
+
+                  {/* תרופות שניתנו יחד עם הארוחה */}
+                  {selectedType === 'feeding' && !editLog && activeToday.length > 0 && (
+                    <Field label="ניתנו גם בארוחה זו">
+                      <View style={styles.checkRow}>
+                        {activeToday.map((m) => (
+                          <CheckChip
+                            key={m.id}
+                            emoji={m.emoji}
+                            label={m.name}
+                            checked={givenWith.includes(m.id)}
+                            onPress={() =>
+                              setGivenWith((prev) =>
+                                prev.includes(m.id)
+                                  ? prev.filter((x) => x !== m.id)
+                                  : [...prev, m.id],
+                              )
+                            }
+                          />
+                        ))}
+                      </View>
+                    </Field>
+                  )}
+
+                  {/* מינון התרופה, כשהוגדר לה כזה */}
+                  {selectedType === 'medication' && selectedMed?.dose ? (
+                    <Field label="מינון">
+                      <Text style={styles.doseText}>{selectedMed.dose}</Text>
+                    </Field>
+                  ) : null}
+
+                  {/* Diaper type */}
+                  {selectedType === 'diaper' && (
+                    <Field label="סוג">
+                      <View style={styles.optionRow}>
+                        {DIAPER_OPTIONS.map((o) => (
+                          <TouchableOpacity
+                            key={o.value}
+                            style={[
+                              styles.optionBtn,
+                              diaperType === o.value && styles.optionActive,
+                            ]}
+                            onPress={() => setDiaperType(o.value)}
+                          >
+                            <Text
+                              style={[
+                                styles.optionText,
+                                diaperType === o.value && styles.optionTextActive,
+                              ]}
+                            >
+                              {o.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </Field>
+                  )}
+
+                  {/* Note — always optional */}
+                  <Field label="הערה (לא חובה)">
+                    <TextInput
+                      style={[styles.input, styles.inputMulti]}
+                      value={note}
+                      onChangeText={setNote}
+                      placeholder="הוסף הערה..."
+                      placeholderTextColor={colors.textMuted}
+                      multiline
+                      textAlign="right"
+                    />
                   </Field>
-                )}
 
-                {/* Note — always optional */}
-                <Field label="הערה (לא חובה)">
-                  <TextInput
-                    style={[styles.input, styles.inputMulti]}
-                    value={note}
-                    onChangeText={setNote}
-                    placeholder="הוסף הערה..."
-                    placeholderTextColor={colors.textMuted}
-                    multiline
-                    textAlign="right"
-                  />
-                </Field>
+                  {/* Glossary: persisting is always "שמירה" — the title already says עריכת */}
+                  <Button label="שמירה" onPress={handleSave} style={{ marginTop: spacing.md }} />
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
-                {/* Glossary: persisting is always "שמירה" — the title already says עריכת */}
-                <Button label="שמירה" onPress={handleSave} style={{ marginTop: spacing.md }} />
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-
-    {/* הבוררים הם אחים של המודל, לא ילדים שלו — מודל בתוך מודל
+      {/* הבוררים הם אחים של המודל, לא ילדים שלו — מודל בתוך מודל
         לא נפרס נכון ב-react-native-web. */}
-    {startPickerVisible && (
-      <TimePickerModal
-        visible
-        value={startTime}
-        minuteStep={5}
-        onSelect={setStartTime}
-        onClose={() => setStartPickerVisible(false)}
-      />
-    )}
-    {endPickerVisible && (
-      <TimePickerModal
-        visible
-        value={endTime || startTime}
-        minuteStep={5}
-        onSelect={setEndTime}
-        onClose={() => setEndPickerVisible(false)}
-      />
-    )}
-    {amountPickerVisible && (
-      <AmountPickerModal
-        visible
-        value={amountMl}
-        onSelect={setAmountMl}
-        onClose={() => setAmountPickerVisible(false)}
-      />
-    )}
+      {startPickerVisible && (
+        <TimePickerModal
+          visible
+          value={startTime}
+          minuteStep={5}
+          onSelect={setStartTime}
+          onClose={() => setStartPickerVisible(false)}
+        />
+      )}
+      {endPickerVisible && (
+        <TimePickerModal
+          visible
+          value={endTime || startTime}
+          minuteStep={5}
+          onSelect={setEndTime}
+          onClose={() => setEndPickerVisible(false)}
+        />
+      )}
+      {/* מורכב רק כשפתוח — כך כל פתיחה מתחילה ממצב נקי בלי אתחול ב-effect */}
+      {timerVisible && (
+        <BreastfeedingTimer
+          onCancel={() => setTimerVisible(false)}
+          onSave={(r: BreastfeedingResult) => {
+            setBreast({ leftMs: r.leftMs, rightMs: r.rightMs });
+            setTimerVisible(false);
+          }}
+        />
+      )}
+
+      {amountPickerVisible && (
+        <AmountPickerModal
+          visible
+          value={amountMl}
+          onSelect={setAmountMl}
+          onClose={() => setAmountPickerVisible(false)}
+        />
+      )}
     </>
   );
 }
@@ -404,6 +493,21 @@ function CheckChip({
 }
 
 const styles = StyleSheet.create({
+  methodRow: { flexDirection: 'row', gap: spacing.sm },
+  method: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  methodOn: { borderColor: colors.pinkAccent, backgroundColor: colors.pink },
+  methodEmoji: { fontSize: 20 },
+  methodLabel: { fontSize: 13, color: colors.textMuted },
+  methodLabelOn: { color: colors.text, fontWeight: '700' },
   overlay: {
     flex: 1,
     backgroundColor: '#0005',
@@ -518,5 +622,4 @@ const styles = StyleSheet.create({
   checkEmoji: { fontSize: 15 },
   checkLabel: { fontSize: 13, color: colors.textLight, fontWeight: '500' },
   checkLabelActive: { color: colors.text, fontWeight: '700' },
-
 });

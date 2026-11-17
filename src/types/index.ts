@@ -9,6 +9,14 @@ export interface BabyLog {
   details?: string;
   // feeding
   amountMl?: number;
+  /**
+   * איך האכילו. חסר = בקבוק, כי כל הרישומים שנכתבו לפני השדה הזה
+   * היו בקבוק — או הנקה שנרשמה בלי כמות, וזו עדיין מוצגת נכון.
+   */
+  feedingMethod?: 'bottle' | 'breast';
+  /** משך ההנקה בכל צד, במילישניות. רלוונטי רק כש-feedingMethod הוא breast. */
+  breastLeftMs?: number;
+  breastRightMs?: number;
   // sleep — duration derived from endTimestamp - timestamp
   // diaper
   diaperType?: 'wet' | 'dirty' | 'both';

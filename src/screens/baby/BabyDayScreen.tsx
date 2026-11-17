@@ -13,6 +13,7 @@ import EmptyState from '../../components/EmptyState';
 import { useBabyDate } from './BabyDateContext';
 import { fmtTime, fmtDuration, isSameDay } from '../../utils/dates';
 import { useProfile } from '../../context/ProfileContext';
+import { formatDuration } from '../home/activity';
 
 const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
   feeding: { emoji: '🍼', label: 'ארוחה', bg: '#FADADD' },
@@ -196,9 +197,24 @@ function TimelineItem({
   const base = LOG_META[log.type] ?? LOG_META.note;
   // רישום תרופה מציג את שם התרופה עצמה, לא את המילה "תרופה"
   const meta = medName ? { ...base, label: medName, emoji: medEmoji || base.emoji } : base;
+  // רישום הנקה נקרא "הנקה" ולא "ארוחה", עם אותו אימוג'י כמו בבחירה
+  const shown =
+    log.type === 'feeding' && log.feedingMethod === 'breast'
+      ? { ...meta, label: 'הנקה', emoji: '🤱' }
+      : meta;
 
   let detail = '';
-  if (log.type === 'feeding' && log.amountMl) detail = `${log.amountMl} מ"ל`;
+  if (log.type === 'feeding') {
+    if (log.feedingMethod === 'breast') {
+      // כל צד בנפרד — זה מה שאמא צריכה לדעת לקראת ההנקה הבאה
+      const sides: string[] = [];
+      if (log.breastRightMs) sides.push(`ימין ${formatDuration(log.breastRightMs)}`);
+      if (log.breastLeftMs) sides.push(`שמאל ${formatDuration(log.breastLeftMs)}`);
+      detail = sides.join(' · ');
+    } else if (log.amountMl) {
+      detail = `${log.amountMl} מיליליטר`;
+    }
+  }
   if (log.type === 'sleep' && log.endTimestamp) {
     detail = `נרדמה ${fmtTime(log.timestamp)} · התעוררה ${fmtTime(log.endTimestamp)} · משך ${fmtDuration(log.endTimestamp - log.timestamp)}`;
   }
@@ -216,16 +232,16 @@ function TimelineItem({
       {/* Card */}
       <View style={[styles.logCard, { borderLeftColor: meta.bg }]}>
         <View style={[styles.logIcon, { backgroundColor: meta.bg }]}>
-          <Text style={styles.logEmoji}>{meta.emoji}</Text>
+          <Text style={styles.logEmoji}>{shown.emoji}</Text>
         </View>
         <View style={styles.logBody}>
-          <Text style={styles.logTitle}>{meta.label}</Text>
+          <Text style={styles.logTitle}>{shown.label}</Text>
           {detail ? <Text style={styles.logDetail}>{detail}</Text> : null}
         </View>
         <TouchableOpacity
           style={styles.editBtn}
           onPress={onEdit}
-          accessibilityLabel={`עריכת ${meta.label}`}
+          accessibilityLabel={`עריכת ${shown.label}`}
         >
           <Ionicons name="create-outline" size={20} color={colors.textLight} />
         </TouchableOpacity>

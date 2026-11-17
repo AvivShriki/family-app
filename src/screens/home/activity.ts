@@ -98,7 +98,13 @@ export function formatDuration(ms: number): string {
  * רישום בלי מ"ל, וכך גם מוצג.
  */
 export function titleOf(log: BabyLog, medName?: string): string {
-  if (log.type === 'feeding') return log.amountMl ? 'האכלה' : 'הנקה';
+  if (log.type === 'feeding') {
+    // feedingMethod קיים רק ברישומים חדשים. בישנים, היעדר כמות עדיין
+    // מסמן הנקה — ולכן הבדיקה הזו נשארת כגיבוי ולא מוחלפת.
+    if (log.feedingMethod === 'breast') return 'הנקה';
+    if (log.feedingMethod === 'bottle') return 'האכלה';
+    return log.amountMl ? 'האכלה' : 'הנקה';
+  }
   if (log.type === 'medication') return medName ?? 'תרופה';
   return metaOf(log.type).label;
 }
@@ -106,7 +112,17 @@ export function titleOf(log: BabyLog, medName?: string): string {
 /** הפרט שמוסיף מידע מעבר לשם ולשעה */
 export function detailOf(log: BabyLog): string {
   const parts: string[] = [];
-  if (log.type === 'feeding' && log.amountMl) parts.push(`${log.amountMl} מיליליטר`);
+  if (log.type === 'feeding') {
+    if (log.feedingMethod === 'breast') {
+      // כל צד מוצג בנפרד, כי זה מה שאמא צריכה לדעת בהנקה הבאה
+      const sides: string[] = [];
+      if (log.breastRightMs) sides.push(`ימין ${formatDuration(log.breastRightMs)}`);
+      if (log.breastLeftMs) sides.push(`שמאל ${formatDuration(log.breastLeftMs)}`);
+      parts.push(sides.length ? sides.join(' · ') : 'ללא זמנים');
+    } else if (log.amountMl) {
+      parts.push(`${log.amountMl} מיליליטר`);
+    }
+  }
   if (log.type === 'sleep') {
     parts.push(
       log.endTimestamp ? formatDuration(log.endTimestamp - log.timestamp) : 'עוד לא נרשמה התעוררות',
