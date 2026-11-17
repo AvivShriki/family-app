@@ -22,6 +22,12 @@ export interface BabyLog {
   diaperType?: 'wet' | 'dirty' | 'both';
   // medication
   medicationId?: string;
+  /**
+   * האם מצורפת תמונה. התמונה עצמה יושבת במסמך נפרד
+   * (households/{hid}/logPhotos/{logId}) ונטענת רק כשפותחים אותה —
+   * אחרת היא הייתה נוסעת עם כל רישום בכל טעינה של היומן.
+   */
+  hasPhoto?: boolean;
   loggedBy: string;
 }
 

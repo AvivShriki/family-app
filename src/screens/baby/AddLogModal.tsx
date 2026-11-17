@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBabyLogs } from '../../context/BabyLogsContext';
@@ -21,6 +22,9 @@ import TimePickerModal from '../../components/TimePickerModal';
 import AmountPickerModal from '../../components/AmountPickerModal';
 import BreastfeedingTimer, { BreastfeedingResult } from './BreastfeedingTimer';
 import { useProfile } from '../../context/ProfileContext';
+import { useHousehold } from '../../context/HouseholdContext';
+import { pickProfileImage } from '../../utils/imagePicker';
+import { savePhoto, loadPhoto, deletePhoto } from '../../services/logPhotos';
 import { formatDuration } from '../home/activity';
 
 interface Props {
@@ -68,6 +72,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const { add, update } = useBabyLogs();
   const { medications, activeToday } = useMedications();
   const { profile } = useProfile();
+  const { householdId } = useHousehold();
 
   // מצב עריכה מאותחל ישירות מ-editLog — ההורה מרנדר מחדש עם key שונה
   // (id הרשומה או 'new'), כך שאין צורך לסנכרן את הטופס בתוך effect.
@@ -95,6 +100,10 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const [timerVisible, setTimerVisible] = useState(false);
   const [diaperType, setDiaperType] = useState<string>(editLog?.diaperType ?? 'dirty');
   const [note, setNote] = useState(editLog?.details ?? '');
+  // undefined = לא נגעו, null = הוסרה, string = תמונה חדשה
+  const [photo, setPhoto] = useState<string | null | undefined>(undefined);
+  const [photoError, setPhotoError] = useState('');
+  const [loadedPhoto, setLoadedPhoto] = useState<string | null>(null);
   // התרופות שסומנו כניתנות יחד עם הארוחה הזו
   const [givenWith, setGivenWith] = useState<string[]>([]);
   // התרופה שנבחרה כשהרישום עצמו הוא נטילת תרופה
@@ -115,8 +124,33 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     setBreast(null);
     setDiaperType('dirty');
     setNote('');
+    setPhoto(undefined);
+    setPhotoError('');
     setGivenWith([]);
     setMedId('');
+  };
+
+  // בעריכה התמונה נטענת רק כשפותחים את הרישום — זו כל הסיבה
+  // שהיא לא יושבת בתוך הרישום עצמו
+  useEffect(() => {
+    if (!editLog?.hasPhoto || !householdId) return;
+    let alive = true;
+    loadPhoto(householdId, editLog.id)
+      .then((d) => alive && setLoadedPhoto(d))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [editLog?.hasPhoto, editLog?.id, householdId]);
+
+  const shownPhoto = photo === undefined ? loadedPhoto : photo;
+
+  const onPickPhoto = async () => {
+    setPhotoError('');
+    const r = await pickProfileImage();
+    // ביטול הוא לא שגיאה ולא אומרים עליו כלום
+    if (r.status === 'ok') setPhoto(r.dataUrl);
+    else if (r.status === 'error') setPhotoError(r.message);
   };
 
   const handleClose = () => {
@@ -128,6 +162,20 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     setSelectedType(type);
     setMedId(medicationId);
     setStep('form');
+  };
+
+  /**
+   * נכתבת אחרי הרישום, כי רק אז יש מזהה.
+   * כישלון כאן לא מפיל את השמירה: הרישום עצמו חשוב יותר מהתמונה.
+   */
+  const persistPhoto = async (logId: string) => {
+    if (!householdId || photo === undefined) return;
+    try {
+      if (photo === null) await deletePhoto(householdId, logId);
+      else await savePhoto(householdId, logId, photo);
+    } catch (e) {
+      console.error('שמירת התמונה נכשלה:', e);
+    }
   };
 
   const handleSave = async () => {
@@ -153,11 +201,14 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     if (selectedType === 'diaper') entry.diaperType = diaperType as any;
     if (selectedType === 'medication' && medId) entry.medicationId = medId;
     if (note) entry.details = note;
+    if (shownPhoto) entry.hasPhoto = true;
 
     if (editLog) {
       await update(editLog.id, entry);
+      await persistPhoto(editLog.id);
     } else {
-      await add(entry as any);
+      const newId = await add(entry as any);
+      await persistPhoto(newId);
       // תרופות ניתנות לרוב יחד עם הארוחה — נרשמות לצידה באותה שעה
       for (const id of givenWith) {
         await add({
@@ -383,6 +434,30 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                       multiline
                       textAlign="right"
                     />
+                    {shownPhoto ? (
+                      <View style={styles.photoWrap}>
+                        <Image source={{ uri: shownPhoto }} style={styles.photoPreview} />
+                        <TouchableOpacity
+                          onPress={() => setPhoto(null)}
+                          style={styles.photoRemove}
+                          accessibilityRole="button"
+                          accessibilityLabel="הסרת התמונה"
+                        >
+                          <Ionicons name="close" size={16} color={colors.white} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.photoAdd}
+                        onPress={onPickPhoto}
+                        accessibilityRole="button"
+                        accessibilityLabel="הוספת תמונה להערה"
+                      >
+                        <Ionicons name="camera-outline" size={18} color={colors.pinkAccent} />
+                        <Text style={styles.photoAddText}>הוספת תמונה</Text>
+                      </TouchableOpacity>
+                    )}
+                    {photoError ? <Text style={styles.photoErr}>{photoError}</Text> : null}
                   </Field>
 
                   {/* Glossary: persisting is always "שמירה" — the title already says עריכת */}
@@ -493,6 +568,33 @@ function CheckChip({
 }
 
 const styles = StyleSheet.create({
+  photoAdd: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.pinkDark,
+  },
+  photoAddText: { fontSize: 13, fontWeight: '600', color: colors.pinkAccent },
+  photoWrap: { marginTop: spacing.sm, alignSelf: 'flex-start' },
+  photoPreview: { width: 110, height: 110, borderRadius: radius.md },
+  photoRemove: {
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoErr: { fontSize: 12, color: colors.danger, marginTop: 4 },
   methodRow: { flexDirection: 'row', gap: spacing.sm },
   method: {
     flex: 1,
