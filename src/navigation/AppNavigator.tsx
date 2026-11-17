@@ -19,6 +19,8 @@ import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BabyNavigator from '../screens/baby/BabyNavigator';
+import OnboardingTour from '../components/onboarding/OnboardingTour';
+import { useOnboarding } from '../hooks/useOnboarding';
 import { colors, spacing, radius } from '../config/theme';
 
 const Stack = createNativeStackNavigator();
@@ -42,6 +44,11 @@ export default function AppNavigator() {
   const { user, loading, emailVerified } = useAuth();
   const { householdId, loading: householdLoading } = useHousehold();
   const { profile } = useBabyProfile();
+  const onboarding = useOnboarding();
+
+  // ההדרכה מוצגת רק אחרי שכל השערים נפתחו. אין טעם להסביר איך
+  // מתעדים למי שעוד לא אישר מייל או לא שויך למשפחה.
+  const insideApp = !!user && emailVerified && !!householdId;
 
   // ממתינים גם לשיוך המשפחה — בלי זה המסכים נפתחים בלי לדעת לאיזה תא לפנות
   if (loading || (user && householdLoading)) {
@@ -53,97 +60,104 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={headerStyle}>
-        {!user ? (
-          <>
-            {/* מי שהגיע עם קישור הזמנה רואה קודם לאן הוזמן, ורק אז טופס */}
-            {inviteCode ? (
+    <>
+      {insideApp && onboarding.show ? <OnboardingTour onDone={onboarding.finish} /> : null}
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={headerStyle}>
+          {!user ? (
+            <>
+              {/* מי שהגיע עם קישור הזמנה רואה קודם לאן הוזמן, ורק אז טופס */}
+              {inviteCode ? (
+                <Stack.Screen
+                  name="InviteWelcome"
+                  component={InviteWelcomeScreen}
+                  initialParams={{ code: inviteCode }}
+                  options={{ headerShown: false }}
+                />
+              ) : null}
+              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
               <Stack.Screen
-                name="InviteWelcome"
-                component={InviteWelcomeScreen}
-                initialParams={{ code: inviteCode }}
+                name="SignUp"
+                component={SignUpScreen}
                 options={{ headerShown: false }}
               />
-            ) : null}
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
+              <Stack.Screen
+                name="ForgotPassword"
+                component={ForgotPasswordScreen}
+                options={{ headerShown: false }}
+              />
+            </>
+          ) : !emailVerified ? (
+            /* חסימה לפני כל השאר: מי שלא אישר את הכתובת לא נכנס. זו
+             חסימת ממשק בלבד — האכיפה האמיתית תגיע מחוקי Firestore. */
             <Stack.Screen
-              name="ForgotPassword"
-              component={ForgotPasswordScreen}
+              name="VerifyEmail"
+              component={VerifyEmailScreen}
               options={{ headerShown: false }}
             />
-          </>
-        ) : !emailVerified ? (
-          /* חסימה לפני כל השאר: מי שלא אישר את הכתובת לא נכנס. זו
-             חסימת ממשק בלבד — האכיפה האמיתית תגיע מחוקי Firestore. */
-          <Stack.Screen
-            name="VerifyEmail"
-            component={VerifyEmailScreen}
-            options={{ headerShown: false }}
-          />
-        ) : !householdId ? (
-          <Stack.Screen
-            name="NoHousehold"
-            component={NoHouseholdScreen}
-            options={{ headerShown: false }}
-          />
-        ) : (
-          <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            {/* היציאה ממדור התינוקת: חץ ה-stack היה 30×30 ובקצה שמאל, שזה
+          ) : !householdId ? (
+            <Stack.Screen
+              name="NoHousehold"
+              component={NoHouseholdScreen}
+              options={{ headerShown: false }}
+            />
+          ) : (
+            <>
+              <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+              {/* היציאה ממדור התינוקת: חץ ה-stack היה 30×30 ובקצה שמאל, שזה
                 הצד שאליו מסיימים לסרוק בעברית. במקומו כפתור 44 עם המילה
                 "בית" בקצה ימין, ו-popToTop שמחזיר מכל טאב. */}
-            <Stack.Screen
-              name="Baby"
-              component={BabyNavigator}
-              options={({ navigation }) => ({
-                title: `מעקב ${profile.name} 👶`,
-                headerLeft: () => null,
-                headerRight: () => (
-                  <TouchableOpacity
-                    onPress={() => navigation.popToTop()}
-                    style={homeButtonStyles.touch}
-                    accessibilityLabel="חזרה לדף הבית"
-                    activeOpacity={0.7}
-                  >
-                    <View style={homeButtonStyles.pill}>
-                      <Ionicons name="home" size={15} color={colors.text} />
-                      <Text style={homeButtonStyles.label}>בית</Text>
-                    </View>
-                  </TouchableOpacity>
-                ),
-              })}
-            />
-            <Stack.Screen
-              name="ChangePassword"
-              component={ChangePasswordScreen}
-              options={{ title: 'שינוי סיסמה 🔐' }}
-            />
-            <Stack.Screen
-              name="Invite"
-              component={InviteScreen}
-              options={{ title: 'הוספת בן משפחה' }}
-            />
-            <Stack.Screen
-              name="Chat"
-              component={ChatScreen}
-              options={{ title: 'הודעות למשפחה 💬' }}
-            />
-            <Stack.Screen
-              name="Medications"
-              component={MedicationsScreen}
-              options={{ title: 'תרופות ותוספים 💊' }}
-            />
-            <Stack.Screen
-              name="DeleteAccount"
-              component={DeleteAccountScreen}
-              options={{ title: 'מחיקת החשבון' }}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+              <Stack.Screen
+                name="Baby"
+                component={BabyNavigator}
+                options={({ navigation }) => ({
+                  title: `מעקב ${profile.name} 👶`,
+                  headerLeft: () => null,
+                  headerRight: () => (
+                    <TouchableOpacity
+                      onPress={() => navigation.popToTop()}
+                      style={homeButtonStyles.touch}
+                      accessibilityLabel="חזרה לדף הבית"
+                      activeOpacity={0.7}
+                    >
+                      <View style={homeButtonStyles.pill}>
+                        <Ionicons name="home" size={15} color={colors.text} />
+                        <Text style={homeButtonStyles.label}>בית</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ),
+                })}
+              />
+              <Stack.Screen
+                name="ChangePassword"
+                component={ChangePasswordScreen}
+                options={{ title: 'שינוי סיסמה 🔐' }}
+              />
+              <Stack.Screen
+                name="Invite"
+                component={InviteScreen}
+                options={{ title: 'הוספת בן משפחה' }}
+              />
+              <Stack.Screen
+                name="Chat"
+                component={ChatScreen}
+                options={{ title: 'הודעות למשפחה 💬' }}
+              />
+              <Stack.Screen
+                name="Medications"
+                component={MedicationsScreen}
+                options={{ title: 'תרופות ותוספים 💊' }}
+              />
+              <Stack.Screen
+                name="DeleteAccount"
+                component={DeleteAccountScreen}
+                options={{ title: 'מחיקת החשבון' }}
+              />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
   );
 }
 

@@ -15,10 +15,12 @@ import DatePickerModal from '../../components/DatePickerModal';
 import Button from '../../components/Button';
 import { pickProfileImage } from '../../utils/imagePicker';
 import { colors, spacing, radius, shadow } from '../../config/theme';
+import { useOnboarding } from '../../hooks/useOnboarding';
 
 export default function BabySettingsScreen({ navigation }: any) {
   const { profile, save } = useBabyProfile();
   const { logout } = useAuth();
+  const { replay: replayOnboarding } = useOnboarding();
   // עריכות המשתמש חיות בנפרד מהפרופיל; כל עוד לא נערך — מציגים את הערך מהשרת.
   // כך אין צורך לסנכרן state בתוך effect כשהפרופיל נטען.
   const [nameEdit, setNameEdit] = useState<string | null>(null);
@@ -170,6 +172,16 @@ export default function BabySettingsScreen({ navigation }: any) {
         <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
         <Text style={styles.accountLabel}>תרופות ותוספים</Text>
         <Ionicons name="medkit-outline" size={18} color={colors.textLight} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.accountRow}
+        onPress={replayOnboarding}
+        accessibilityLabel="הצגת ההדרכה מחדש"
+      >
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+        <Text style={styles.accountLabel}>הדרכה: איך מתעדים</Text>
+        <Ionicons name="help-circle-outline" size={18} color={colors.textLight} />
       </TouchableOpacity>
 
       {/* פעולות חשבון — כאן ולא בכותרת דף הבית, ששמורה לניווט */}
