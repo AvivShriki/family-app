@@ -98,6 +98,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
       : null,
   );
   const [timerVisible, setTimerVisible] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [solids, setSolids] = useState<string[]>(editLog?.solids ?? []);
   const [solidDraft, setSolidDraft] = useState('');
 
@@ -191,6 +192,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   };
 
   const handleSave = async () => {
+    setSaveError('');
     const ts = parseTime(startTime, selectedDate);
     const entry: Omit<BabyLog, 'id'> = {
       type: selectedType,
@@ -220,21 +222,33 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     if (note) entry.details = note;
     if (shownPhoto) entry.hasPhoto = true;
 
-    if (editLog) {
-      await update(editLog.id, entry);
-      await persistPhoto(editLog.id);
-    } else {
-      const newId = await add(entry as any);
-      await persistPhoto(newId);
-      // תרופות ניתנות לרוב יחד עם הארוחה — נרשמות לצידה באותה שעה
-      for (const id of givenWith) {
-        await add({
-          type: 'medication',
-          medicationId: id,
-          timestamp: ts,
-          loggedBy: entry.loggedBy,
-        } as any);
+    try {
+      if (editLog) {
+        await update(editLog.id, entry);
+        await persistPhoto(editLog.id);
+      } else {
+        const newId = await add(entry as any);
+        await persistPhoto(newId);
+        // תרופות ניתנות לרוב יחד עם הארוחה — נרשמות לצידה באותה שעה
+        for (const id of givenWith) {
+          await add({
+            type: 'medication',
+            medicationId: id,
+            timestamp: ts,
+            loggedBy: entry.loggedBy,
+          } as any);
+        }
       }
+    } catch (e: any) {
+      // בלי זה הכתיבה נכשלת, handleClose לא רץ, והחלון נשאר פתוח
+      // בלי שום סימן — נראה בדיוק כמו "הכפתור לא עובד"
+      console.error('שמירת הרישום נכשלה:', e);
+      setSaveError(
+        e?.code === 'permission-denied'
+          ? 'אין הרשאה לכתוב. אם אישרתם עכשיו את המייל, צאו והיכנסו מחדש'
+          : 'השמירה לא הצליחה — בדקו את החיבור ונסו שוב',
+      );
+      return;
     }
     handleClose();
   };
@@ -521,6 +535,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                   </Field>
 
                   {/* Glossary: persisting is always "שמירה" — the title already says עריכת */}
+                  {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
                   <Button label="שמירה" onPress={handleSave} style={{ marginTop: spacing.md }} />
                 </View>
               )}
@@ -628,6 +643,7 @@ function CheckChip({
 }
 
 const styles = StyleSheet.create({
+  saveError: { fontSize: 13, color: colors.danger, textAlign: 'center', marginTop: spacing.sm },
   solidAddRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   solidInput: { flex: 1, marginBottom: 0 },
   solidAdd: {
