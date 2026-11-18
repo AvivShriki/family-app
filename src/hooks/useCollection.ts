@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   collection,
   onSnapshot,
@@ -10,7 +10,7 @@ import {
   orderBy,
   where,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 import { useHousehold } from '../context/HouseholdContext';
 import { mockSubscribe, mockAdd, mockDelete, mockUpdate } from '../mocks/store';
 
@@ -39,6 +39,19 @@ export function useCollection<T extends { id: string }>(
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * ניסיון חוזר אחד אחרי רענון טוקן.
+   *
+   * חוקי Firestore קוראים email_verified מהטוקן. מי שאישר את המייל
+   * זה עתה עדיין נושא טוקן שאומר שלא, והמנוי הזה נפתח לפני שהרענון
+   * מספיק לרוץ — נדחה, ואז נשאר מת גם אחרי שהטוקן התחדש. זה בדיוק
+   * מה שאולץ משתמשים חדשים לצאת ולהיכנס מחדש.
+   *
+   * פעם אחת בלבד: אם גם הטוקן הנקי נדחה, זו באמת שגיאת הרשאה ואין
+   * טעם להיכנס ללולאה מול השרת.
+   */
+  const [retry, setRetry] = useState(0);
+  const retried = useRef(false);
 
   useEffect(() => {
     if (DEMO_MODE) {
@@ -86,12 +99,23 @@ export function useCollection<T extends { id: string }>(
       (err) => {
         // Without this, a rules/permissions failure leaves the screen loading forever
         console.error(`Firestore error on "${colName}":`, err);
+        if (err.code === 'permission-denied' && !retried.current && auth.currentUser) {
+          retried.current = true;
+          auth.currentUser
+            .getIdToken(true)
+            .then(() => setRetry((n) => n + 1))
+            .catch(() => {
+              setError(err.message);
+              setLoading(false);
+            });
+          return;
+        }
         setError(err.message);
         setLoading(false);
       },
     );
     return unsub;
-  }, [colName, orderByField, direction, householdId, sinceValue]);
+  }, [colName, orderByField, direction, householdId, sinceValue, retry]);
 
   // כתיבה בלי משק בית תיכשל ממילא בחוקי האבטחה — עדיף להיכשל מוקדם ובבירור
   const requireHousehold = () => {

@@ -14,6 +14,7 @@ import { useBabyDate } from './BabyDateContext';
 import { fmtTime, fmtDuration, isSameDay } from '../../utils/dates';
 import { useProfile } from '../../context/ProfileContext';
 import { breastSummary } from '../home/activity';
+import LogPhoto from './LogPhoto';
 
 const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
   feeding: { emoji: '🍼', label: 'ארוחה', bg: '#FADADD' },
@@ -239,6 +240,8 @@ function TimelineItem({
           <Text style={styles.logTitle}>{shown.label}</Text>
           {detail ? <Text style={styles.logDetail}>{detail}</Text> : null}
         </View>
+        {/* נטענת רק לשורות שבאמת יש בהן תמונה */}
+        {log.hasPhoto ? <LogPhoto logId={log.id} /> : null}
         <TouchableOpacity
           style={styles.editBtn}
           onPress={onEdit}
