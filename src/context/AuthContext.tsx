@@ -52,6 +52,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
+/**
+ * מיישר בין מצב החשבון למצב הטוקן.
+ *
+ * הבאג שזה מתקן: חוקי Firestore בודקים request.auth.token.email_verified,
+ * כלומר את הטוקן — בעוד שהממשק בודק את אובייקט החשבון. מי שנרשם, אישר
+ * את המייל, ואז רענן את הדף במקום ללחוץ "כבר אישרתי", נכנס לאפליקציה
+ * (החשבון מאומת) אבל נושא טוקן ישן שאומר שלא. התוצאה: כל כתיבה נדחית
+ * עד שהטוקן מתחדש מעצמו, עד שעה. זה נראה כמו "הכפתור לא עובד".
+ *
+ * getIdTokenResult קורא את הטוקן המקומי בלי רשת, ולכן הבדיקה זולה;
+ * רענון כפוי קורה רק כששני המצבים באמת לא מסכימים.
+ */
+async function syncVerifiedClaim(u: User) {
+  try {
+    const res = await u.getIdTokenResult();
+    if (res.claims.email_verified !== true) await u.getIdToken(true);
+  } catch (e) {
+    // כישלון כאן לא אמור לחסום את האפליקציה — במקרה הגרוע נשארים
+    // עם הטוקן הישן, וזה בדיוק המצב שהיה קודם
+    console.error('רענון הטוקן אחרי אימות נכשל:', e);
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(DEMO_MODE ? DEMO_USER : null);
   const [loading, setLoading] = useState(!DEMO_MODE);
@@ -63,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       setEmailVerified(!!u?.emailVerified);
       setLoading(false);
+      if (u?.emailVerified) void syncVerifiedClaim(u);
     });
     return unsub;
   }, []);

@@ -13,7 +13,7 @@ import EmptyState from '../../components/EmptyState';
 import { useBabyDate } from './BabyDateContext';
 import { fmtTime, fmtDuration, isSameDay } from '../../utils/dates';
 import { useProfile } from '../../context/ProfileContext';
-import { formatDuration } from '../home/activity';
+import { breastSummary } from '../home/activity';
 
 const LOG_META: Record<string, { emoji: string; label: string; bg: string }> = {
   feeding: { emoji: '🍼', label: 'ארוחה', bg: '#FADADD' },
@@ -201,16 +201,17 @@ function TimelineItem({
   const shown =
     log.type === 'feeding' && log.feedingMethod === 'breast'
       ? { ...meta, label: 'הנקה', emoji: '🤱' }
-      : meta;
+      : log.type === 'feeding' && log.feedingMethod === 'solids'
+        ? { ...meta, label: 'מוצקים', emoji: '🥣' }
+        : meta;
 
   let detail = '';
   if (log.type === 'feeding') {
     if (log.feedingMethod === 'breast') {
       // כל צד בנפרד — זה מה שאמא צריכה לדעת לקראת ההנקה הבאה
-      const sides: string[] = [];
-      if (log.breastRightMs) sides.push(`ימין ${formatDuration(log.breastRightMs)}`);
-      if (log.breastLeftMs) sides.push(`שמאל ${formatDuration(log.breastLeftMs)}`);
-      detail = sides.join(' · ');
+      detail = breastSummary(log.breastRightMs, log.breastLeftMs);
+    } else if (log.feedingMethod === 'solids') {
+      detail = log.solids?.length ? log.solids.join(', ') : 'בלי פירוט';
     } else if (log.amountMl) {
       detail = `${log.amountMl} מיליליטר`;
     }

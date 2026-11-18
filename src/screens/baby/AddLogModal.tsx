@@ -89,7 +89,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
   const [amountMl, setAmountMl] = useState(editLog?.amountMl ? String(editLog.amountMl) : '');
   // ברירת המחדל מגיעה מההגדרות אך נשארת ניתנת לשינוי בכל רישום —
   // אמא שמניקה בדרך כלל עדיין נותנת בקבוק לפעמים, ולהפך.
-  const [feedingMethod, setFeedingMethod] = useState<'bottle' | 'breast'>(
+  const [feedingMethod, setFeedingMethod] = useState<'bottle' | 'breast' | 'solids'>(
     editLog?.feedingMethod ?? (editLog?.amountMl ? 'bottle' : (profile.feedingDefault ?? 'bottle')),
   );
   const [breast, setBreast] = useState<{ leftMs: number; rightMs: number } | null>(
@@ -98,6 +98,16 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
       : null,
   );
   const [timerVisible, setTimerVisible] = useState(false);
+  const [solids, setSolids] = useState<string[]>(editLog?.solids ?? []);
+  const [solidDraft, setSolidDraft] = useState('');
+
+  const addSolid = () => {
+    const v = solidDraft.trim();
+    // כפילות היא כמעט תמיד הקלדה כפולה ולא שתי מנות נפרדות
+    if (!v || solids.includes(v)) return setSolidDraft('');
+    setSolids([...solids, v]);
+    setSolidDraft('');
+  };
   const [diaperType, setDiaperType] = useState<string>(editLog?.diaperType ?? 'dirty');
   const [note, setNote] = useState(editLog?.details ?? '');
   // undefined = לא נגעו, null = הוסרה, string = תמונה חדשה
@@ -122,6 +132,8 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
     setAmountMl('');
     setFeedingMethod(profile.feedingDefault ?? 'bottle');
     setBreast(null);
+    setSolids([]);
+    setSolidDraft('');
     setDiaperType('dirty');
     setNote('');
     setPhoto(undefined);
@@ -193,6 +205,11 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
         entry.amountMl = 0;
         entry.breastLeftMs = breast?.leftMs ?? 0;
         entry.breastRightMs = breast?.rightMs ?? 0;
+      } else if (feedingMethod === 'solids') {
+        // מוצקים נמדדים ברשימה ולא בכמות; amountMl נשאר 0 כדי שסכום
+        // המיליליטרים היומי לא יספור אותם
+        entry.amountMl = 0;
+        entry.solids = solids;
       } else {
         entry.amountMl = parseInt(amountMl) || 0;
       }
@@ -316,6 +333,7 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                           [
                             { key: 'bottle', emoji: '🍼', label: 'בקבוק' },
                             { key: 'breast', emoji: '🤱', label: 'הנקה' },
+                            { key: 'solids', emoji: '🥣', label: 'מוצקים' },
                           ] as const
                         ).map((o) => (
                           <TouchableOpacity
@@ -348,6 +366,48 @@ export default function AddLogModal({ visible, onClose, selectedDate, editLog }:
                         placeholder="בחירת כמות"
                         onPress={() => setAmountPickerVisible(true)}
                       />
+                    </Field>
+                  )}
+
+                  {selectedType === 'feeding' && feedingMethod === 'solids' && (
+                    <Field label="מה נאכל">
+                      <View style={styles.solidAddRow}>
+                        <TextInput
+                          style={[styles.input, styles.solidInput]}
+                          value={solidDraft}
+                          onChangeText={setSolidDraft}
+                          placeholder="בננה, אבוקדו, דייסה..."
+                          placeholderTextColor={colors.textMuted}
+                          textAlign="right"
+                          onSubmitEditing={addSolid}
+                          returnKeyType="done"
+                        />
+                        <TouchableOpacity
+                          style={[styles.solidAdd, !solidDraft.trim() && styles.solidAddOff]}
+                          onPress={addSolid}
+                          disabled={!solidDraft.trim()}
+                          accessibilityRole="button"
+                          accessibilityLabel="הוספה לרשימה"
+                        >
+                          <Ionicons name="add" size={20} color={colors.white} />
+                        </TouchableOpacity>
+                      </View>
+                      {solids.length > 0 && (
+                        <View style={styles.solidList}>
+                          {solids.map((f) => (
+                            <TouchableOpacity
+                              key={f}
+                              style={styles.solidChip}
+                              onPress={() => setSolids(solids.filter((x) => x !== f))}
+                              accessibilityRole="button"
+                              accessibilityLabel={`הסרת ${f}`}
+                            >
+                              <Text style={styles.solidChipText}>{f}</Text>
+                              <Ionicons name="close" size={13} color={colors.textLight} />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
                     </Field>
                   )}
 
@@ -568,6 +628,28 @@ function CheckChip({
 }
 
 const styles = StyleSheet.create({
+  solidAddRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  solidInput: { flex: 1, marginBottom: 0 },
+  solidAdd: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.pinkAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  solidAddOff: { opacity: 0.4 },
+  solidList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
+  solidChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.sm + 2,
+    borderRadius: radius.full,
+    backgroundColor: colors.pink,
+  },
+  solidChipText: { fontSize: 13, color: colors.text, fontWeight: '600' },
   photoAdd: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -144,7 +144,9 @@ export default function BreastfeedingTimer({
             {running ? 'הטיימר רץ — אפשר לעצור ולהמשיך בכל רגע' : 'בחרו צד כדי להתחיל'}
           </Text>
 
-          {/* ימין ראשון בקוד; ב-RTL הוא מופיע בימין המסך, כמו הצד עצמו */}
+          {/* row-reverse ולא החלפת סדר: ימין נשאר ראשון בקוד ומופיע
+              בימין המסך. הנחתי קודם ש-RTL יהפוך את השורה לבד — הוא לא,
+              והצדדים הוצגו הפוך ממה שהם באמת. */}
           <View style={styles.sides}>
             <SideButton
               label="ימין"
@@ -206,7 +208,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: spacing.lg,
   },
-  sides: { flexDirection: 'row', gap: spacing.md },
+  sides: { flexDirection: 'row-reverse', gap: spacing.md },
   side: {
     flex: 1,
     alignItems: 'center',

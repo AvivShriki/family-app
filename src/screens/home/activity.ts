@@ -92,6 +92,21 @@ export function formatDuration(ms: number): string {
 }
 
 /**
+ * סיכום הנקה: כל צד בנפרד ואחריו סך הכול.
+ *
+ * הסך הכול מוצג גם כשהניקה רק מצד אחד — אחרת צריך לחשב בראש כדי
+ * לענות על השאלה הכי נפוצה, "כמה זמן היא אכלה".
+ */
+export function breastSummary(rightMs = 0, leftMs = 0): string {
+  const parts: string[] = [];
+  if (rightMs) parts.push(`ימין ${formatDuration(rightMs)}`);
+  if (leftMs) parts.push(`שמאל ${formatDuration(leftMs)}`);
+  if (!parts.length) return 'ללא זמנים';
+  parts.push(`סך הכול ${formatDuration(rightMs + leftMs)}`);
+  return parts.join(' · ');
+}
+
+/**
  * הכותרת של רישום בציר.
  *
  * האכלה בלי כמות היא הנקה — זו לא קטגוריה נפרדת בנתונים אלא אותו
@@ -102,6 +117,7 @@ export function titleOf(log: BabyLog, medName?: string): string {
     // feedingMethod קיים רק ברישומים חדשים. בישנים, היעדר כמות עדיין
     // מסמן הנקה — ולכן הבדיקה הזו נשארת כגיבוי ולא מוחלפת.
     if (log.feedingMethod === 'breast') return 'הנקה';
+    if (log.feedingMethod === 'solids') return 'מוצקים';
     if (log.feedingMethod === 'bottle') return 'האכלה';
     return log.amountMl ? 'האכלה' : 'הנקה';
   }
@@ -115,10 +131,9 @@ export function detailOf(log: BabyLog): string {
   if (log.type === 'feeding') {
     if (log.feedingMethod === 'breast') {
       // כל צד מוצג בנפרד, כי זה מה שאמא צריכה לדעת בהנקה הבאה
-      const sides: string[] = [];
-      if (log.breastRightMs) sides.push(`ימין ${formatDuration(log.breastRightMs)}`);
-      if (log.breastLeftMs) sides.push(`שמאל ${formatDuration(log.breastLeftMs)}`);
-      parts.push(sides.length ? sides.join(' · ') : 'ללא זמנים');
+      parts.push(breastSummary(log.breastRightMs, log.breastLeftMs));
+    } else if (log.feedingMethod === 'solids') {
+      parts.push(log.solids?.length ? log.solids.join(', ') : 'בלי פירוט');
     } else if (log.amountMl) {
       parts.push(`${log.amountMl} מיליליטר`);
     }

@@ -13,7 +13,9 @@ export interface BabyLog {
    * איך האכילו. חסר = בקבוק, כי כל הרישומים שנכתבו לפני השדה הזה
    * היו בקבוק — או הנקה שנרשמה בלי כמות, וזו עדיין מוצגת נכון.
    */
-  feedingMethod?: 'bottle' | 'breast';
+  feedingMethod?: 'bottle' | 'breast' | 'solids';
+  /** מה נאכל בארוחת מוצקים. רשימה חופשית שההורה מקליד. */
+  solids?: string[];
   /** משך ההנקה בכל צד, במילישניות. רלוונטי רק כש-feedingMethod הוא breast. */
   breastLeftMs?: number;
   breastRightMs?: number;
