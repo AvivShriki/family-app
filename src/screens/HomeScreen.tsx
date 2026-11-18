@@ -66,7 +66,21 @@ export default function HomeScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [babyLogs]);
 
-  const recent = useMemo(() => babyLogs.slice(-RECENT).reverse(), [babyLogs]);
+  /**
+   * רק של היום.
+   *
+   * קודם זה היה חמשת האחרונים בלי קשר לתאריך, ולכן בבוקר אחרי יום
+   * שקט המסך הראשי הציג את אתמול כאילו הוא עכשיו — מידע שנראה טרי
+   * ואינו. היום ריק הוא תשובה אמיתית, ועדיף על תשובה ישנה.
+   */
+  const recent = useMemo(
+    () =>
+      babyLogs
+        .filter((l) => isSameDay(l.timestamp, new Date()))
+        .slice(-RECENT)
+        .reverse(),
+    [babyLogs],
+  );
 
   // ---- ניווט: אותם יעדים שהיו, בלי שינוי ----
   const goJournal = () => navigation.navigate('Baby', { screen: 'BabyDay' });
@@ -159,6 +173,7 @@ export default function HomeScreen({ navigation }: Props) {
               medName={medName}
               onPressAll={goJournal}
               onPressLog={(_log: BabyLog) => goJournal()}
+              onAdd={goAdd}
             />
 
             <ComingSoon delay={620} />

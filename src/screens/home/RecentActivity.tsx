@@ -9,10 +9,10 @@ import SoftIcon from './SoftIcon';
 import { metaOf, titleOf, detailOf } from './activity';
 
 /**
- * הפעילויות האחרונות.
+ * מה קרה היום.
  *
- * רק חמש — מעבר לזה המסך הופך ליומן שני, ויש כבר יומן. הקישור
- * "לכל הפעילויות" מוביל אליו.
+ * רק של היום ורק חמש — מעבר לזה המסך הופך ליומן שני, ויש כבר יומן.
+ * הקישור "לכל הפעילויות" מוביל אליו.
  *
  * כל כרטיס נכנס באיחור קטן אחרי קודמו, כך שהרשימה נפרשת ולא קופצת.
  */
@@ -21,14 +21,24 @@ interface Props {
   medName: (id?: string) => string | undefined;
   onPressAll: () => void;
   onPressLog: (log: BabyLog) => void;
+  /** פותח את חלון התיעוד — הפעולה של המצב הריק */
+  onAdd: () => void;
 }
 
-export default function RecentActivity({ logs, medName, onPressAll, onPressLog }: Props) {
+export default function RecentActivity({ logs, medName, onPressAll, onPressLog, onAdd }: Props) {
   return (
     <View style={styles.wrap}>
       <Reveal delay={300}>
         <View style={styles.head}>
-          <Text style={t.title}>הפעילויות האחרונות</Text>
+          <View style={styles.titleRow}>
+            <Text style={t.title}>מה קרה היום</Text>
+            {/* המונה עונה על "תיעדנו היום?" בלי לקרוא את הרשימה */}
+            {logs.length > 0 ? (
+              <View style={styles.countChip}>
+                <Text style={styles.countText}>{logs.length}</Text>
+              </View>
+            ) : null}
+          </View>
           <TouchableOpacity
             style={styles.all}
             onPress={onPressAll}
@@ -44,11 +54,24 @@ export default function RecentActivity({ logs, medName, onPressAll, onPressLog }
       {logs.length === 0 ? (
         <Reveal delay={340}>
           <View style={styles.empty}>
-            <SoftIcon icon="baby-carriage" tint={c.rose} surface={c.roseSoft} size={52} />
-            <Text style={[t.cardTitle, styles.center]}>עוד לא תועד כלום היום</Text>
+            <SoftIcon icon="baby-carriage" tint={c.rose} surface={c.roseSoft} size={56} />
+            <Text style={[t.cardTitle, styles.center]}>עדיין לא תיעדנו היום</Text>
             <Text style={[t.body, styles.center]}>
-              כפתור ההוספה ביומן רושם ארוחה, שינה, חיתול או הערה
+              ארוחה, שינה, חיתול או הערה — הכול מתחיל ברישום אחד
             </Text>
+            {/* כפתור ולא רק הסבר: המצב הריק הוא הרגע שבו הכי כדאי
+                להציע את הפעולה, במקום לתאר איפה למצוא אותה */}
+            <Press
+              onPress={onAdd}
+              accessibilityRole="button"
+              accessibilityLabel="תיעוד ראשון להיום"
+              to={0.97}
+            >
+              <View style={styles.emptyCta}>
+                <Ionicons name="add" size={18} color={c.white} />
+                <Text style={styles.emptyCtaText}>תיעוד ראשון להיום</Text>
+              </View>
+            </Press>
           </View>
         </Reveal>
       ) : (
@@ -109,6 +132,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
   },
   allText: { ...t.caption, color: c.rose, fontWeight: '700' },
+  titleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: space.sm },
+  countChip: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: c.roseSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: { ...t.caption, color: c.roseDeep, fontWeight: '800' },
+  emptyCta: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: space.sm,
+    paddingVertical: 12,
+    paddingHorizontal: space.xl,
+    borderRadius: r.xxl,
+    backgroundColor: c.roseDeep,
+  },
+  emptyCtaText: { ...t.cardTitle, color: c.white },
 
   list: { gap: space.sm },
   row: {
