@@ -5,12 +5,12 @@ import { colors, spacing, radius, font } from '../config/theme';
 
 interface Props {
   visible: boolean;
-  value: string; // כמות במ"ל כמחרוזת, או '' כשאין (הנקה)
+  value: string; // כמות במיליליטרים כמחרוזת, '' כשעוד לא נבחרה
   onSelect: (amount: string) => void;
   onClose: () => void;
 }
 
-// קפיצות של 10 מ"ל עד 300 — מכסה בקבוק מלא ועדיין מאפשר דיוק
+// קפיצות של 10 מיליליטר עד 300 — מכסה בקבוק מלא ועדיין מאפשר דיוק
 const AMOUNTS = Array.from({ length: 30 }, (_, i) => String((i + 1) * 10));
 
 export default function AmountPickerModal({ visible, value, onSelect, onClose }: Props) {
@@ -32,19 +32,9 @@ export default function AmountPickerModal({ visible, value, onSelect, onClose }:
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.hint}>מ"ל</Text>
+          <Text style={styles.hint}>מיליליטר</Text>
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.grid}>
-            {/* הנקה — אין כמות למדוד */}
-            <TouchableOpacity
-              style={[styles.option, styles.optionWide, amount === '' && styles.optionActive]}
-              onPress={() => setAmount('')}
-            >
-              <Text style={[styles.optionText, amount === '' && styles.optionTextActive]}>
-                ללא (הנקה)
-              </Text>
-            </TouchableOpacity>
-
             {AMOUNTS.map((ml) => (
               <TouchableOpacity
                 key={ml}
@@ -58,9 +48,13 @@ export default function AmountPickerModal({ visible, value, onSelect, onClose }:
             ))}
           </ScrollView>
 
+          {/* בלי כמות אין מה לאשר. קודם היה כאן "אישור ללא כמות",
+              שהיה הדרך לרשום הנקה — היום הנקה היא בחירה מפורשת
+              בחלון התיעוד, ולכן האפשרות הזו רק בלבלה. */}
           <Button
-            label={amount ? `אישור ${amount} מ"ל` : 'אישור ללא כמות'}
+            label={amount ? `אישור ${amount} מיליליטר` : 'בחרו כמות'}
             onPress={confirm}
+            disabled={!amount}
             style={{ marginTop: spacing.md }}
           />
         </View>
@@ -86,7 +80,12 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: font.title, fontWeight: font.weight.bold, color: colors.text },
   close: { fontSize: font.title, color: colors.textMuted },
-  hint: { fontSize: font.small, color: colors.textLight, textAlign: 'right', marginBottom: spacing.xs },
+  hint: {
+    fontSize: font.small,
+    color: colors.textLight,
+    textAlign: 'right',
+    marginBottom: spacing.xs,
+  },
   scroll: { height: 280 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   option: {
@@ -96,7 +95,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.cream,
   },
-  optionWide: { width: '100%' },
   optionActive: { backgroundColor: colors.pinkAccent },
   optionText: { fontSize: font.bodyLg, color: colors.text },
   optionTextActive: { color: colors.white, fontWeight: font.weight.bold },
