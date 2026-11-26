@@ -56,6 +56,14 @@ export async function joinFamily(uid: string, email: string, code: string): Prom
   if (!snap.exists()) throw new Error('invite/not-found' as JoinError);
 
   const invite = snap.data();
+
+  // הזמנה שכבר נוצלה בידי אותו אדם אינה שגיאה אלא ניסיון חוזר.
+  //
+  // זה קרה בשטח: ההרשמה הצליחה, ההצטרפות נרשמה, ומשהו אחר בתהליך
+  // נכשל — ואז הניסיון השני נחסם ב"ההזמנה כבר נוצלה" למרות שהמשתמש
+  // כבר חבר במשפחה. מחזירים את המשפחה בלי לכתוב שוב, כי הכתיבה
+  // ממילא הייתה נדחית בחוקים (validInvite דורש used == false).
+  if (invite.used && invite.usedBy === uid) return invite.householdId as string;
   if (invite.used) throw new Error('invite/used' as JoinError);
   if (typeof invite.expiresAt === 'number' && invite.expiresAt <= Date.now()) {
     throw new Error('invite/expired' as JoinError);
